@@ -2,6 +2,7 @@
 <system>
     <memory_region name="uart" size="0x10_000" phys_addr="0x30890000" />
     <memory_region name="eth0" size="0x10_000" phys_addr="0x30be0000" />
+    <memory_region name="serial" size="0x10_000" phys_addr="30890000" />
 
     <memory_region name="timer" size="0x10_000" phys_addr="0x302d0000" />
     <memory_region name="hw_ring_buffer" size="0x1_000" />
@@ -66,6 +67,28 @@
         <map mr="cyclecounters" vaddr="0x5_010_000" perms="rw" cached="true" setvar_vaddr="cyclecounters_vaddr" />
 
         <irq irq="87" id="1" /> <!-- timer interrupt -->
+    </protection_domain>
+
+    <protection_domain name="serial" priority="102" budget="2000">
+        <program_image path="serial.elf" />
+
+        <map mr="serial" vaddr="0x2_000_000" perms="rw" cached="false" servar_vaddr="serial_regs" />
+
+        <!-- shared memory for ring buffer mechanism -->
+        <map mr="rx_avail" vaddr="0x4_000_000" perms="rw" cached="true" setvar_vaddr="rx_avail" />
+        <map mr="rx_used" vaddr="0x4_200_000" perms="rw" cached="true" setvar_vaddr="rx_used" />
+        <map mr="tx_avail" vaddr="0x4_400_000" perms="rw" cached="true" setvar_vaddr="tx_avail" />
+        <map mr="tx_used" vaddr="0x4_600_000" perms="rw" cached="true" setvar_vaddr="tx_used" />
+
+        <map mr="shared_dma" vaddr="0x2_400_000" perms="rw" cached="true" setvar_vaddr="shared_dma_vaddr" />
+
+        <!-- we need physical addresses of hw rings and dma region -->
+        <setvar symbol="hw_ring_buffer_paddr" region_paddr="hw_ring_buffer" />
+        <setvar symbol="shared_dma_paddr" region_paddr="shared_dma" />
+        
+        <map mr="uart" vaddr="0x5_000_000" perms="rw" cached="false" setvar_vaddr="uart_base" />
+
+        <irq irq="59" id="1" /> <!-- Serial Interrupt (I think)-->
     </protection_domain>
 
     <protection_domain name="benchIdle" priority="1">
