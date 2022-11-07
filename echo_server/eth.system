@@ -73,7 +73,8 @@
         <program_image path="serial.elf" />
 
         <map mr="serial" vaddr="0x2_000_000" perms="rw" cached="false" servar_vaddr="serial_regs" />
-
+        <map mr="uart" vaddr="0x5_000_000" perms="rw" cached="false" setvar_vaddr="uart_base" />
+        
         <!-- shared memory for ring buffer mechanism -->
         <map mr="rx_avail" vaddr="0x4_000_000" perms="rw" cached="true" setvar_vaddr="rx_avail" />
         <map mr="rx_used" vaddr="0x4_200_000" perms="rw" cached="true" setvar_vaddr="rx_used" />
