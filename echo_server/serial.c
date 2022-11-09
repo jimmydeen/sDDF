@@ -93,7 +93,7 @@ int serial_configure(
     /* Apply the changes */
     regs->cr2 = cr2;
     /* Now set the board rate */
-    imx_uart_set_bau(bps);
+    imx_uart_set_baud(bps);
     return 0;
 }
 
