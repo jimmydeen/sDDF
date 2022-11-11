@@ -18,14 +18,14 @@
 #define INIT   4
 
 /* Memory regions. These all have to be here to keep compiler happy */
-uintptr_t hw_ring_buffer_vaddr;
-uintptr_t hw_ring_buffer_paddr;
-uintptr_t shared_dma_vaddr;
-uintptr_t shared_dma_paddr;
+// Ring handle components
 uintptr_t rx_avail;
 uintptr_t rx_used;
 uintptr_t tx_avail;
 uintptr_t tx_used;
+uintptr_t shared_dma_vaddr;
+uintptr_t shared_dma_paddr;
+// Base of the uart registers
 uintptr_t uart_base;
 
 /* Pointers to shared_ringbuffers */
@@ -33,6 +33,22 @@ ring_handle_t rx_ring;
 ring_handle_t tx_ring;
 
 uintptr_t serial_regs;
+
+// Function taken from eth.c
+static uintptr_t 
+getPhysAddr(uintptr_t virtual)
+{
+    uint64_t offset = virtual - shared_dma_vaddr;
+    uintptr_t phys;
+
+    if (offset < 0) {
+        print("getPhysAddr: offset < 0");
+        return 0;
+    }
+
+    phys = shared_dma_paddr + offset;
+    return phys;
+}
 
 /*
  * BaudRate = RefFreq / (16 * (BMR + 1)/(BIR + 1) )
@@ -81,12 +97,16 @@ int getchar()
 
 // Putchar that is using the hardware FIFO buffers --> Switch to DMA later 
 int putchar(int c) {
-    if (internal_is_tx_fifo_busy(serial_regs)) [
+
+    imx_uart_regs_t *regs = &uart_base;
+
+    if (internal_is_tx_fifo_busy(regs)) {
         // A transmit is probably in progress, we will have to wait
         return -1;
-    ]
+    }
 
-    if (c == '\n' && (d->flags & SERIAL_AUTO_CR)) {
+    if (c == '\n') {
+        // For now, by default we will have Auto-send CR(Carriage Return) enabled
         /* write CR first */
         regs->txd = '\r';
         /* if we transform a '\n' (LF) into '\r\n' (CR+LF) this shall become an
@@ -134,7 +154,52 @@ void handle_tx() {
         // Buffer cointaining the bytes to write to serial
         uintptr_t phys = getPhysAddr(buffer);
         // Handle the tx
-        raw_tx(1, &phys, &len, cookie);
+        raw_tx(&phys, &len, cookie);
+        // Then enqueue this buffer back into the available queue, so that it can be collected and reused by the server
+        enqueue_avail(&tx_ring, buffer, len, &cookie);
+    }
+}
+
+// Called from handle rx, write each character stored in the buffer to the serial port
+int
+raw_rx(uintptr_t *phys, unsigned int *len, void *cookie)
+{
+    int c = getchar();
+    if (getchar == -1) {
+        return -1;
+    }
+
+    *phys = c;
+    *len = 1;
+
+    return 0;
+    
+}
+
+// Very inefficient as each DMA buffer will hold one character, should get lots of get chars at a time, or potentially until EOF or new line
+void handle_rx() {
+    uintptr_t buffer = 0;
+    unsigned int len = 0;
+    void *cookie = 0;
+
+    // Dequeue a DMA'able buffer from the avail rx ring, and pass address to write to
+    int ret = driver_dequeue(rx_ring.avail_ring, &buffer, &len, &cookie);
+
+    if (ret == -1) {
+        sel4cp_dbg_puts(sel4cp_name);
+        sel4cp_dbg_puts(":Rx available ring is full!\n");
+    }
+
+    uintptr_t phys = getPhysAddr(buffer);
+
+    // Handle the rx
+    ret = raw_rx(&phys, &len, cookie);
+
+    if (ret == -1) {
+        // Nothing was read, put the buffer back into the available queue
+        enqueue_avail(&rx_ring, buffer, len, &cookie);
+    } else {
+        enqueue_used(&rx_ring, buffer, len, &cookie);
     }
 }
 
@@ -186,8 +251,25 @@ int serial_configure(
 
 void handle_irq() {
     // TO-DO
-    // Need to figure out where the interrupt register is 
     // And what each serial irq corresponds to - can't find the appropriate documentation
+    imx_uart_regs_t *regs = &uart_base;
+
+    uint32_t e = regs->sr1 & IRQ_MASK;
+
+    switch(e) {
+        case USR1_RRDY:
+            sel4cp_dbg_puts(sel4cp_name);
+            sel4cp_dbg_puts(": Receiver ready interrupt\n");
+            break;
+        case USR1_TRDY:
+            sel4cp_dbg_puts(sel4cp_name);
+            sel4cp_dbg_puts(": Transmitter ready interrupt\n");
+            break;
+        default:
+            sel4cp_dbg_puts(sel4cp_name);
+            sel4cp_dbg_puts(": Unknown IRQ! IRQ Number\n");
+            break;
+    }
 }
 
 void init_post() {
@@ -233,10 +315,10 @@ void notified(sel4cp_channel ch) {
     sel4cp_dbg_puts(sel4cp_name);
     sel4cp_dbg_puts(": elf PD notified function running\n");
 
-    // handle_irq();
     switch(ch) {
         case IRQ_CH:
             // Probably want to handle the rx here
+            handle_irq();
             return;
         case INIT:
             init_post();

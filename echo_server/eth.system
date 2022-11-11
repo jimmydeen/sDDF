@@ -13,7 +13,7 @@
     <memory_region name="tx_avail" size="0x200_000" page_size="0x200_000"/>
     <memory_region name="tx_used" size="0x200_000" page_size="0x200_000"/>
 
-    <!-- shared memory for ring buffer mechanism -->
+    <!-- shared memory for ring buffer mechanism : serial -->
     <memory_region name="rx_avail_serial" size="0x200_000" page_size="0x200_000"/>
     <memory_region name="rx_used_serial" size="0x200_000" page_size="0x200_000"/>
     <memory_region name="tx_avail_serial" size="0x200_000" page_size="0x200_000"/>
@@ -88,13 +88,12 @@
         <!-- Don't think we'll need DMA if we are using the FIFO hardware queue -->
         <map mr="shared_dma" vaddr="0x2_400_000" perms="rw" cached="true" setvar_vaddr="shared_dma_vaddr" />
 
-        <!-- we need physical addresses of hw rings and dma region -->
-        <setvar symbol="hw_ring_buffer_paddr" region_paddr="hw_ring_buffer" />
+        <!-- we need physical addresses dma region -->
         <setvar symbol="shared_dma_paddr" region_paddr="shared_dma" />
         
         <map mr="uart" vaddr="0x5_000_000" perms="rw" cached="false" setvar_vaddr="uart_base" />
 
-        <irq irq="59" id="1" /> <!-- Serial Interrupt (I think)-->
+        <irq irq="59" id="1" /> <!-- Serial Interrupt (I think - serial@30890000)-->
     </protection_domain>
 
     <protection_domain name="benchIdle" priority="1">

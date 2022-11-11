@@ -36,6 +36,14 @@
 /* RXD */
 #define UART_URXD_READY_MASK   BIT(15)
 #define UART_BYTE_MASK         0xFF
+ /* DMA */
+#define UCR1_RXDMAEN	(1<<8)	/* Recv ready DMA enable */
+#define UCR1_TXDMAEN	(1<<3)	/* Transmitter ready DMA enable */
+#define USR1_TRDY	(1<<13) /* Transmitter ready interrupt/dma flag */
+#define USR1_RRDY	(1<<9)	 /* Receiver ready interrupt/dma flag */
+/* INTERRUPT FLAGS*/
+#define USR1_PARITYERR	(1<<15) /* Parity error interrupt flag */
+#define IRQ_MASK (USR1_TRDY | USR1_RRDY)
 
 // Might need to copy over the platform specific files, for now copied into one serial.h
 
