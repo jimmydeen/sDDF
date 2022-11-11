@@ -1,5 +1,6 @@
 #pragma once
 
+#define BIT(nr) (1UL << (nr))
 
 #define UART_SR1_RRDY          BIT( 9)
 #define UART_SR1_TRDY          BIT(13)
@@ -35,6 +36,20 @@
 /* RXD */
 #define UART_URXD_READY_MASK   BIT(15)
 #define UART_BYTE_MASK         0xFF
+
+// Might need to copy over the platform specific files, for now copied into one serial.h
+
+#define UART1_PADDR  0x30860000
+#define UART2_PADDR  0x30890000
+#define UART3_PADDR  0x30880000
+#define UART4_PADDR  0x30a60000
+
+#define UART1_IRQ    58
+#define UART2_IRQ    59
+#define UART3_IRQ    60
+#define UART4_IRQ    61
+
+#define UART_REF_CLK 12096000
 
 enum serial_parity {
     PARITY_NONE,
