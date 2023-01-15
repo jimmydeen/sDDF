@@ -32,8 +32,6 @@ uintptr_t uart_base;
 ring_handle_t rx_ring;
 ring_handle_t tx_ring;
 
-uintptr_t serial_regs;
-
 // Function taken from eth.c
 static uintptr_t 
 getPhysAddr(uintptr_t virtual)
@@ -42,7 +40,6 @@ getPhysAddr(uintptr_t virtual)
     uintptr_t phys;
 
     if (offset < 0) {
-        print("getPhysAddr: offset < 0");
         return 0;
     }
 
@@ -126,6 +123,8 @@ int putchar(int c) {
             /* busy loop */
         }
     }
+
+    return 0;
 }
 
 // Called from handle tx, write each character stored in the buffer to the serial port
@@ -133,7 +132,7 @@ static void
 raw_tx(uintptr_t *phys, unsigned int *len, void *cookie)
 {
     // This is byte by byte for now, switch to DMA use later
-    for (int i = 0; i < len; i++) {
+    for (int i = 0; i < *len; i++) {
         int ret = putchar(phys[i]);
         if (ret == -1) {
             // If the FIFO queue is full, we will just fail
@@ -165,7 +164,7 @@ int
 raw_rx(uintptr_t *phys, unsigned int *len, void *cookie)
 {
     int c = getchar();
-    if (getchar == -1) {
+    if (c == -1) {
         return -1;
     }
 
@@ -177,6 +176,8 @@ raw_rx(uintptr_t *phys, unsigned int *len, void *cookie)
 }
 
 // Very inefficient as each DMA buffer will hold one character, should get lots of get chars at a time, or potentially until EOF or new line
+// This means that there can only be 512 characters read in at a time
+// TO-DO
 void handle_rx() {
     uintptr_t buffer = 0;
     unsigned int len = 0;
@@ -185,6 +186,7 @@ void handle_rx() {
     // Dequeue a DMA'able buffer from the avail rx ring, and pass address to write to
     int ret = driver_dequeue(rx_ring.avail_ring, &buffer, &len, &cookie);
 
+    // There are no available rings, cannot do anything here
     if (ret == -1) {
         sel4cp_dbg_puts(sel4cp_name);
         sel4cp_dbg_puts(":Rx available ring is full!\n");
@@ -200,6 +202,9 @@ void handle_rx() {
         enqueue_avail(&rx_ring, buffer, len, &cookie);
     } else {
         enqueue_used(&rx_ring, buffer, len, &cookie);
+        // As we have actually processed an rx request, notify the server
+        // TO-DO - setup the channels between the driver and server
+        sel4cp_notify(RX_CH);
     }
 }
 
