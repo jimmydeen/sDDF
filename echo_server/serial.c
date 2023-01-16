@@ -32,6 +32,10 @@ uintptr_t uart_base;
 ring_handle_t rx_ring;
 ring_handle_t tx_ring;
 
+// Global serial_driver variable
+
+struct serial_driver global_serial_driver = {};
+
 // Function taken from eth.c
 static uintptr_t 
 getPhysAddr(uintptr_t virtual)
@@ -275,28 +279,34 @@ void handle_irq() {
         return;
     }
 
-    // Address that we will pass to dequeue to store the buffer address
-    uintptr_t buffer_addr;
-    // Integer to store the length of the buffer
-    int buffer_len; 
+    // Only process the character if we need to, that is the server is waiting on a getchar request
+    while (global_serial_driver.num_to_get_chars > 0) {
+        // Address that we will pass to dequeue to store the buffer address
+        uintptr_t buffer_addr;
+        // Integer to store the length of the buffer
+        int buffer_len; 
 
-    int ret = dequeue_avail(&rx_ring, &buffer_addr, &buffer_len, NULL);
+        int ret = dequeue_avail(&rx_ring, &buffer_addr, &buffer_len, NULL);
 
-    if (ret != 0) {
-        sel4cp_dbg_puts(sel4cp_name);
-        sel4cp_dbg_puts(": unable to dequeue from the rx available ring\n");
-        return;
-    }
+        if (ret != 0) {
+            sel4cp_dbg_puts(sel4cp_name);
+            sel4cp_dbg_puts(": unable to dequeue from the rx available ring\n");
+            return;
+        }
 
-    *buffer_addr = input;
+        *buffer_addr = input;
 
-    // Now place in the rx used ring
-    ret = enqueue_used(&rx_ring, &buffer_addr, &buffer_len, NULL);
+        // Now place in the rx used ring
+        ret = enqueue_used(&rx_ring, &buffer_addr, 1, NULL);
 
-    if (ret != 0) {
-        sel4cp_dbg_puts(sel4cp_name);
-        sel4cp_dbg_puts(": unable to enqueue to the tx available ring\n");
-        return;
+        if (ret != 0) {
+            sel4cp_dbg_puts(sel4cp_name);
+            sel4cp_dbg_puts(": unable to enqueue to the tx available ring\n");
+            return;
+        }
+
+        // We have serviced one getchar request, we can now decrement the count
+        global_serial_driver.num_to_get_chars--;
     }
 }
 
@@ -336,6 +346,11 @@ void init(void) {
     regs->fcr &= ~UART_FCR_RXTL_MASK;            /* Clear the rx trigger level value. */
     regs->fcr |= UART_FCR_RXTL(1);               /* Set the rx tigger level to 1.     */
     regs->cr1 |= UART_CR1_RRDYEN;                /* Enable recv interrupt.            */
+
+    global_serial_driver.regs = regs;
+    global_serial_driver.rx_ring = rx_ring;
+    global_serial_driver.tx_ring = tx_ring;
+    global_serial_driver.num_to_get_chars = 0;
 }
 
 // Entry point that is invoked on a serial interrupt
@@ -346,6 +361,7 @@ void notified(sel4cp_channel ch) {
     switch(ch) {
         case IRQ_CH:
             handle_irq();
+            sel4cp_irq_ack(ch);
             return;
         case INIT:
             init_post();
@@ -354,7 +370,8 @@ void notified(sel4cp_channel ch) {
             handle_tx();
             break;
         case RX_CH:
-            handle_rx();
+            // handle_rx();
+            global_serial_driver.num_to_get_chars++;
             break;
         default:
             sel4cp_dbg_puts("eth driver: received notification on unexpected channel\n");
