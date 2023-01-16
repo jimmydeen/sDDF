@@ -13,8 +13,8 @@
 
 // Defines to manage interrupts and notifications
 #define IRQ_CH 1
-#define TX_CH  2
-#define RX_CH  2
+#define TX_CH  8
+#define RX_CH  10
 #define INIT   4
 
 /* Memory regions. These all have to be here to keep compiler happy */
@@ -257,23 +257,46 @@ int serial_configure(
 void handle_irq() {
     // TO-DO
     // And what each serial irq corresponds to - can't find the appropriate documentation
+
+    /* Here we have interrupted because a character has been inputted. We first want to get the 
+    character from the hardware FIFO queue.
+
+    Then we want to dequeue from the rx available ring, and populate it, then add to the rx used queue
+    ready to be processed by the client server
+    
+    */
     imx_uart_regs_t *regs = &uart_base;
 
-    uint32_t e = regs->sr1 & IRQ_MASK;
+    int input = getchar();
 
-    switch(e) {
-        case USR1_RRDY:
-            sel4cp_dbg_puts(sel4cp_name);
-            sel4cp_dbg_puts(": Receiver ready interrupt\n");
-            break;
-        case USR1_TRDY:
-            sel4cp_dbg_puts(sel4cp_name);
-            sel4cp_dbg_puts(": Transmitter ready interrupt\n");
-            break;
-        default:
-            sel4cp_dbg_puts(sel4cp_name);
-            sel4cp_dbg_puts(": Unknown IRQ! IRQ Number\n");
-            break;
+    if (input == -1) {
+        sel4cp_dbg_puts(sel4cp_name);
+        sel4cp_dbg_puts(": invalid input when attempting to getchar\n");
+        return;
+    }
+
+    // Address that we will pass to dequeue to store the buffer address
+    uintptr_t buffer_addr;
+    // Integer to store the length of the buffer
+    int buffer_len; 
+
+    int ret = dequeue_avail(&rx_ring, &buffer_addr, &buffer_len, NULL);
+
+    if (ret != 0) {
+        sel4cp_dbg_puts(sel4cp_name);
+        sel4cp_dbg_puts(": unable to dequeue from the rx available ring\n");
+        return;
+    }
+
+    *buffer_addr = input;
+
+    // Now place in the rx used ring
+    ret = enqueue_used(&rx_ring, &buffer_addr, &buffer_len, NULL);
+
+    if (ret != 0) {
+        sel4cp_dbg_puts(sel4cp_name);
+        sel4cp_dbg_puts(": unable to enqueue to the tx available ring\n");
+        return;
     }
 }
 
@@ -322,7 +345,6 @@ void notified(sel4cp_channel ch) {
 
     switch(ch) {
         case IRQ_CH:
-            // Probably want to handle the rx here
             handle_irq();
             return;
         case INIT:
@@ -330,6 +352,9 @@ void notified(sel4cp_channel ch) {
             break;
         case TX_CH:
             handle_tx();
+            break;
+        case RX_CH:
+            handle_rx();
             break;
         default:
             sel4cp_dbg_puts("eth driver: received notification on unexpected channel\n");
