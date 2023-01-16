@@ -293,11 +293,11 @@ void handle_irq() {
     */
     while (global_serial_driver.num_to_get_chars > 0) {
         // Address that we will pass to dequeue to store the buffer address
-        uintptr_t buffer_addr;
+        uintptr_t buffer;
         // Integer to store the length of the buffer
         unsigned int buffer_len; 
 
-        int ret = dequeue_avail(&rx_ring, &buffer_addr, &buffer_len, NULL);
+        int ret = dequeue_avail(&rx_ring, &buffer, &buffer_len, NULL);
 
         if (ret != 0) {
             sel4cp_dbg_puts(sel4cp_name);
@@ -305,10 +305,10 @@ void handle_irq() {
             return;
         }
 
-        buffer_addr = input;
+        buffer = input;
 
         // Now place in the rx used ring
-        ret = enqueue_used(&rx_ring, buffer_addr, 1, NULL);
+        ret = enqueue_used(&rx_ring, buffer, 1, NULL);
 
         if (ret != 0) {
             sel4cp_dbg_puts(sel4cp_name);

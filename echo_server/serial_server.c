@@ -3,6 +3,7 @@
 #include "shared_ringbuffer.h"
 #include <string.h>
 #include <stdlib.h>
+
 /* Ring handle components -
 Need to have access to the same ring buffer mechanisms as the driver, so that we can enqueue
 buffers to be serviced by the driver.*/
@@ -24,12 +25,12 @@ int serial_server_printf(char *string) {
     // Get a buffer from the tx ring
 
     // Address that we will pass to dequeue to store the buffer address
-    uintptr_t buffer_addr;
+    uintptr_t buffer;
     // Integer to store the length of the buffer
     unsigned int buffer_len; 
 
     // Dequeue a buffer from the available ring from the tx buffer
-    int ret = dequeue_avail(&local_server->tx_ring, &buffer_addr, &buffer_len, NULL);
+    int ret = dequeue_avail(&local_server->tx_ring, &buffer, &buffer_len, NULL);
 
     if(ret != 0) {
         sel4cp_dbg_puts(sel4cp_name);
@@ -47,13 +48,13 @@ int serial_server_printf(char *string) {
     }
 
     // Copy over the string to be printed to the buffer
-    memcpy((void *)buffer_addr, string, print_len);
+    memcpy((void *)buffer, string, print_len);
 
     // We then need to add this buffer to the transmit used ring structure
 
     bool is_empty = ring_empty(local_server->tx_ring.used_ring);
 
-    ret = enqueue_avail(&local_server->tx_ring, buffer_addr, buffer_len, NULL);
+    ret = enqueue_avail(&local_server->tx_ring, buffer, buffer_len, NULL);
 
     if(ret != 0) {
         sel4cp_dbg_puts(sel4cp_name);
@@ -88,28 +89,32 @@ int getchar() {
     When the driver has processed an interrupt, it will add the inputted character to the used ring.*/
     
     // Address that we will pass to dequeue to store the buffer address
-    uintptr_t buffer_addr;
+    uintptr_t buffer;
     // Integer to store the length of the buffer
     unsigned int buffer_len; 
 
 
-    while (dequeue_used(&local_server->rx_ring, &buffer_addr, &buffer_len, NULL) != 0) {
-        /* The ring is currently empty, so there is no character to get. 
+    while (dequeue_used(&local_server->rx_ring, &buffer, &buffer_len, NULL) != 0) {
+        /* The ring is currently empty, as there is no character to get. 
         We will spin here until we have gotten a character. As the driver is a higher priority than us, 
         it should be able to pre-empt this loop
+        */
+        sel4cp_dbg_puts(""); /* From Patrick, this is apparently needed to stop the compiler from optimising out the 
+        as it is currently empty. When compiled in a release version the puts statement will be compiled
+        into a nop command.
         */
     }
 
     // We are only getting one character at a time, so we just need to cast the buffer to an int
 
-    char got_char = *((char *) buffer_addr);
+    char got_char = *((char *) buffer);
 
     // Clear the buffer
-    buffer_addr = 0;
+    buffer = 0;
 
     /* Now that we are finished with the used buffer, we can add it back to the available ring*/
 
-    int ret = enqueue_avail(&local_server->rx_ring, buffer_addr, buffer_len, NULL);
+    int ret = enqueue_avail(&local_server->rx_ring, buffer, buffer_len, NULL);
 
     if (ret != 0) {
          sel4cp_dbg_puts(sel4cp_name);
