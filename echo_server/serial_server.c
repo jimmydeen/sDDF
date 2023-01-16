@@ -52,7 +52,7 @@ int serial_server_printf(char *string) {
 
     // We then need to add this buffer to the transmit used ring structure
 
-    bool is_empty = ring_empty(&local_server->tx_ring.used);
+    bool is_empty = ring_empty(local_server->tx_ring.used_ring);
 
     ret = enqueue_avail(&local_server->tx_ring, buffer_addr, buffer_len, NULL);
 
@@ -71,7 +71,7 @@ int serial_server_printf(char *string) {
 
     if(is_empty) {
         // Notify the driver through the printf channel
-        sel4cp_notify(SERVER_PRINTF_CHANNEL);
+        sel4cp_notify(SERVER_PRINT_CHANNEL);
     }
 
     return 0;
@@ -107,7 +107,7 @@ int getchar() {
     char got_char = *((char *) buffer_addr);
 
     // Clear the buffer
-    *buffer_addr = 0;
+    buffer_addr = 0;
 
     /* Now that we are finished with the used buffer, we can add it back to the available ring*/
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shared_ringbuffer.h"
+
 #define BIT(nr) (1UL << (nr))
 
 #define UART_SR1_RRDY          BIT( 9)
@@ -60,19 +62,8 @@
 #define UART_REF_CLK 12096000
 
 // Move this into a seperate file in the future
-#define NUM_BUFFERS 64
+#define NUM_BUFFERS 512
 #define BUFFER_SIZE 1024
-
-/*
-serial driver struct akin to patrick's implementation*/
-struct serial_driver {
-    imx_uart_regs_t regs;
-
-    ring_handle_t rx_ring;
-    ring_handle_t tx_ring;
-
-    int num_to_get_chars;
-};
 
 enum serial_parity {
     PARITY_NONE,
@@ -101,3 +92,14 @@ struct imx_uart_regs {
     uint32_t ts;       /* 0x0b4 Test Register */
 };
 typedef volatile struct imx_uart_regs imx_uart_regs_t;
+
+/*
+serial driver struct akin to patrick's implementation*/
+struct serial_driver {
+    imx_uart_regs_t *regs;
+
+    ring_handle_t rx_ring;
+    ring_handle_t tx_ring;
+
+    int num_to_get_chars;
+};

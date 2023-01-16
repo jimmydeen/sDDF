@@ -294,7 +294,7 @@ void handle_irq() {
             return;
         }
 
-        *buffer_addr = input;
+        buffer_addr = input;
 
         // Now place in the rx used ring
         ret = enqueue_used(&rx_ring, buffer_addr, 1, NULL);

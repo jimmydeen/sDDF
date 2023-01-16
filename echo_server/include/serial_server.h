@@ -1,4 +1,5 @@
 #pragma once
+#include "shared_ringbuffer.h"
 
 struct serial_server {
     /* Pointers to shared_ringbuffers */
