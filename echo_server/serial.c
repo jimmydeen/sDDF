@@ -297,7 +297,7 @@ void handle_irq() {
         *buffer_addr = input;
 
         // Now place in the rx used ring
-        ret = enqueue_used(&rx_ring, &buffer_addr, 1, NULL);
+        ret = enqueue_used(&rx_ring, buffer_addr, 1, NULL);
 
         if (ret != 0) {
             sel4cp_dbg_puts(sel4cp_name);

@@ -6,7 +6,7 @@
 // Ring handle components
 /*
 Need to have access to the same ring buffer mechanisms as the driver, so that we can enqueue
-buffers to be serviced by the driver*/
+buffers to be serviced by the driver.*/
 
 uintptr_t rx_avail;
 uintptr_t rx_used;
@@ -54,7 +54,7 @@ int serial_server_printf(char *string) {
 
     bool is_empty = ring_empty(&local_server->tx_ring.used);
 
-    ret = enqueue_avail(&local_server->tx_ring, &buffer_addr, &buffer_len, NULL);
+    ret = enqueue_avail(&local_server->tx_ring, buffer_addr, buffer_len, NULL);
 
     if(ret != 0) {
         sel4cp_dbg_puts(sel4cp_name);
@@ -111,7 +111,7 @@ int getchar() {
 
     /* Now that we are finished with the used buffer, we can add it back to the available ring*/
 
-    int ret = enqueue_avail(&local_server->rx_ring, &buffer_addr, &buffer_len, NULL);
+    int ret = enqueue_avail(&local_server->rx_ring, buffer_addr, buffer_len, NULL);
 
     if (ret != 0) {
          sel4cp_dbg_puts(sel4cp_name);
