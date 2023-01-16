@@ -81,6 +81,52 @@ static int internal_is_tx_fifo_busy(
     return (0 == (regs->sr2 & UART_SR2_TXFIFO_EMPTY));
 }
 
+int serial_configure(
+    long bps,
+    int char_size,
+    enum serial_parity parity,
+    int stop_bits)
+{
+    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
+    uint32_t cr2;
+    /* Character size */
+    cr2 = regs->cr2;
+    if (char_size == 8) {
+        cr2 |= UART_CR2_WS;
+    } else if (char_size == 7) {
+        cr2 &= ~UART_CR2_WS;
+    } else {
+        return -1;
+    }
+    /* Stop bits */
+    if (stop_bits == 2) {
+        cr2 |= UART_CR2_STPB;
+    } else if (stop_bits == 1) {
+        cr2 &= ~UART_CR2_STPB;
+    } else {
+        return -1;
+    }
+    /* Parity */
+    if (parity == PARITY_NONE) {
+        cr2 &= ~UART_CR2_PREN;
+    } else if (parity == PARITY_ODD) {
+        /* ODD */
+        cr2 |= UART_CR2_PREN;
+        cr2 |= UART_CR2_PROE;
+    } else if (parity == PARITY_EVEN) {
+        /* Even */
+        cr2 |= UART_CR2_PREN;
+        cr2 &= ~UART_CR2_PROE;
+    } else {
+        return -1;
+    }
+    /* Apply the changes */
+    regs->cr2 = cr2;
+    /* Now set the board rate */
+    imx_uart_set_baud(bps);
+    return 0;
+}
+
 int getchar()
 {
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
@@ -213,51 +259,6 @@ void handle_rx() {
     global_serial_driver.num_to_get_chars++;
 }
 
-int serial_configure(
-    long bps,
-    int char_size,
-    enum serial_parity parity,
-    int stop_bits)
-{
-    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
-    uint32_t cr2;
-    /* Character size */
-    cr2 = regs->cr2;
-    if (char_size == 8) {
-        cr2 |= UART_CR2_WS;
-    } else if (char_size == 7) {
-        cr2 &= ~UART_CR2_WS;
-    } else {
-        return -1;
-    }
-    /* Stop bits */
-    if (stop_bits == 2) {
-        cr2 |= UART_CR2_STPB;
-    } else if (stop_bits == 1) {
-        cr2 &= ~UART_CR2_STPB;
-    } else {
-        return -1;
-    }
-    /* Parity */
-    if (parity == PARITY_NONE) {
-        cr2 &= ~UART_CR2_PREN;
-    } else if (parity == PARITY_ODD) {
-        /* ODD */
-        cr2 |= UART_CR2_PREN;
-        cr2 |= UART_CR2_PROE;
-    } else if (parity == PARITY_EVEN) {
-        /* Even */
-        cr2 |= UART_CR2_PREN;
-        cr2 &= ~UART_CR2_PROE;
-    } else {
-        return -1;
-    }
-    /* Apply the changes */
-    regs->cr2 = cr2;
-    /* Now set the board rate */
-    imx_uart_set_baud(bps);
-    return 0;
-}
 
 void handle_irq() {
     // TO-DO

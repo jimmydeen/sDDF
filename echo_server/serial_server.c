@@ -3,8 +3,7 @@
 #include "shared_ringbuffer.h"
 #include <string.h>
 #include <stdlib.h>
-// Ring handle components
-/*
+/* Ring handle components -
 Need to have access to the same ring buffer mechanisms as the driver, so that we can enqueue
 buffers to be serviced by the driver.*/
 
@@ -162,6 +161,9 @@ void init(void) {
 
     serial_server_printf("Enter char to test getchar");
     char test = getchar();
+    serial_server_printf("We got the following char: ");
+    serial_server_printf(&test);
+    serial_server_printf("\n ---END OF TEST---");
     
 }
 
