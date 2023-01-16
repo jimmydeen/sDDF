@@ -27,7 +27,7 @@ int serial_server_printf(char *string) {
     // Address that we will pass to dequeue to store the buffer address
     uintptr_t buffer_addr;
     // Integer to store the length of the buffer
-    int buffer_len; 
+    unsigned int buffer_len; 
 
     // Dequeue a buffer from the available ring from the tx buffer
     int ret = dequeue_avail(&local_server->tx_ring, &buffer_addr, &buffer_len, NULL);
@@ -91,7 +91,7 @@ int getchar() {
     // Address that we will pass to dequeue to store the buffer address
     uintptr_t buffer_addr;
     // Integer to store the length of the buffer
-    int buffer_len; 
+    unsigned int buffer_len; 
 
 
     while (dequeue_used(&local_server->rx_ring, &buffer_addr, &buffer_len, NULL) != 0) {
@@ -99,7 +99,6 @@ int getchar() {
         We will spin here until we have gotten a character. As the driver is a higher priority than us, 
         it should be able to pre-empt this loop
         */
-
     }
 
     // We are only getting one character at a time, so we just need to cast the buffer to an int
@@ -157,6 +156,13 @@ void init(void) {
         }
     }
 
+    /* Some basic tests for the serial driver */
+
+    serial_server_printf("Attempting to use the server printf!\n");
+
+    serial_server_printf("Enter char to test getchar");
+    char test = getchar();
+    
 }
 
 

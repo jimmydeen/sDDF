@@ -58,7 +58,7 @@ getPhysAddr(uintptr_t virtual)
  */
 static void imx_uart_set_baud(long bps)
 {
-    imx_uart_regs_t *regs = &uart_base;
+    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
     uint32_t bmr, bir, fcr;
     fcr = regs->fcr;
     fcr &= ~UART_FCR_RFDIV_MASK;
@@ -83,7 +83,7 @@ static int internal_is_tx_fifo_busy(
 
 int getchar()
 {
-    imx_uart_regs_t *regs = &uart_base;
+    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
     uint32_t reg = 0;
     int c = -1;
 
@@ -99,7 +99,7 @@ int getchar()
 // Putchar that is using the hardware FIFO buffers --> Switch to DMA later 
 int putchar(int c) {
 
-    imx_uart_regs_t *regs = &uart_base;
+    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
     if (internal_is_tx_fifo_busy(regs)) {
         // A transmit is probably in progress, we will have to wait
@@ -183,33 +183,34 @@ raw_rx(uintptr_t *phys, unsigned int *len, void *cookie)
 // This means that there can only be 512 characters read in at a time
 // TO-DO
 void handle_rx() {
-    uintptr_t buffer = 0;
-    unsigned int len = 0;
-    void *cookie = 0;
+    // uintptr_t buffer = 0;
+    // unsigned int len = 0;
+    // void *cookie = 0;
 
-    // Dequeue a DMA'able buffer from the avail rx ring, and pass address to write to
-    int ret = driver_dequeue(rx_ring.avail_ring, &buffer, &len, &cookie);
+    // // Dequeue a DMA'able buffer from the avail rx ring, and pass address to write to
+    // int ret = driver_dequeue(rx_ring.avail_ring, &buffer, &len, &cookie);
 
-    // There are no available rings, cannot do anything here
-    if (ret == -1) {
-        sel4cp_dbg_puts(sel4cp_name);
-        sel4cp_dbg_puts(":Rx available ring is full!\n");
-    }
+    // // There are no available rings, cannot do anything here
+    // if (ret == -1) {
+    //     sel4cp_dbg_puts(sel4cp_name);
+    //     sel4cp_dbg_puts(":Rx available ring is full!\n");
+    // }
 
-    uintptr_t phys = getPhysAddr(buffer);
+    // uintptr_t phys = getPhysAddr(buffer);
 
-    // Handle the rx
-    ret = raw_rx(&phys, &len, cookie);
+    // // Handle the rx
+    // ret = raw_rx(&phys, &len, cookie);
 
-    if (ret == -1) {
-        // Nothing was read, put the buffer back into the available queue
-        enqueue_avail(&rx_ring, buffer, len, &cookie);
-    } else {
-        enqueue_used(&rx_ring, buffer, len, &cookie);
-        // As we have actually processed an rx request, notify the server
-        // TO-DO - setup the channels between the driver and server
-        sel4cp_notify(RX_CH);
-    }
+    // if (ret == -1) {
+    //     // Nothing was read, put the buffer back into the available queue
+    //     enqueue_avail(&rx_ring, buffer, len, &cookie);
+    // } else {
+    //     enqueue_used(&rx_ring, buffer, len, &cookie);
+    //     // As we have actually processed an rx request, notify the server
+    //     // TO-DO - setup the channels between the driver and server
+    //     sel4cp_notify(RX_CH);
+    // }
+    global_serial_driver.num_to_get_chars++;
 }
 
 int serial_configure(
@@ -218,7 +219,7 @@ int serial_configure(
     enum serial_parity parity,
     int stop_bits)
 {
-    imx_uart_regs_t *regs = &uart_base;
+    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
     uint32_t cr2;
     /* Character size */
     cr2 = regs->cr2;
@@ -269,7 +270,7 @@ void handle_irq() {
     ready to be processed by the client server
     
     */
-    imx_uart_regs_t *regs = &uart_base;
+    // imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
     int input = getchar();
 
@@ -280,11 +281,20 @@ void handle_irq() {
     }
 
     // Only process the character if we need to, that is the server is waiting on a getchar request
+
+    /*
+    I'm not too sure if we need to loop here, as we only have one server and one driver, and the 
+    server should be blocking on getchar calls. Additionally, currently the driver has an unlimited budget, 
+    and is running at a higher priority than any of the other PD's so it shouldn't be pre-empted. 
+
+    However, if we have multiple clients waiting on getchars we may have an issue, I need to look 
+    more into the expected behaviour of getchar in these situations.
+    */
     while (global_serial_driver.num_to_get_chars > 0) {
         // Address that we will pass to dequeue to store the buffer address
         uintptr_t buffer_addr;
         // Integer to store the length of the buffer
-        int buffer_len; 
+        unsigned int buffer_len; 
 
         int ret = dequeue_avail(&rx_ring, &buffer_addr, &buffer_len, NULL);
 
@@ -327,7 +337,7 @@ void init(void) {
     sel4cp_dbg_puts(": elf PD init function running\n");
 
 
-    imx_uart_regs_t *regs = &uart_base;
+    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
     /* Software reset */
     regs->cr2 &= ~UART_CR2_SRST;
@@ -346,6 +356,10 @@ void init(void) {
     regs->fcr &= ~UART_FCR_RXTL_MASK;            /* Clear the rx trigger level value. */
     regs->fcr |= UART_FCR_RXTL(1);               /* Set the rx tigger level to 1.     */
     regs->cr1 |= UART_CR1_RRDYEN;                /* Enable recv interrupt.            */
+
+    // Call init_post here to setup the ring buffer regions. The init_post case in the notified
+    // switch statement may be redundant.
+    init_post();
 
     global_serial_driver.regs = regs;
     global_serial_driver.rx_ring = rx_ring;
@@ -370,8 +384,7 @@ void notified(sel4cp_channel ch) {
             handle_tx();
             break;
         case RX_CH:
-            // handle_rx();
-            global_serial_driver.num_to_get_chars++;
+            handle_rx();
             break;
         default:
             sel4cp_dbg_puts("eth driver: received notification on unexpected channel\n");
