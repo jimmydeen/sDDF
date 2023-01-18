@@ -34,7 +34,7 @@ ring_handle_t tx_ring;
 
 // Global serial_driver variable
 
-struct serial_driver global_serial_driver = {};
+struct serial_driver global_serial_driver = {0};
 
 // Function taken from eth.c
 static uintptr_t 
@@ -58,7 +58,10 @@ getPhysAddr(uintptr_t virtual)
  */
 static void imx_uart_set_baud(long bps)
 {
+    struct serial_driver *local_driver = &global_serial_driver;
+
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
+
     uint32_t bmr, bir, fcr;
     fcr = regs->fcr;
     fcr &= ~UART_FCR_RFDIV_MASK;
@@ -88,6 +91,7 @@ int serial_configure(
     int stop_bits)
 {
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
+    
     uint32_t cr2;
     /* Character size */
     cr2 = regs->cr2;
@@ -122,6 +126,7 @@ int serial_configure(
     }
     /* Apply the changes */
     regs->cr2 = cr2;
+    sel4cp_dbg_puts("finished configuring the line, setting the baud rate\n");
     /* Now set the board rate */
     imx_uart_set_baud(bps);
     return 0;
@@ -129,6 +134,8 @@ int serial_configure(
 
 int getchar()
 {
+    struct serial_driver *local_driver = &global_serial_driver;
+
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
     uint32_t reg = 0;
     int c = -1;
@@ -172,41 +179,57 @@ int putchar(int c) {
         while (internal_is_tx_fifo_busy(regs)) {
             /* busy loop */
         }
+    
     }
 
+    regs->txd = c;
+    // sel4cp_dbg_puts("thing\n");
+    // sel4cp_dbg_puts(c);
+    // sel4cp_dbg_puts(" - is char attempted to put\n");
     return 0;
 }
 
 // Called from handle tx, write each character stored in the buffer to the serial port
 static void
-raw_tx(uintptr_t *phys, unsigned int *len, void *cookie)
+raw_tx(char *phys, unsigned int len, void *cookie)
 {
+    sel4cp_dbg_puts("entering raw tx function\n");
     // This is byte by byte for now, switch to DMA use later
-    for (int i = 0; i < *len; i++) {
-        int ret = putchar(phys[i]);
-        if (ret == -1) {
-            // If the FIFO queue is full, we will just fail
-            //  Maybe try requeue this?
-            return;
-        }
+    for (int i = 0; i < len || phys[i] != '\0'; i++) {
+        while (putchar(phys[i]) != 0);
+        // if (ret == -1) {
+        //     // If the FIFO queue is full, we will just fail
+        //     //  Maybe try requeue this?
+        //     sel4cp_dbg_puts("putchar failed!\n");
+        //     return;
+        // }
+        // sel4cp_dbg_puts("\twe are putcharring ");
+        // sel4cp_dbg_puts(phys[i]);
+        // sel4cp_dbg_puts("\n");
         // Zero out the curr location in the buffer
-        phys[i] = 0;
+        // phys[i] = 0;
     }
+            // while(putchar("i") != 0);
+
 }
 
 void handle_tx() {
+    sel4cp_dbg_puts("In the handle tx func\n");
     uintptr_t buffer = 0;
     unsigned int len = 0;
     void *cookie = 0;
     // Dequeue something from the Tx ring -> the server will have placed something in here, if its empty then nothing to do
+    sel4cp_dbg_puts("Dequeuing and printing everything currently in the ring buffer\n");
     while (!driver_dequeue(tx_ring.used_ring, &buffer, &len, &cookie)) {
+        sel4cp_dbg_puts("in the driver dequeue loop\n");
         // Buffer cointaining the bytes to write to serial
-        uintptr_t phys = getPhysAddr(buffer);
+        char *phys = (char * )buffer;
         // Handle the tx
-        raw_tx(&phys, &len, cookie);
+        raw_tx(phys, len, cookie);
         // Then enqueue this buffer back into the available queue, so that it can be collected and reused by the server
         enqueue_avail(&tx_ring, buffer, len, &cookie);
     }
+    sel4cp_dbg_puts("Finished handle_tx\n");
 }
 
 // Called from handle rx, write each character stored in the buffer to the serial port
@@ -293,11 +316,13 @@ void handle_irq() {
     */
     while (global_serial_driver.num_to_get_chars > 0) {
         // Address that we will pass to dequeue to store the buffer address
-        uintptr_t buffer;
+        uintptr_t buffer = 0;
         // Integer to store the length of the buffer
-        unsigned int buffer_len; 
+        unsigned int buffer_len = 0; 
 
-        int ret = dequeue_avail(&rx_ring, &buffer, &buffer_len, NULL);
+        void *cookie = 0;
+
+        int ret = dequeue_avail(&rx_ring, &buffer, &buffer_len, &cookie);
 
         if (ret != 0) {
             sel4cp_dbg_puts(sel4cp_name);
@@ -308,7 +333,7 @@ void handle_irq() {
         buffer = input;
 
         // Now place in the rx used ring
-        ret = enqueue_used(&rx_ring, buffer, 1, NULL);
+        ret = enqueue_used(&rx_ring, buffer, 1, &cookie);
 
         if (ret != 0) {
             sel4cp_dbg_puts(sel4cp_name);
@@ -326,7 +351,7 @@ void init_post() {
     sel4cp_dbg_puts(": init_post function running\n");
     // Init the shared ring buffers
     ring_init(&rx_ring, (ring_buffer_t *)rx_avail, (ring_buffer_t *)rx_used, NULL, 0);
-    ring_init(&rx_ring, (ring_buffer_t *)tx_avail, (ring_buffer_t *)tx_used, NULL, 0);
+    ring_init(&tx_ring, (ring_buffer_t *)tx_avail, (ring_buffer_t *)tx_used, NULL, 0);
     
     sel4cp_notify(INIT);
 
@@ -338,14 +363,29 @@ void init(void) {
     sel4cp_dbg_puts(": elf PD init function running\n");
 
 
+    // Call init_post here to setup the ring buffer regions. The init_post case in the notified
+    // switch statement may be redundant.
+    init_post();
+
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
     /* Software reset */
-    regs->cr2 &= ~UART_CR2_SRST;
-    while (!(regs->cr2 & UART_CR2_SRST));
+    // regs->cr2 &= ~UART_CR2_SRST;
+    // while (!(regs->cr2 & UART_CR2_SRST));
+    global_serial_driver.regs = regs;
+    global_serial_driver.rx_ring = rx_ring;
+    global_serial_driver.tx_ring = tx_ring;
+    global_serial_driver.num_to_get_chars = 0;
 
+    sel4cp_dbg_puts("Line configuration\n");
     /* Line configuration */
-    serial_configure(115200, 8, PARITY_NONE, 1);
+    int ret = serial_configure(115200, 8, PARITY_NONE, 1);
+
+    if (ret != 0) {
+        sel4cp_dbg_puts("Error occured during line configuration\n");
+    }
+
+    sel4cp_dbg_puts("Configured serial, enabling uart\n");
 
     /* Enable the UART */
     regs->cr1 |= UART_CR1_UARTEN;                /* Enable The uart.                  */
@@ -358,14 +398,9 @@ void init(void) {
     regs->fcr |= UART_FCR_RXTL(1);               /* Set the rx tigger level to 1.     */
     regs->cr1 |= UART_CR1_RRDYEN;                /* Enable recv interrupt.            */
 
-    // Call init_post here to setup the ring buffer regions. The init_post case in the notified
-    // switch statement may be redundant.
-    init_post();
+    sel4cp_dbg_puts("Enabled the uart, init the ring buffers\n");
 
-    global_serial_driver.regs = regs;
-    global_serial_driver.rx_ring = rx_ring;
-    global_serial_driver.tx_ring = tx_ring;
-    global_serial_driver.num_to_get_chars = 0;
+
 }
 
 // Entry point that is invoked on a serial interrupt
@@ -382,6 +417,7 @@ void notified(sel4cp_channel ch) {
             init_post();
             break;
         case TX_CH:
+            sel4cp_dbg_puts("Notified to print something\n");
             handle_tx();
             break;
         case RX_CH:

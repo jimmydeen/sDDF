@@ -15,22 +15,26 @@ uintptr_t tx_used;
 
 uintptr_t shared_dma;
 
-struct serial_server global_serial_server = {};
+struct serial_server global_serial_server = {0};
 
 /*
 Return -1 on failure.
 */
 int serial_server_printf(char *string) {
+    sel4cp_dbg_puts("Beginning serial server printf\n");
     struct serial_server *local_server = &global_serial_server;
     // Get a buffer from the tx ring
 
     // Address that we will pass to dequeue to store the buffer address
-    uintptr_t buffer;
+    uintptr_t buffer = 0;
     // Integer to store the length of the buffer
-    unsigned int buffer_len; 
+    unsigned int buffer_len = 0; 
+    void *cookie = 0;
+
+    sel4cp_dbg_puts("Attempting to dequeue from the tx available ring\n");
 
     // Dequeue a buffer from the available ring from the tx buffer
-    int ret = dequeue_avail(&local_server->tx_ring, &buffer, &buffer_len, NULL);
+    int ret = dequeue_avail(&local_server->tx_ring, &buffer, &buffer_len, &cookie);
 
     if(ret != 0) {
         sel4cp_dbg_puts(sel4cp_name);
@@ -39,22 +43,25 @@ int serial_server_printf(char *string) {
     }
 
     // Need to copy over the string into the buffer, if it is less than the buffer length
-    int print_len = strlen(string);
+    int print_len = strlen(string) + 1;
 
-    if(print_len > buffer_len) {
+    if(print_len > BUFFER_SIZE) {
         sel4cp_dbg_puts(sel4cp_name);
         sel4cp_dbg_puts(": print string too long for buffer\n");
         return -1;
     }
 
+    sel4cp_dbg_puts("Attempting memcpy to buffer\n");
     // Copy over the string to be printed to the buffer
-    memcpy((void *)buffer, string, print_len);
+    memcpy((char *) buffer, string, print_len);
 
     // We then need to add this buffer to the transmit used ring structure
 
     bool is_empty = ring_empty(local_server->tx_ring.used_ring);
 
-    ret = enqueue_avail(&local_server->tx_ring, buffer, buffer_len, NULL);
+    sel4cp_dbg_puts("printf - enqueueing the buffer for print\n");
+
+    ret = enqueue_used(&local_server->tx_ring, buffer, print_len, &cookie);
 
     if(ret != 0) {
         sel4cp_dbg_puts(sel4cp_name);
@@ -71,6 +78,7 @@ int serial_server_printf(char *string) {
 
     if(is_empty) {
         // Notify the driver through the printf channel
+        sel4cp_dbg_puts("Notifying the driver that we have something to print\n");
         sel4cp_notify(SERVER_PRINT_CHANNEL);
     }
 
@@ -79,6 +87,8 @@ int serial_server_printf(char *string) {
 
 // Return char on success, -1 on failure
 int getchar() {
+    sel4cp_dbg_puts("Beginning serial server getchar\n");
+
     // Notify the driver that we want to get a character. In Patrick's design, this increments 
     // the chars_for_clients value.
     sel4cp_notify(SERVER_GETCHAR_CHANNEL);
@@ -89,9 +99,9 @@ int getchar() {
     When the driver has processed an interrupt, it will add the inputted character to the used ring.*/
     
     // Address that we will pass to dequeue to store the buffer address
-    uintptr_t buffer;
+    uintptr_t buffer = 0;
     // Integer to store the length of the buffer
-    unsigned int buffer_len; 
+    unsigned int buffer_len = 0; 
 
 
     while (dequeue_used(&local_server->rx_ring, &buffer, &buffer_len, NULL) != 0) {
@@ -136,35 +146,47 @@ void init(void) {
     // Init the shared ring buffers
     ring_init(&local_server->rx_ring, (ring_buffer_t *)rx_avail, (ring_buffer_t *)rx_used, NULL, 0);
     // We will also need to populate these rings with memory from the shared dma region
+    
+    sel4cp_dbg_puts("populating rx ring with buffers\n");
 
     // Add buffers to the rx ring
-    for (int i = 0; i < NUM_BUFFERS; i++) {
+    for (int i = 0; i < NUM_BUFFERS - 1; i++) {
         int ret = enqueue_avail(&local_server->rx_ring, shared_dma + (i * BUFFER_SIZE), BUFFER_SIZE, NULL);
 
         if (ret != 0) {
             sel4cp_dbg_puts(sel4cp_name);
             sel4cp_dbg_puts(": rx buffer population, unable to enqueue buffer\n");
+        }else {
+            // sel4cp_dbg_puts(sel4cp_name);
+            // sel4cp_dbg_puts(": rx buffer population, able to enqueue buffer\n");
         }
     }
 
-    ring_init(&local_server->rx_ring, (ring_buffer_t *)tx_avail, (ring_buffer_t *)tx_used, NULL, 0);
+    sel4cp_dbg_puts("populating tx ring with buffers\n");
+
+    ring_init(&local_server->tx_ring, (ring_buffer_t *)tx_avail, (ring_buffer_t *)tx_used, NULL, 0);
 
     // Add buffers to the tx ring
-    for (int i = 0; i < NUM_BUFFERS; i++) {
+    for (int i = 0; i < NUM_BUFFERS - 1; i++) {
         // Have to start at the memory region left of by the rx ring
-        int ret = enqueue_avail(&local_server->rx_ring, shared_dma + (i * BUFFER_SIZE) + (NUM_BUFFERS * BUFFER_SIZE), BUFFER_SIZE, NULL);
+        int ret = enqueue_avail(&local_server->tx_ring, shared_dma + ((i + NUM_BUFFERS) * BUFFER_SIZE), BUFFER_SIZE, NULL);
 
         if (ret != 0) {
             sel4cp_dbg_puts(sel4cp_name);
             sel4cp_dbg_puts(": tx buffer population, unable to enqueue buffer\n");
+        } else {
+            // sel4cp_dbg_puts(sel4cp_name);
+            // sel4cp_dbg_puts(": tx buffer population, able to enqueue buffer\n");
         }
     }
+
+    sel4cp_dbg_puts("Finished allocating the ring buffers, attempting printf\n");
 
     /* Some basic tests for the serial driver */
 
     serial_server_printf("Attempting to use the server printf!\n");
-
-    serial_server_printf("Enter char to test getchar");
+    serial_server_printf("HELLO THERE THIS IS SERVER PRINTF\n");
+    serial_server_printf("Enter char to test getchar\n");
     char test = getchar();
     serial_server_printf("We got the following char: ");
     serial_server_printf(&test);

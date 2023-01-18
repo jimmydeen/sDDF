@@ -2,9 +2,7 @@
 <system>
     <memory_region name="uart" size="0x10_000" phys_addr="0x30890000" />
 
-    <memory_region name="hw_ring_buffer" size="0x1_000" />
     <memory_region name="shared_dma" size="0x200_000" page_size="0x200_000" />
-
 
     <!-- shared memory for ring buffer mechanism : serial -->
     <memory_region name="rx_avail_serial" size="0x200_000" page_size="0x200_000"/>
@@ -12,7 +10,7 @@
     <memory_region name="tx_avail_serial" size="0x200_000" page_size="0x200_000"/>
     <memory_region name="tx_used_serial" size="0x200_000" page_size="0x200_000"/>
 
-    <protection_domain name="serial" priority="102">
+    <protection_domain name="serial" priority="102" pp="true">
         <program_image path="serial.elf" />
 
         <map mr="uart" vaddr="0x5_000_000" perms="rw" cached="false" setvar_vaddr="uart_base" />
@@ -28,12 +26,11 @@
         <!-- we need physical addresses dma region -->
         <setvar symbol="shared_dma_paddr" region_paddr="shared_dma" />
         
-        <map mr="uart" vaddr="0x5_000_000" perms="rw" cached="false" setvar_vaddr="uart_base" />
 
         <irq irq="59" id="1" /> <!-- Serial Interrupt (I think - serial@30890000)-->
     </protection_domain>
 
-    <protection_domain name="serial_server" priority="101">
+    <protection_domain name="serial_server" priority="101" pp="true">
         <program_image path="serial_server.elf" />
 
         <!-- shared memory for ring buffer mechanism -->
