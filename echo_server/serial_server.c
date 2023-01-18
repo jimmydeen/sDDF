@@ -59,8 +59,6 @@ int serial_server_printf(char *string) {
 
     bool is_empty = ring_empty(local_server->tx_ring.used_ring);
 
-    sel4cp_dbg_puts("printf - enqueueing the buffer for print\n");
-
     ret = enqueue_used(&local_server->tx_ring, buffer, print_len, &cookie);
 
     if(ret != 0) {
@@ -156,9 +154,6 @@ void init(void) {
         if (ret != 0) {
             sel4cp_dbg_puts(sel4cp_name);
             sel4cp_dbg_puts(": rx buffer population, unable to enqueue buffer\n");
-        }else {
-            // sel4cp_dbg_puts(sel4cp_name);
-            // sel4cp_dbg_puts(": rx buffer population, able to enqueue buffer\n");
         }
     }
 
@@ -174,9 +169,6 @@ void init(void) {
         if (ret != 0) {
             sel4cp_dbg_puts(sel4cp_name);
             sel4cp_dbg_puts(": tx buffer population, unable to enqueue buffer\n");
-        } else {
-            // sel4cp_dbg_puts(sel4cp_name);
-            // sel4cp_dbg_puts(": tx buffer population, able to enqueue buffer\n");
         }
     }
 

@@ -196,21 +196,9 @@ raw_tx(char *phys, unsigned int len, void *cookie)
     sel4cp_dbg_puts("entering raw tx function\n");
     // This is byte by byte for now, switch to DMA use later
     for (int i = 0; i < len || phys[i] != '\0'; i++) {
+        // Loop until the fifo queue is ready to transmit
         while (putchar(phys[i]) != 0);
-        // if (ret == -1) {
-        //     // If the FIFO queue is full, we will just fail
-        //     //  Maybe try requeue this?
-        //     sel4cp_dbg_puts("putchar failed!\n");
-        //     return;
-        // }
-        // sel4cp_dbg_puts("\twe are putcharring ");
-        // sel4cp_dbg_puts(phys[i]);
-        // sel4cp_dbg_puts("\n");
-        // Zero out the curr location in the buffer
-        // phys[i] = 0;
     }
-            // while(putchar("i") != 0);
-
 }
 
 void handle_tx() {
@@ -294,8 +282,6 @@ void handle_irq() {
     ready to be processed by the client server
     
     */
-    // imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
-
     int input = getchar();
 
     if (input == -1) {
@@ -349,12 +335,13 @@ void handle_irq() {
 void init_post() {
     sel4cp_dbg_puts(sel4cp_name);
     sel4cp_dbg_puts(": init_post function running\n");
+
     // Init the shared ring buffers
     ring_init(&rx_ring, (ring_buffer_t *)rx_avail, (ring_buffer_t *)rx_used, NULL, 0);
     ring_init(&tx_ring, (ring_buffer_t *)tx_avail, (ring_buffer_t *)tx_used, NULL, 0);
     
-    sel4cp_notify(INIT);
-
+    // Redundant right now, as a channel has not been set up for init calls
+    // sel4cp_notify(INIT);
 }
 
 // Init function required by CP for every PD
@@ -369,15 +356,18 @@ void init(void) {
 
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
+    // Software reset results in failed uart init, not too sure why
     /* Software reset */
     // regs->cr2 &= ~UART_CR2_SRST;
     // while (!(regs->cr2 & UART_CR2_SRST));
+
     global_serial_driver.regs = regs;
     global_serial_driver.rx_ring = rx_ring;
     global_serial_driver.tx_ring = tx_ring;
     global_serial_driver.num_to_get_chars = 0;
 
     sel4cp_dbg_puts("Line configuration\n");
+
     /* Line configuration */
     int ret = serial_configure(115200, 8, PARITY_NONE, 1);
 
@@ -400,10 +390,9 @@ void init(void) {
 
     sel4cp_dbg_puts("Enabled the uart, init the ring buffers\n");
 
-
 }
 
-// Entry point that is invoked on a serial interrupt
+// Entry point that is invoked on a serial interrupt, or notifications from the server using the TX and RX channels
 void notified(sel4cp_channel ch) {
     sel4cp_dbg_puts(sel4cp_name);
     sel4cp_dbg_puts(": elf PD notified function running\n");
