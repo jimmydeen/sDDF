@@ -1,4 +1,4 @@
-#Brief Intro
+# Brief Intro
 This is a learning exercise to get acquainted with the sDDF. A basic serial driver has been implemented, with printf, getchar and scanf.
 
 # sDDF
