@@ -1,3 +1,6 @@
+# Brief Intro
+This is a learning exercise to get acquainted with the sDDF. A basic serial driver has been implemented, with printf, getchar and scanf.
+
 # sDDF
 seL4 Device Driver Framework
 
