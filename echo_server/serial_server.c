@@ -121,9 +121,6 @@ int getchar() {
 
     char got_char = *((char *) buffer);
 
-    // Clear the buffer
-    // buffer = 0;
-
     /* Now that we are finished with the used buffer, we can add it back to the available ring*/
 
     int ret = enqueue_avail(&local_server->rx_ring, buffer, buffer_len, NULL);
@@ -137,6 +134,11 @@ int getchar() {
     return (int) got_char;
 }
 
+/* Return 0 on success, -1 on failure. 
+Basic scanf implementation using the getchar function above. Gets characters until
+CTRL+C or CTRL+D or new line.
+NOT MEMORY SAFE
+*/ 
 int serial_server_scanf(char* buffer) {
     int i = 0;
     int getchar_ret = getchar();

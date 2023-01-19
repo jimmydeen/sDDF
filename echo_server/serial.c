@@ -234,56 +234,21 @@ raw_rx(uintptr_t *phys, unsigned int *len, void *cookie)
 // This means that there can only be 512 characters read in at a time
 // TO-DO
 void handle_rx() {
-    // uintptr_t buffer = 0;
-    // unsigned int len = 0;
-    // void *cookie = 0;
-
-    // // Dequeue a DMA'able buffer from the avail rx ring, and pass address to write to
-    // int ret = driver_dequeue(rx_ring.avail_ring, &buffer, &len, &cookie);
-
-    // // There are no available rings, cannot do anything here
-    // if (ret == -1) {
-    //     sel4cp_dbg_puts(sel4cp_name);
-    //     sel4cp_dbg_puts(":Rx available ring is full!\n");
-    // }
-
-    // uintptr_t phys = getPhysAddr(buffer);
-
-    // // Handle the rx
-    // ret = raw_rx(&phys, &len, cookie);
-
-    // if (ret == -1) {
-    //     // Nothing was read, put the buffer back into the available queue
-    //     enqueue_avail(&rx_ring, buffer, len, &cookie);
-    // } else {
-    //     enqueue_used(&rx_ring, buffer, len, &cookie);
-    //     // As we have actually processed an rx request, notify the server
-    //     // TO-DO - setup the channels between the driver and server
-    //     sel4cp_notify(RX_CH);
-    // }
     global_serial_driver.num_to_get_chars++;
 }
 
 
 void handle_irq() {
-    // TO-DO
-    // And what each serial irq corresponds to - can't find the appropriate documentation
-
     /* Here we have interrupted because a character has been inputted. We first want to get the 
     character from the hardware FIFO queue.
 
     Then we want to dequeue from the rx available ring, and populate it, then add to the rx used queue
     ready to be processed by the client server
-    
     */
 
     sel4cp_dbg_puts("Entering handle irq function\n");
 
     int input = getchar();
-
-    // sel4cp_dbg_puts("got char -- ");
-    // sel4cp_dbg_puts(input);
-    // sel4cp_dbg_puts("\n");
 
     if (input == -1) {
         sel4cp_dbg_puts(sel4cp_name);
@@ -302,7 +267,7 @@ void handle_irq() {
     more into the expected behaviour of getchar in these situations.
     */
     sel4cp_dbg_puts("Looping to service all current requests to getchar\n");
-    
+
     while (global_serial_driver.num_to_get_chars > 0) {
         sel4cp_dbg_puts("In loop\n");
         // Address that we will pass to dequeue to store the buffer address
@@ -319,10 +284,6 @@ void handle_irq() {
             sel4cp_dbg_puts(": unable to dequeue from the rx available ring\n");
             return;
         }
-
-        // buffer = input;
-
-        // memcpy((char *) buffer, (char) input, 1);
 
         ((char *) buffer)[0] = (char) input;
 
