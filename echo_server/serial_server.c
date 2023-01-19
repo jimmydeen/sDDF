@@ -137,6 +137,32 @@ int getchar() {
     return (int) got_char;
 }
 
+int serial_server_scanf(char* buffer, int len) {
+    int i = 0;
+    int getchar_ret = getchar();
+
+    if (getchar_ret == -1) {
+        sel4cp_dbg_puts("Error getting char\n");
+        return -1;
+    }
+
+
+    while(getchar_ret != '\03' && getchar_ret != '\04' && getchar_ret != '\r' && i < len) {
+        ((char *) buffer)[i] = (char) getchar_ret;
+
+        getchar_ret = getchar();
+
+        if (getchar_ret == -1) {
+            sel4cp_dbg_puts("Error getting char\n");
+            return -1;
+        }
+
+        i++;
+    }
+
+    return 0;
+}
+
 // Init function required by sel4cp, initialise serial datastructres for server here
 void init(void) {
     sel4cp_dbg_puts(sel4cp_name);
@@ -188,9 +214,23 @@ void init(void) {
     serial_server_printf("We got the following char: ");
     serial_server_printf(&test);
     serial_server_printf("\n");
+    serial_server_printf("Enter char to test getchar\n");
     test = getchar();
     serial_server_printf("We got the following char: ");
     serial_server_printf(&test);
+
+    serial_server_printf("\nEnter char to test scanf\n");
+
+    char temp_buffer = 0;
+
+    int scanf_ret = serial_server_scanf(&temp_buffer, 25);
+
+    if (scanf_ret == -1) {
+        serial_server_printf("Issue with scanf\n");
+    } else {
+        serial_server_printf(&temp_buffer);
+    }
+
     serial_server_printf("\n---END OF TEST---\n");
     
 }

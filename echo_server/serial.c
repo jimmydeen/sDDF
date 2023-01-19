@@ -301,7 +301,8 @@ void handle_irq() {
     However, if we have multiple clients waiting on getchars we may have an issue, I need to look 
     more into the expected behaviour of getchar in these situations.
     */
-   sel4cp_dbg_puts("Looping to service all current requests to getchar\n");
+    sel4cp_dbg_puts("Looping to service all current requests to getchar\n");
+    
     while (global_serial_driver.num_to_get_chars > 0) {
         sel4cp_dbg_puts("In loop\n");
         // Address that we will pass to dequeue to store the buffer address
