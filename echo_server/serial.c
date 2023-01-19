@@ -58,8 +58,6 @@ getPhysAddr(uintptr_t virtual)
  */
 static void imx_uart_set_baud(long bps)
 {
-    struct serial_driver *local_driver = &global_serial_driver;
-
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
     uint32_t bmr, bir, fcr;
@@ -134,8 +132,6 @@ int serial_configure(
 
 int getchar()
 {
-    struct serial_driver *local_driver = &global_serial_driver;
-
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
     uint32_t reg = 0;
     int c = -1;
@@ -183,9 +179,7 @@ int putchar(int c) {
     }
 
     regs->txd = c;
-    // sel4cp_dbg_puts("thing\n");
-    // sel4cp_dbg_puts(c);
-    // sel4cp_dbg_puts(" - is char attempted to put\n");
+
     return 0;
 }
 
@@ -282,7 +276,14 @@ void handle_irq() {
     ready to be processed by the client server
     
     */
+
+    sel4cp_dbg_puts("Entering handle irq function\n");
+
     int input = getchar();
+
+    // sel4cp_dbg_puts("got char -- ");
+    // sel4cp_dbg_puts(input);
+    // sel4cp_dbg_puts("\n");
 
     if (input == -1) {
         sel4cp_dbg_puts(sel4cp_name);
@@ -300,7 +301,9 @@ void handle_irq() {
     However, if we have multiple clients waiting on getchars we may have an issue, I need to look 
     more into the expected behaviour of getchar in these situations.
     */
+   sel4cp_dbg_puts("Looping to service all current requests to getchar\n");
     while (global_serial_driver.num_to_get_chars > 0) {
+        sel4cp_dbg_puts("In loop\n");
         // Address that we will pass to dequeue to store the buffer address
         uintptr_t buffer = 0;
         // Integer to store the length of the buffer
@@ -316,7 +319,11 @@ void handle_irq() {
             return;
         }
 
-        buffer = input;
+        // buffer = input;
+
+        // memcpy((char *) buffer, (char) input, 1);
+
+        ((char *) buffer)[0] = (char) input;
 
         // Now place in the rx used ring
         ret = enqueue_used(&rx_ring, buffer, 1, &cookie);
@@ -330,6 +337,8 @@ void handle_irq() {
         // We have serviced one getchar request, we can now decrement the count
         global_serial_driver.num_to_get_chars--;
     }
+
+    sel4cp_dbg_puts("Finished handling the irq\n");
 }
 
 void init_post() {
