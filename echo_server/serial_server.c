@@ -137,7 +137,7 @@ int getchar() {
     return (int) got_char;
 }
 
-int serial_server_scanf(char* buffer, int len) {
+int serial_server_scanf(char* buffer) {
     int i = 0;
     int getchar_ret = getchar();
 
@@ -147,7 +147,7 @@ int serial_server_scanf(char* buffer, int len) {
     }
 
 
-    while(getchar_ret != '\03' && getchar_ret != '\04' && getchar_ret != '\r' && i < len) {
+    while(getchar_ret != '\03' && getchar_ret != '\04' && getchar_ret != '\r') {
         ((char *) buffer)[i] = (char) getchar_ret;
 
         getchar_ret = getchar();
@@ -223,7 +223,7 @@ void init(void) {
 
     char temp_buffer = 0;
 
-    int scanf_ret = serial_server_scanf(&temp_buffer, 25);
+    int scanf_ret = serial_server_scanf(&temp_buffer);
 
     if (scanf_ret == -1) {
         serial_server_printf("Issue with scanf\n");
