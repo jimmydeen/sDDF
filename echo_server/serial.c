@@ -36,21 +36,6 @@ ring_handle_t tx_ring;
 
 struct serial_driver global_serial_driver = {0};
 
-// Function taken from eth.c
-static uintptr_t 
-getPhysAddr(uintptr_t virtual)
-{
-    uint64_t offset = virtual - shared_dma_vaddr;
-    uintptr_t phys;
-
-    if (offset < 0) {
-        return 0;
-    }
-
-    phys = shared_dma_paddr + offset;
-    return phys;
-}
-
 /*
  * BaudRate = RefFreq / (16 * (BMR + 1)/(BIR + 1) )
  * BMR and BIR are 16 bit
@@ -214,25 +199,7 @@ void handle_tx() {
     sel4cp_dbg_puts("Finished handle_tx\n");
 }
 
-// Called from handle rx, write each character stored in the buffer to the serial port
-int
-raw_rx(uintptr_t *phys, unsigned int *len, void *cookie)
-{
-    int c = getchar();
-    if (c == -1) {
-        return -1;
-    }
-
-    *phys = c;
-    *len = 1;
-
-    return 0;
-    
-}
-
-// Very inefficient as each DMA buffer will hold one character, should get lots of get chars at a time, or potentially until EOF or new line
-// This means that there can only be 512 characters read in at a time
-// TO-DO
+// Increment the number of chars that the server has requested us to get.
 void handle_rx() {
     global_serial_driver.num_to_get_chars++;
 }
