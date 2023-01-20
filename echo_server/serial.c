@@ -176,26 +176,16 @@ void init(void) {
     sel4cp_dbg_puts(sel4cp_name);
     sel4cp_dbg_puts(": elf PD init function running\n");
 
-
     // Call init_post here to setup the ring buffer regions. The init_post case in the notified
     // switch statement may be redundant.
     init_post();
-
-    // imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
     // Software reset results in failed uart init, not too sure why
     /* Software reset */
     // regs->cr2 &= ~UART_CR2_SRST;
     // while (!(regs->cr2 & UART_CR2_SRST));
 
-    sel4cp_dbg_puts("Line configuration\n");
 
-    /* Line configuration */
-    int ret = serial_configure(115200, 8, PARITY_NONE, 1);
-
-    if (ret != 0) {
-        sel4cp_dbg_puts("Error occured during line configuration\n");
-    }
 }
 
 // Entry point that is invoked on a serial interrupt, or notifications from the server using the TX and RX channels

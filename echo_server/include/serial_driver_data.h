@@ -12,6 +12,9 @@
 Header file to split the handling of data structures and device registers to a seperate interface
 */
 
+/*
+The following functions deal with interacting with the memory mapped device registers
+*/
 static void imx_uart_set_baud(long bps);
 
 int internal_is_tx_fifo_busy();
@@ -24,6 +27,9 @@ int putchar_regs(int c);
 
 void init_post();
 
+/*
+The following functions deal with accessing the shared memory between the driver and the server
+*/
 /*
 rx_tx - 0 for rx, non-zero for tx
 */
