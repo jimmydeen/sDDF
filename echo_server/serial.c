@@ -196,13 +196,6 @@ void init(void) {
     if (ret != 0) {
         sel4cp_dbg_puts("Error occured during line configuration\n");
     }
-
-    sel4cp_dbg_puts("Configured serial, enabling uart\n");
-
-
-
-    sel4cp_dbg_puts("Enabled the uart, init the ring buffers\n");
-
 }
 
 // Entry point that is invoked on a serial interrupt, or notifications from the server using the TX and RX channels

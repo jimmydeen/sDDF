@@ -33,7 +33,7 @@ struct serial_driver global_serial_driver_data = {0};
  */
 static void imx_uart_set_baud(long bps)
 {
-    imx_uart_regs_t *regs = global_serial_driver_data.regs;
+    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
     uint32_t bmr, bir, fcr;
     fcr = regs->fcr;
@@ -48,7 +48,7 @@ static void imx_uart_set_baud(long bps)
 
 int internal_is_tx_fifo_busy()
 {
-    imx_uart_regs_t *regs = global_serial_driver_data.regs;
+    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
     /* check the TXFE (transmit buffer FIFO empty) flag, which is cleared
      * automatically when data is written to the TxFIFO. Even though the flag
@@ -65,7 +65,7 @@ int serial_configure(
     enum serial_parity parity,
     int stop_bits)
 {
-    imx_uart_regs_t *regs = global_serial_driver_data.regs;
+    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
     
     uint32_t cr2;
     /* Character size */
@@ -105,6 +105,8 @@ int serial_configure(
     /* Now set the board rate */
     imx_uart_set_baud(bps);
 
+    sel4cp_dbg_puts("Configured serial, enabling uart\n");
+
     /* Enable the UART */
     regs->cr1 |= UART_CR1_UARTEN;                /* Enable The uart.                  */
     regs->cr2 |= UART_CR2_RXEN | UART_CR2_TXEN;  /* RX/TX enable                      */
@@ -120,7 +122,7 @@ int serial_configure(
 
 int getchar()
 {
-    imx_uart_regs_t *regs = global_serial_driver_data.regs;
+    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
     uint32_t reg = 0;
     int c = -1;
@@ -137,7 +139,7 @@ int getchar()
 // Putchar that is using the hardware FIFO buffers --> Switch to DMA later 
 int putchar_regs(int c) {
 
-    imx_uart_regs_t *regs = global_serial_driver_data.regs;
+    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
     regs->txd = c;
 
@@ -146,6 +148,9 @@ int putchar_regs(int c) {
 
 void init_post() {
     // Setup the ring buffer mechanisms here as well as init the global serial driver data
+
+
+    sel4cp_dbg_puts("Init the ring buffers\n");
 
     // Init the shared ring buffers
     ring_init(&rx_ring, (ring_buffer_t *)rx_avail, (ring_buffer_t *)rx_used, NULL, 0);
@@ -156,6 +161,15 @@ void init_post() {
     global_serial_driver_data.rx_ring = rx_ring;
     global_serial_driver_data.tx_ring = tx_ring;
     global_serial_driver_data.num_to_get_chars = 0;
+
+    sel4cp_dbg_puts("Line configuration\n");
+
+    /* Line configuration */
+    int ret = serial_configure(115200, 8, PARITY_NONE, 1);
+
+    if (ret != 0) {
+        sel4cp_dbg_puts("Error occured during line configuration\n");
+    }
 }
 
 int serial_dequeue_avail(uintptr_t *addr, unsigned int *len, void **cookie, int rx_tx) {
