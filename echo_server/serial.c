@@ -4,6 +4,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <sel4cp.h>
 #include <sel4/sel4.h>
 #include "serial.h"
@@ -23,16 +24,35 @@
 struct serial_driver global_serial_driver = {0};
 
 int putchar(int c) {
+    sel4cp_dbg_puts("Entering putchar in serial.c\n");
 
-    if (internal_is_tx_fifo_busy()) {
+    unsigned char *c_arr = (unsigned char *) malloc(sizeof(char));
+    long clen = 1;
+    unsigned char *a = 0;
+    long alen = 0;
+
+    unsigned char *temp_c = 0;
+    long temp_clen = 0;
+    unsigned char *temp_a = (unsigned char *) malloc(sizeof(char));
+    temp_a[0] = 0;
+    long temp_alen = 0;
+
+    sel4cp_dbg_puts("Checking if tx fifo is busy\n");
+    internal_is_tx_fifo_busy(temp_c, temp_clen, temp_a, temp_alen);
+    int ret_tx_fifo = temp_a[0];
+    if (ret_tx_fifo) {
         // A transmit is probably in progress, we will have to wait
         return -1;
     } else {
+        sel4cp_dbg_puts("Placing CR first\n");
         // Try and keep as much of the logic here as possible
         if (c == '\n') {
             // For now, by default we will have Auto-send CR(Carriage Return) enabled
             /* write CR first */
-            putchar_regs('\r');
+            c_arr[0] = '\r';
+            sel4cp_dbg_puts("Attempting putchar\n");
+            putchar_regs(c_arr, clen, a, alen);
+            
             /* if we transform a '\n' (LF) into '\r\n' (CR+LF) this shall become an
             * atom, ie we don't want CR to be sent and then fail at sending LF
             * because the TX FIFO is full. Basically there are two options:
@@ -49,11 +69,19 @@ int putchar(int c) {
         }
 
         // Wait for the tx fifo buffer to pass through the '\r' character, refer to above comment
-        while (internal_is_tx_fifo_busy()) {
+        while (1) {
             /* busy loop */
+            // Kinda sketchy way to do this
+            internal_is_tx_fifo_busy(temp_c, temp_clen, temp_a, temp_alen);
+            if (!temp_a[0]) {
+                break;
+            }
         }
 
-        putchar_regs(c);
+
+        c_arr[0] = c;
+
+        putchar_regs(c_arr, clen, a, alen);
     }
 
     return 0;
@@ -106,7 +134,17 @@ void handle_irq() {
 
     sel4cp_dbg_puts("Entering handle irq function\n");
 
-    int input = getchar();
+    unsigned char *getchar_c = 0;
+    long getchar_clen = 0;
+    unsigned char *getchar_a = (unsigned char *) malloc(sizeof(char)*4);;
+    long getchar_alen = 0;
+
+    getchar(getchar_c, getchar_clen, getchar_a, getchar_alen);
+
+    int input = (getchar_a[0] >> 24) & 0xff;
+    input |= (getchar_a[1] >> 16) & 0xff;
+    input |= (getchar_a[2] >> 8) & 0xff;
+    input |= (getchar_a[3]) & 0xff;
 
     if (input == -1) {
         sel4cp_dbg_puts(sel4cp_name);
@@ -135,7 +173,31 @@ void handle_irq() {
 
         void *cookie = 0;
 
-        int ret = serial_dequeue_avail(&buffer, &buffer_len, &cookie, 0);
+        // Test out the temp FFI here
+
+        // Arguments to supply to the function
+        unsigned char *c = (unsigned char *) malloc(sizeof(char)*9);;
+        // Buffer Address
+        uintptr_t buffer_addr = &buffer;
+        c[0]= (buffer_addr >> 24) & 0xff;
+        c[1]= (buffer_addr >> 16) & 0xff;
+        c[2]= (buffer_addr >> 8) & 0xff;
+        c[3]= buffer_addr & 0xff;        
+        // Buffer len address
+        uintptr_t buffer_len_addr = &buffer_len;
+        c[4]= (buffer_len_addr >> 24) & 0xff;
+        c[5]= (buffer_len_addr >> 16) & 0xff;
+        c[6]= (buffer_len_addr >> 8) & 0xff;
+        c[7]= buffer_len_addr & 0xff; 
+        // Rx tx boolean
+        c[8] = 0;
+        long clen = 9;
+        unsigned char *a = (unsigned char *) malloc(sizeof(char));;
+        long alen = 1;
+
+        serial_dequeue_avail(c, clen, a, alen);
+
+        int ret = a[0];
 
         if (ret != 0) {
             sel4cp_dbg_puts(sel4cp_name);
@@ -161,31 +223,20 @@ void handle_irq() {
     sel4cp_dbg_puts("Finished handling the irq\n");
 }
 
-// Moved to serial_driver_data.c
-// void init_post() {
-//     sel4cp_dbg_puts(sel4cp_name);
-//     sel4cp_dbg_puts(": init_post function running\n");
-
-    
-//     // Redundant right now, as a channel has not been set up for init calls
-//     // sel4cp_notify(INIT);
-// }
-
 // Init function required by CP for every PD
 void init(void) {
     sel4cp_dbg_puts(sel4cp_name);
     sel4cp_dbg_puts(": elf PD init function running\n");
 
     // Call init_post here to setup the ring buffer regions. The init_post case in the notified
-    // switch statement may be redundant.
-    init_post();
+    // switch statement may be redundant. Init post is now in the serial_driver_data file
 
-    // Software reset results in failed uart init, not too sure why
-    /* Software reset */
-    // regs->cr2 &= ~UART_CR2_SRST;
-    // while (!(regs->cr2 & UART_CR2_SRST));
+    unsigned char *c = 0;
+    long clen = 0;
+    unsigned char *a = 0;
+    long alen = 0;
 
-
+    init_post(c, clen, a, alen);
 }
 
 // Entry point that is invoked on a serial interrupt, or notifications from the server using the TX and RX channels
@@ -199,7 +250,9 @@ void notified(sel4cp_channel ch) {
             sel4cp_irq_ack(ch);
             return;
         case INIT:
-            init_post();
+            // init_post();
+
+            // For now we don't really need to do anything in here
             break;
         case TX_CH:
             sel4cp_dbg_puts("Notified to print something\n");

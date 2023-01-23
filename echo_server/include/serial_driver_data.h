@@ -17,15 +17,15 @@ The following functions deal with interacting with the memory mapped device regi
 */
 static void imx_uart_set_baud(long bps);
 
-int internal_is_tx_fifo_busy();
+void internal_is_tx_fifo_busy(unsigned char *c, long clen, unsigned char *a, long alen);
 
 int serial_configure(long bps, int char_size, enum serial_parity parity, int stop_bits);
 
-int getchar();
+void getchar(unsigned char *c, long clen, unsigned char *a, long alen);
 
-int putchar_regs(int c);
+void putchar_regs(unsigned char *c, long clen, unsigned char *a, long alen);
 
-void init_post();
+void init_post(unsigned char *c, long clen, unsigned char *a, long alen);
 
 /*
 The following functions deal with accessing the shared memory between the driver and the server
@@ -33,7 +33,7 @@ The following functions deal with accessing the shared memory between the driver
 /*
 rx_tx - 0 for rx, non-zero for tx
 */
-int serial_dequeue_avail(uintptr_t *addr, unsigned int *len, void **cookie, int rx_tx);
+void serial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long alen);
 
 /*
 rx_tx - 0 for rx, non-zero for tx

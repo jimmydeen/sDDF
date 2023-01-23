@@ -1,5 +1,5 @@
 /*
-* Seperated file to deal with shared data structures and device register interaction
+* Seperated file to deal with shared data structures and device register interaction.
 */
 
 #include <stdbool.h>
@@ -46,7 +46,7 @@ static void imx_uart_set_baud(long bps)
     regs->fcr = fcr;
 }
 
-int internal_is_tx_fifo_busy()
+void internal_is_tx_fifo_busy(unsigned char *c, long clen, unsigned char *a, long alen)
 {
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
@@ -56,7 +56,10 @@ int internal_is_tx_fifo_busy()
      * might still be in progress.
      */
 
-    return (0 == (regs->sr2 & UART_SR2_TXFIFO_EMPTY));
+    char ret = (0 == (regs->sr2 & UART_SR2_TXFIFO_EMPTY));
+    sel4cp_dbg_puts("Attempting to access a buffer\n");
+    a[0] = ret;
+    sel4cp_dbg_puts("Returning from tx fifo busy function\n");
 }
 
 int serial_configure(
@@ -120,33 +123,36 @@ int serial_configure(
     return 0;
 }
 
-int getchar()
+void getchar(unsigned char *c, long clen, unsigned char *a, long alen)
 {
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
     uint32_t reg = 0;
-    int c = -1;
+    int c_reg = -1;
 
     if (regs->sr2 & UART_SR2_RXFIFO_RDR) {
         reg = regs->rxd;
         if (reg & UART_URXD_READY_MASK) {
-            c = reg & UART_BYTE_MASK;
+            c_reg = reg & UART_BYTE_MASK;
         }
     }
-    return c;
+
+    a[0]= (c_reg >> 24) & 0xff;
+    a[1]= (c_reg >> 16) & 0xff;
+    a[2]= (c_reg >> 8) & 0xff;
+    a[3]= c_reg & 0xff;
 }
 
 // Putchar that is using the hardware FIFO buffers --> Switch to DMA later 
-int putchar_regs(int c) {
-
+void putchar_regs(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("Entered putchar in serial_driver_data\n");
+    
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
-    regs->txd = c;
-
-    return 0;
+    regs->txd = c[0];
 }
 
-void init_post() {
+void init_post(unsigned char *c, long clen, unsigned char *a, long alen) {
     // Setup the ring buffer mechanisms here as well as init the global serial driver data
 
 
@@ -172,13 +178,28 @@ void init_post() {
     }
 }
 
-int serial_dequeue_avail(uintptr_t *addr, unsigned int *len, void **cookie, int rx_tx) {
+void serial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
     // Dequeue from shared mem avail avail buffer
 
+    // Structure to depack the arguments provided through the pancake ffi
+    uintptr_t addr = (c[0] >> 24) & 0xff;
+    addr |= (c[1] >> 16) & 0xff;
+    addr |= (c[2] >> 8) & 0xff;
+    addr |= (c[3]) & 0xff;
+    
+    uint32_t len = (c[4] >> 24) & 0xff;
+    len |= (c[5] >> 16) & 0xff;
+    len |= (c[6] >> 8) & 0xff;
+    len |= (c[7]) & 0xff;
+
+    bool rx_tx = c[8];
+
+    void *cookie = 0;
+
     if (rx_tx == 0) {
-        return dequeue_avail(&rx_ring, addr, len, cookie);
+        a[0] = dequeue_avail(&rx_ring, (uintptr_t *) addr, (unsigned int *) len, cookie);
     } else {
-        return dequeue_avail(&tx_ring, addr, len, cookie);
+        a[0] = dequeue_avail(&tx_ring, (uintptr_t *) addr, (unsigned int *) len, cookie);
     }
 }
 
