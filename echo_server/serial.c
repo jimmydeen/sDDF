@@ -26,14 +26,14 @@ struct serial_driver global_serial_driver = {0};
 int putchar(int c) {
     sel4cp_dbg_puts("Entering putchar in serial.c\n");
 
-    unsigned char *c_arr = (unsigned char *) malloc(sizeof(char));
+    unsigned char *c_arr = 0;
     long clen = 1;
     unsigned char *a = 0;
     long alen = 0;
-
+    
     unsigned char *temp_c = 0;
     long temp_clen = 0;
-    unsigned char *temp_a = (unsigned char *) malloc(sizeof(char));
+    unsigned char *temp_a = 0;
     temp_a[0] = 0;
     long temp_alen = 0;
 
@@ -136,7 +136,7 @@ void handle_irq() {
 
     unsigned char *getchar_c = 0;
     long getchar_clen = 0;
-    unsigned char *getchar_a = (unsigned char *) malloc(sizeof(char)*4);;
+    unsigned char *getchar_a 0;
     long getchar_alen = 0;
 
     getchar(getchar_c, getchar_clen, getchar_a, getchar_alen);
@@ -176,7 +176,7 @@ void handle_irq() {
         // Test out the temp FFI here
 
         // Arguments to supply to the function
-        unsigned char *c = (unsigned char *) malloc(sizeof(char)*9);;
+        unsigned char *c = 0;
         // Buffer Address
         uintptr_t buffer_addr = &buffer;
         c[0]= (buffer_addr >> 24) & 0xff;
@@ -192,7 +192,7 @@ void handle_irq() {
         // Rx tx boolean
         c[8] = 0;
         long clen = 9;
-        unsigned char *a = (unsigned char *) malloc(sizeof(char));;
+        unsigned char *a = 0;
         long alen = 1;
 
         serial_dequeue_avail(c, clen, a, alen);
