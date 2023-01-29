@@ -141,10 +141,12 @@ void handle_irq() {
 
     getchar(getchar_c, getchar_clen, getchar_a, getchar_alen);
 
-    int input = (getchar_a[0] >> 24) & 0xff;
-    input |= (getchar_a[1] >> 16) & 0xff;
-    input |= (getchar_a[2] >> 8) & 0xff;
-    input |= (getchar_a[3]) & 0xff;
+    // int input = (getchar_a[0] >> 24) & 0xff;
+    // input |= (getchar_a[1] >> 16) & 0xff;
+    // input |= (getchar_a[2] >> 8) & 0xff;
+    // input |= (getchar_a[3]) & 0xff;
+
+    int input = getchar_a[0];
 
     if (input == -1) {
         sel4cp_dbg_puts(sel4cp_name);
@@ -177,23 +179,27 @@ void handle_irq() {
 
         // Arguments to supply to the function
         unsigned char *c = 0;
+
         // Buffer Address
-        uintptr_t buffer_addr = &buffer;
-        c[0]= (buffer_addr >> 24) & 0xff;
-        c[1]= (buffer_addr >> 16) & 0xff;
-        c[2]= (buffer_addr >> 8) & 0xff;
-        c[3]= buffer_addr & 0xff;        
-        // Buffer len address
-        uintptr_t buffer_len_addr = &buffer_len;
-        c[4]= (buffer_len_addr >> 24) & 0xff;
-        c[5]= (buffer_len_addr >> 16) & 0xff;
-        c[6]= (buffer_len_addr >> 8) & 0xff;
-        c[7]= buffer_len_addr & 0xff; 
-        // Rx tx boolean
-        c[8] = 0;
-        long clen = 9;
+        // uintptr_t buffer_addr = &buffer;
+        // c[0]= (buffer_addr >> 24) & 0xff;
+        // c[1]= (buffer_addr >> 16) & 0xff;
+        // c[2]= (buffer_addr >> 8) & 0xff;
+        // c[3]= buffer_addr & 0xff;        
+        // // Buffer len address
+        // uintptr_t buffer_len_addr = &buffer_len;
+        // c[4]= (buffer_len_addr >> 24) & 0xff;
+        // c[5]= (buffer_len_addr >> 16) & 0xff;
+        // c[6]= (buffer_len_addr >> 8) & 0xff;
+        // c[7]= buffer_len_addr & 0xff; 
+        // // Rx tx boolean
+        // c[8] = 0;
+        // long clen = 9;
         unsigned char *a = 0;
-        long alen = 1;
+        long alen = 0;
+
+        c[0] = 0;
+        int clen = 1;
 
         serial_dequeue_avail(c, clen, a, alen);
 

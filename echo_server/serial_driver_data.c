@@ -137,10 +137,9 @@ void getchar(unsigned char *c, long clen, unsigned char *a, long alen)
         }
     }
 
-    a[0]= (c_reg >> 24) & 0xff;
-    a[1]= (c_reg >> 16) & 0xff;
-    a[2]= (c_reg >> 8) & 0xff;
-    a[3]= c_reg & 0xff;
+    char got_char = (char) c_reg;
+
+    a[0]= c_reg;
 }
 
 // Putchar that is using the hardware FIFO buffers --> Switch to DMA later 
@@ -181,25 +180,26 @@ void init_post(unsigned char *c, long clen, unsigned char *a, long alen) {
 void serial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
     // Dequeue from shared mem avail avail buffer
 
-    // Structure to depack the arguments provided through the pancake ffi
-    uintptr_t addr = (c[0] >> 24) & 0xff;
-    addr |= (c[1] >> 16) & 0xff;
-    addr |= (c[2] >> 8) & 0xff;
-    addr |= (c[3]) & 0xff;
-    
-    uint32_t len = (c[4] >> 24) & 0xff;
-    len |= (c[5] >> 16) & 0xff;
-    len |= (c[6] >> 8) & 0xff;
-    len |= (c[7]) & 0xff;
+    if (clen != 1) {
+        sel4cp_dbg_puts("There are no arguments supplied when args are expected");
+        return;
+    }
 
-    bool rx_tx = c[8];
+    bool rx_tx = c[0];
+
+    void *cookie = 0;
+
+    // Address that we will pass to dequeue to store the buffer address
+    uintptr_t buffer = 0;
+    // Integer to store the length of the buffer
+    unsigned int buffer_len = 0; 
 
     void *cookie = 0;
 
     if (rx_tx == 0) {
-        a[0] = dequeue_avail(&rx_ring, (uintptr_t *) addr, (unsigned int *) len, cookie);
+        a[0] = dequeue_avail(&rx_ring, (uintptr_t *) buffer, (unsigned int *) buffer_len, cookie);
     } else {
-        a[0] = dequeue_avail(&tx_ring, (uintptr_t *) addr, (unsigned int *) len, cookie);
+        a[0] = dequeue_avail(&tx_ring, (uintptr_t *) buffer, (unsigned int *) buffer_len, cookie);
     }
 }
 
