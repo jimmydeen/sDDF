@@ -213,6 +213,8 @@ void handle_irq() {
 
         ((char *) buffer)[0] = (char) input;
 
+    
+
         // Now place in the rx used ring
         ret = serial_enqueue_used(buffer, 1, &cookie, 0);
 
