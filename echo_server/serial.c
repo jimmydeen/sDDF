@@ -120,7 +120,13 @@ void handle_tx() {
 
 // Increment the number of chars that the server has requested us to get.
 void handle_rx() {
-    global_serial_driver.num_to_get_chars++;
+    unsigned char *c = 0;
+    long clen = 0;
+    unsigned char *a = 0;
+    long alen = 0;
+
+    increment_num_chars(c, clen, a, alen);
+    
 }
 
 
@@ -166,7 +172,8 @@ void handle_irq() {
     */
     sel4cp_dbg_puts("Looping to service all current requests to getchar\n");
 
-    while (global_serial_driver.num_to_get_chars > 0) {
+    // The break condition will now happen after the serial_dequeue_avail call
+    while (1) {
         sel4cp_dbg_puts("In loop\n");
         // Address that we will pass to dequeue to store the buffer address
         uintptr_t buffer = 0;
@@ -196,7 +203,7 @@ void handle_irq() {
         // c[8] = 0;
         // long clen = 9;
         unsigned char *a;
-        a[0] = 0;
+        a[0] = -1;
         long alen = 0;
 
         c[0] = 0;
@@ -206,7 +213,14 @@ void handle_irq() {
 
         int ret = a[0];
 
-        if (ret != 0) {
+        // The ret value will only ever be -1 if there are no more get char requests to service
+        // per the global variable stored in serial_driver_data
+        if (ret == -1) {
+            sel4cp_dbg_puts(sel4cp_name);
+            sel4cp_dbg_puts(": no more getchar requests to service\n");
+            break;
+        } else if (ret != 0) {
+            // Here something else has gone wrong with the dequeue, return from the function
             sel4cp_dbg_puts(sel4cp_name);
             sel4cp_dbg_puts(": unable to dequeue from the rx available ring\n");
             return;
@@ -214,10 +228,18 @@ void handle_irq() {
 
         ((char *) buffer)[0] = (char) input;
 
-    
+        unsigned char *enqueue_a_arr;
+        a[0] = -1;
+        long enqueue_alen = 0;
+
+        unsigned char *enqueue_c_arr;
+        c[0] = 0;
+        long enqueue_clen = 1;
 
         // Now place in the rx used ring
-        ret = serial_enqueue_used(buffer, 1, &cookie, 0);
+        serial_enqueue_used(enqueue_c_arr, enqueue_clen, enqueue_a_arr, enqueue_alen);
+
+        ret = a[0];
 
         if (ret != 0) {
             sel4cp_dbg_puts(sel4cp_name);
@@ -226,7 +248,9 @@ void handle_irq() {
         }
 
         // We have serviced one getchar request, we can now decrement the count
-        global_serial_driver.num_to_get_chars--;
+        // This is now done in the sreial_driver_data file, probably not best in case of errors
+        // in serial enqueue used, but for now we will assume that these function calls work
+        // global_serial_driver.num_to_get_chars--;
     }
 
     sel4cp_dbg_puts("Finished handling the irq\n");

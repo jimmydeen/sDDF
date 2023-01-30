@@ -19,20 +19,22 @@ void getchar(unsigned char *c, long clen, unsigned char *a, long alen);
 
 void putchar_regs(unsigned char *c, long clen, unsigned char *a, long alen);
 
+void increment_num_chars(unsigned char *c, long clen, unsigned char *a, long alen);
+
 void init_post(unsigned char *c, long clen, unsigned char *a, long alen);
 
 /*
 The following functions deal with accessing the shared memory between the driver and the server
 */
 /*
-rx_tx - 0 for rx, non-zero for tx
+rx_tx - 0 for rx, non-zero for tx. These values are passed in through the c array
 */
 void serial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long alen);
 
 /*
-rx_tx - 0 for rx, non-zero for tx
+rx_tx - 0 for rx, non-zero for tx. These values are passed in through the c array
 */
-int serial_enqueue_used(uintptr_t addr, unsigned int len, void *cookie, int rx_tx);
+int serial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long alen);
 
 /*
 rx_tx - 0 for rx, non-zero for tx

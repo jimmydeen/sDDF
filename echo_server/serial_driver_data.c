@@ -151,6 +151,10 @@ void putchar_regs(unsigned char *c, long clen, unsigned char *a, long alen) {
     regs->txd = c[0];
 }
 
+void increment_num_chars(unsigned char *c, long clen, unsigned char *a, long alen) {
+    global_serial_driver_data.num_to_get_chars += 1;
+}
+
 void init_post(unsigned char *c, long clen, unsigned char *a, long alen) {
     // Setup the ring buffer mechanisms here as well as init the global serial driver data
 
@@ -185,6 +189,16 @@ void serial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long al
         return;
     }
 
+    // From our serial driver, this function is only ever called in the handle irq function
+    // to attempt to service all get char requests. Check here how many get char requests we 
+    // have that are outstanding. If none are outstanding then return -1 in a array, 
+    // otherwise continue with the dequeue.
+
+    if (global_serial_driver_data.num_to_get_chars <= 0) {
+        // We have no more get char requests to service. 
+        return -1;
+    }
+
     bool rx_tx = c[0];
 
     void *cookie = 0;
@@ -199,13 +213,30 @@ void serial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long al
     } else {
         a[0] = dequeue_avail(&tx_ring, &buffer, &buffer_len, cookie);
     }
+
+    global_serial_driver_data.num_to_get_chars--;
 }
 
-int serial_enqueue_used(uintptr_t addr, unsigned int len, void *cookie, int rx_tx) {
+int serial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
+    
+    if (clen != 1) {
+        sel4cp_dbg_puts("There are no arguments supplied when args are expected");
+        return;
+    }
+
+    bool rx_tx = c[0];
+
+    void *cookie = 0;
+
+    // Address that we will pass to dequeue to store the buffer address
+    uintptr_t buffer = 0;
+    // Integer to store the length of the buffer
+    unsigned int buffer_len = 0; 
+
     if (rx_tx == 0) {
-        return enqueue_used(&rx_ring, addr, len, cookie);
+        a[0] =  enqueue_used(&rx_ring, addr, len, cookie);
     } else {
-        return enqueue_used(&tx_ring, addr, len, cookie);
+        a[0] =  enqueue_used(&tx_ring, addr, len, cookie);
     }
 }
 
