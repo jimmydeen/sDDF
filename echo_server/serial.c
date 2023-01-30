@@ -136,7 +136,7 @@ void handle_irq() {
 
     unsigned char *getchar_c = 0;
     long getchar_clen = 0;
-    unsigned char *getchar_a 0;
+    unsigned char *getchar_a = 0;
     long getchar_alen = 0;
 
     getchar(getchar_c, getchar_clen, getchar_a, getchar_alen);
@@ -171,14 +171,14 @@ void handle_irq() {
         // Address that we will pass to dequeue to store the buffer address
         uintptr_t buffer = 0;
         // Integer to store the length of the buffer
-        unsigned int buffer_len = 0; 
+        // unsigned int buffer_len = 0; 
 
         void *cookie = 0;
 
         // Test out the temp FFI here
 
         // Arguments to supply to the function
-        unsigned char *c = 0;
+        unsigned char *c;
 
         // Buffer Address
         // uintptr_t buffer_addr = &buffer;
@@ -195,7 +195,8 @@ void handle_irq() {
         // // Rx tx boolean
         // c[8] = 0;
         // long clen = 9;
-        unsigned char *a = 0;
+        unsigned char *a;
+        a[0] = 0;
         long alen = 0;
 
         c[0] = 0;

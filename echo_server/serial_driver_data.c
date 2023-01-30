@@ -139,7 +139,7 @@ void getchar(unsigned char *c, long clen, unsigned char *a, long alen)
 
     char got_char = (char) c_reg;
 
-    a[0]= c_reg;
+    a[0]= got_char;
 }
 
 // Putchar that is using the hardware FIFO buffers --> Switch to DMA later 
@@ -194,12 +194,10 @@ void serial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long al
     // Integer to store the length of the buffer
     unsigned int buffer_len = 0; 
 
-    void *cookie = 0;
-
     if (rx_tx == 0) {
-        a[0] = dequeue_avail(&rx_ring, (uintptr_t *) buffer, (unsigned int *) buffer_len, cookie);
+        a[0] = dequeue_avail(&rx_ring, &buffer, &buffer_len, cookie);
     } else {
-        a[0] = dequeue_avail(&tx_ring, (uintptr_t *) buffer, (unsigned int *) buffer_len, cookie);
+        a[0] = dequeue_avail(&tx_ring, &buffer, &buffer_len, cookie);
     }
 }
 

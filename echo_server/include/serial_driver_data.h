@@ -1,12 +1,6 @@
 #pragma once
 
-#include <stdbool.h>
 #include <stdint.h>
-#include <sel4cp.h>
-#include <sel4/sel4.h>
-#include "serial.h"
-#include "shared_ringbuffer.h"
-
 
 /*
 Header file to split the handling of data structures and device registers to a seperate interface
