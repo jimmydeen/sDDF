@@ -196,7 +196,7 @@ void serial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long al
 
     if (global_serial_driver_data.num_to_get_chars <= 0) {
         // We have no more get char requests to service. 
-        return -1;
+        return;
     }
 
     bool rx_tx = c[0];
@@ -213,12 +213,83 @@ void serial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long al
     } else {
         a[0] = dequeue_avail(&tx_ring, &buffer, &buffer_len, cookie);
     }
+    if (a[0] != 0) {
+        return;
+    }
+
+    // uintptr_t buffer_addr = &buffer;
+    a[0]= (buffer >> 24) & 0xff;
+    a[1]= (buffer >> 16) & 0xff;
+    a[2]= (buffer >> 8) & 0xff;
+    a[3]= buffer & 0xff;        
 
     global_serial_driver_data.num_to_get_chars--;
 }
 
-int serial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
+void serial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
     
+    if (clen != 1) {
+        sel4cp_dbg_puts("There are no arguments supplied when args are expected");
+        return;
+    }
+
+    bool rx_tx = c[0];
+    int input = c[1];
+
+    void *cookie = 0;
+
+    // Address that we will pass to dequeue to store the buffer address
+    uintptr_t buffer |= a[0];
+    buffer = buffer << 8;
+    buffer |= a[1];
+    buffer = buffer << 8;
+    buffer |= a[2];
+    buffer = buffer << 8;
+    buffer |= a[3];
+    buffer = buffer << 8;
+
+    ((char *) buffer)[0] = (char) input;
+    // Integer to store the length of the buffer
+    unsigned int buffer_len = 0; 
+
+    if (rx_tx == 0) {
+        a[0] =  enqueue_used(&rx_ring, &buffer, &buffer_len, cookie);
+    } else {
+        a[0] =  enqueue_used(&tx_ring, &buffer, &buffer_len, cookie);
+    }
+}
+
+void serial_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
+    if (clen != 1) {
+        sel4cp_dbg_puts("There are no arguments supplied when args are expected");
+        return;
+    }
+
+    bool rx_tx = c[0];
+
+    void *cookie = 0;
+
+    // Address that we will pass to dequeue to store the buffer address
+    uintptr_t buffer = 0;
+    // Integer to store the length of the buffer
+    unsigned int buffer_len = 0; 
+    int ret = 0;
+    if (rx_tx == 0) {
+        ret = driver_dequeue(rx_ring.used_ring, &buffer, &buffer_len, cookie);
+    } else {
+        ret = driver_dequeue(tx_ring.used_ring, &buffer, &buffer_len, cookie);
+    }
+
+    if (ret != 0) {
+        alen = 0;
+        return;
+    } else {
+        memcpy(buffer, a);
+        alen = buffer;
+    }
+}
+
+void serial_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (clen != 1) {
         sel4cp_dbg_puts("There are no arguments supplied when args are expected");
         return;
@@ -234,24 +305,37 @@ int serial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long alen
     unsigned int buffer_len = 0; 
 
     if (rx_tx == 0) {
-        a[0] =  enqueue_used(&rx_ring, addr, len, cookie);
+        a[0] = enqueue_avail(&rx_ring, &buffer, &buffer_len, cookie);
     } else {
-        a[0] =  enqueue_used(&tx_ring, addr, len, cookie);
+        a[0] = enqueue_avail(&tx_ring, &buffer, &buffer_len, cookie);
     }
 }
 
-int serial_driver_dequeue_used(uintptr_t *addr, unsigned int *len, void **cookie, int rx_tx) {
-    if (rx_tx == 0) {
-        return driver_dequeue(rx_ring.used_ring, addr, len, cookie);
-    } else {
-        return driver_dequeue(tx_ring.used_ring, addr, len, cookie);
-    }
+/*
+Placing these functions in here for now. These are the entry points required by the core platform, however,
+we can only have 1 entry point in our pancake program. So we will have to have these entry points in our c code.
+*/
+
+// Init function required by CP for every PD
+void init(void) {
+    sel4cp_dbg_puts(sel4cp_name);
+    sel4cp_dbg_puts(": elf PD init function running\n");
+
+    // Call init_post here to setup the ring buffer regions. The init_post case in the notified
+    // switch statement may be redundant. Init post is now in the serial_driver_data file
+
+    unsigned char *c = 0;
+    long clen = 0;
+    unsigned char *a = 0;
+    long alen = 0;
+
+    init_post(c, clen, a, alen);
 }
 
-int serial_enqueue_avail(uintptr_t addr, unsigned int len, void *cookie, int rx_tx) {
-    if (rx_tx == 0) {
-        return enqueue_avail(&rx_ring, addr, len, cookie);
-    } else {
-        return enqueue_avail(&tx_ring, addr, len, cookie);
-    }
+// Entry point that is invoked on a serial interrupt, or notifications from the server using the TX and RX channels
+void notified(sel4cp_channel ch) {
+    sel4cp_dbg_puts(sel4cp_name);
+    sel4cp_dbg_puts(": elf PD notified function running\n");
+
+    handle_notified(ch);
 }

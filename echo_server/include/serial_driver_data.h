@@ -34,14 +34,14 @@ void serial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long al
 /*
 rx_tx - 0 for rx, non-zero for tx. These values are passed in through the c array
 */
-int serial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long alen);
+void serial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long alen);
 
 /*
 rx_tx - 0 for rx, non-zero for tx
 */
-int serial_driver_dequeue_used(uintptr_t *addr, unsigned int *len, void **cookie, int rx_tx);
+void serial_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, long alen);
 
 /*
 rx_tx - 0 for rx, non-zero for tx
 */
-int serial_enqueue_avail(uintptr_t addr, unsigned int len, void *cookie, int rx_tx);
+void serial_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long alen);

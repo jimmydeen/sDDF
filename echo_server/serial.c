@@ -11,8 +11,6 @@
 #include "shared_ringbuffer.h"
 #include "serial_driver_data.h"
 
-#define BIT(nr) (1UL << (nr))
-
 // Defines to manage interrupts and notifications
 #define IRQ_CH 1
 #define TX_CH  8
@@ -26,14 +24,14 @@ struct serial_driver global_serial_driver = {0};
 int putchar(int c) {
     sel4cp_dbg_puts("Entering putchar in serial.c\n");
 
-    unsigned char *c_arr = 0;
+    unsigned char c_arr[1];
     long clen = 1;
-    unsigned char *a = 0;
+    unsigned char a_arr[1];
     long alen = 0;
     
-    unsigned char *temp_c = 0;
+    unsigned char temp_c[1];
     long temp_clen = 0;
-    unsigned char *temp_a = 0;
+    unsigned char temp_a[1];
     temp_a[0] = 0;
     long temp_alen = 0;
 
@@ -51,7 +49,7 @@ int putchar(int c) {
             /* write CR first */
             c_arr[0] = '\r';
             sel4cp_dbg_puts("Attempting putchar\n");
-            putchar_regs(c_arr, clen, a, alen);
+            putchar_regs(c_arr, clen, a_arr, alen);
             
             /* if we transform a '\n' (LF) into '\r\n' (CR+LF) this shall become an
             * atom, ie we don't want CR to be sent and then fail at sending LF
@@ -81,7 +79,7 @@ int putchar(int c) {
 
         c_arr[0] = c;
 
-        putchar_regs(c_arr, clen, a, alen);
+        putchar_regs(c_arr, clen, a_arr, alen);
     }
 
     return 0;
@@ -106,23 +104,38 @@ void handle_tx() {
     void *cookie = 0;
     // Dequeue something from the Tx ring -> the server will have placed something in here, if its empty then nothing to do
     sel4cp_dbg_puts("Dequeuing and printing everything currently in the ring buffer\n");
-    while (!serial_driver_dequeue_used(&buffer, &len, &cookie, 1)) {
+    
+    unsigned char c_arr[1];
+    c_arr[0] = 1;
+    long clen = 1;
+    // For now, can only accomodate for inputs of up to 2048 characters. The same size as the buffers
+    unsigned char a_arr[2048];
+    a_arr[0] = 1;
+    long alen = 0;
+
+    while (1) {
+        serial_driver_dequeue_used(c_arr, clen, a_arr, alen);
         sel4cp_dbg_puts("in the driver dequeue loop\n");
         // Buffer cointaining the bytes to write to serial
-        char *phys = (char * )buffer;
+        //char *phys = (char * )buffer;
         // Handle the tx
-        raw_tx(phys, len, cookie);
+        // Check if there was an error
+        if (alen == 0) {
+            break;
+        }
+        raw_tx(a_arr, len, cookie);
         // Then enqueue this buffer back into the available queue, so that it can be collected and reused by the server
-        serial_enqueue_avail(buffer, len, &cookie, 1);
+        c_arr[0] = 1;
+        serial_enqueue_avail(c_arr, clen, a_arr, alen);
     }
     sel4cp_dbg_puts("Finished handle_tx\n");
 }
 
 // Increment the number of chars that the server has requested us to get.
 void handle_rx() {
-    unsigned char *c = 0;
+    unsigned char *c[1];
     long clen = 0;
-    unsigned char *a = 0;
+    unsigned char *a[1];
     long alen = 0;
 
     increment_num_chars(c, clen, a, alen);
@@ -185,7 +198,7 @@ void handle_irq() {
         // Test out the temp FFI here
 
         // Arguments to supply to the function
-        unsigned char *c;
+        unsigned char c[1];
 
         // Buffer Address
         // uintptr_t buffer_addr = &buffer;
@@ -202,8 +215,8 @@ void handle_irq() {
         // // Rx tx boolean
         // c[8] = 0;
         // long clen = 9;
-        unsigned char *a;
-        a[0] = -1;
+        unsigned char a[4];
+        a[0] = 0;
         long alen = 0;
 
         c[0] = 0;
@@ -228,16 +241,17 @@ void handle_irq() {
 
         ((char *) buffer)[0] = (char) input;
 
-        unsigned char *enqueue_a_arr;
-        a[0] = -1;
-        long enqueue_alen = 0;
+        // unsigned char *enqueue_a_arr;
+        // a[0] = -1;
+        long enqueue_alen = 4;
 
-        unsigned char *enqueue_c_arr;
+        unsigned char *enqueue_c_arr[2];
         c[0] = 0;
+        c[1] = (char) input;
         long enqueue_clen = 1;
 
         // Now place in the rx used ring
-        serial_enqueue_used(enqueue_c_arr, enqueue_clen, enqueue_a_arr, enqueue_alen);
+        serial_enqueue_used(enqueue_c_arr, enqueue_clen, a, enqueue_alen);
 
         ret = a[0];
 
@@ -256,24 +270,9 @@ void handle_irq() {
     sel4cp_dbg_puts("Finished handling the irq\n");
 }
 
-// Init function required by CP for every PD
-void init(void) {
-    sel4cp_dbg_puts(sel4cp_name);
-    sel4cp_dbg_puts(": elf PD init function running\n");
-
-    // Call init_post here to setup the ring buffer regions. The init_post case in the notified
-    // switch statement may be redundant. Init post is now in the serial_driver_data file
-
-    unsigned char *c = 0;
-    long clen = 0;
-    unsigned char *a = 0;
-    long alen = 0;
-
-    init_post(c, clen, a, alen);
-}
-
 // Entry point that is invoked on a serial interrupt, or notifications from the server using the TX and RX channels
-void notified(sel4cp_channel ch) {
+// This will be the main function in the pancake code. Not sure if there will be concurrency issues here, hopefully not -- revise mental model of driver. 
+void handle_notified(int ch) {
     sel4cp_dbg_puts(sel4cp_name);
     sel4cp_dbg_puts(": elf PD notified function running\n");
 

@@ -103,3 +103,6 @@ struct serial_driver {
 
     int num_to_get_chars;
 };
+
+// Exposing the entry points for us to call from the notified functions
+void handle_notified(int ch);
