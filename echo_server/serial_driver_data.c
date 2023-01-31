@@ -239,13 +239,14 @@ void serial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long ale
     void *cookie = 0;
 
     // Address that we will pass to dequeue to store the buffer address
-    uintptr_t buffer |= a[0];
+    uintptr_t buffer = 0;
+    buffer = buffer | a[0];
     buffer = buffer << 8;
-    buffer |= a[1];
+    buffer = buffer | a[1];
     buffer = buffer << 8;
-    buffer |= a[2];
+    buffer = buffer | a[2];
     buffer = buffer << 8;
-    buffer |= a[3];
+    buffer = buffer | a[3];
     buffer = buffer << 8;
 
     ((char *) buffer)[0] = (char) input;
