@@ -99,7 +99,6 @@ raw_tx(char *phys, unsigned int len, void *cookie)
 
 void handle_tx() {
     sel4cp_dbg_puts("In the handle tx func\n");
-    uintptr_t buffer = 0;
     unsigned int len = 0;
     void *cookie = 0;
     // Dequeue something from the Tx ring -> the server will have placed something in here, if its empty then nothing to do
@@ -119,7 +118,6 @@ void handle_tx() {
         // Buffer cointaining the bytes to write to serial
         //char *phys = (char * )buffer;
         // Buffer address should be left in the clen var by the serial_driver_dequeue_used function
-        uintptr_t buffer = clen;
 
         // Handle the tx
         // Check if there was an error
@@ -141,9 +139,10 @@ void handle_tx() {
 
 // Increment the number of chars that the server has requested us to get.
 void handle_rx() {
-    unsigned char *c[1];
+    unsigned char c[1];
     long clen = 0;
-    unsigned char *a[1];
+
+    unsigned char a[1];
     long alen = 0;
 
     increment_num_chars(c, clen, a, alen);
@@ -161,9 +160,9 @@ void handle_irq() {
 
     sel4cp_dbg_puts("Entering handle irq function\n");
 
-    unsigned char *getchar_c[1];
+    unsigned char getchar_c[1];
     long getchar_clen = 0;
-    unsigned char *getchar_a[1];
+    unsigned char getchar_a[1];
     long getchar_alen = 0;
 
     getchar(getchar_c, getchar_clen, getchar_a, getchar_alen);
@@ -173,7 +172,7 @@ void handle_irq() {
     // input |= (getchar_a[2] >> 8) & 0xff;
     // input |= (getchar_a[3]) & 0xff;
 
-    int input = getchar_a[0];
+    char input = getchar_a[0];
 
     if (input == -1) {
         sel4cp_dbg_puts(sel4cp_name);
@@ -200,7 +199,6 @@ void handle_irq() {
         // Integer to store the length of the buffer
         // unsigned int buffer_len = 0; 
 
-        void *cookie = 0;
 
         // Test out the temp FFI here
 
@@ -250,17 +248,17 @@ void handle_irq() {
 
         // ((char *) buffer)[0] = (char) input;
 
-        // unsigned char *enqueue_a_arr;
+        unsigned char enqueue_a_arr[1];
         // a[0] = -1;
         long enqueue_alen = buffer;
 
-        unsigned char *enqueue_c_arr[1];
-        c[0] = 0;
-        c[1] = (char) input;
-        long enqueue_clen = 1;
+        unsigned char enqueue_c_arr[2];
+        enqueue_c_arr[0] = 0;
+        enqueue_c_arr[1] = input;
+        long enqueue_clen = 2;
 
         // Now place in the rx used ring
-        serial_enqueue_used(enqueue_c_arr, enqueue_clen, a, enqueue_alen);
+        serial_enqueue_used(enqueue_c_arr, enqueue_clen, enqueue_a_arr, enqueue_alen);
 
         ret = a[0];
 
