@@ -109,30 +109,38 @@ void handle_tx() {
     long clen = 1;
     // For now, can only accomodate for inputs of up to 2048 characters. The same size as the buffers
     unsigned char a_arr[2048];
-    a_arr[0] = 1;
-    long alen = 0;
+    // a_arr[0] = 1;
+    long alen = 2048;
 
     while (1) {
         serial_driver_dequeue_used(c_arr, clen, a_arr, alen);
         sel4cp_dbg_puts("in the driver dequeue loop\n");
-        // Buffer cointaining the bytes to write to serial
-        //char *phys = (char * )buffer;
-        // Buffer address should be left in the clen var by the serial_driver_dequeue_used function
 
-        // Handle the tx
+        // In this case, the c array is used to carry the return value as the a array will be full with the characeters
+        // from the buffer. 
+        int ret = (int) c_arr[0];
+
         // Check if there was an error
-        if (alen == 0) {
+        if (ret == 0) {
             break;
         }
-        
-        // The length to be printed should've been left in the alen var
-        len = alen;
+
+        // The length of the buffer should start from index 1 in the c array
+        int len = byte8_to_int(&c_arr[1]);
+
         raw_tx(a_arr, len, cookie);
+        
         // Then enqueue this buffer back into the available queue, so that it can be collected and reused by the server
         c_arr[0] = 1;
-        alen = clen;
+        // alen = clen;
         clen = 1;
         serial_enqueue_avail(c_arr, clen, a_arr, alen);
+
+        if (a_arr[0] != 0) {
+            sel4cp_dbg_puts(sel4cp_name);
+            sel4cp_dbg_puts(": failed to enqueue into the tx ring buffers\n");
+            return;
+        } 
     }
     sel4cp_dbg_puts("Finished handle_tx\n");
 }
@@ -199,9 +207,6 @@ void handle_irq() {
         // Integer to store the length of the buffer
         // unsigned int buffer_len = 0; 
 
-
-        // Test out the temp FFI here
-
         // Arguments to supply to the function
         unsigned char c[1];
 
@@ -220,7 +225,7 @@ void handle_irq() {
         // // Rx tx boolean
         // c[8] = 0;
         // long clen = 9;
-        unsigned char a[4];
+        unsigned char a[1];
         a[0] = 0;
         long alen = 0;
 
@@ -230,8 +235,9 @@ void handle_irq() {
         serial_dequeue_avail(c, clen, a, alen);
 
         int ret = a[0];
+        // Add in error checking for every function call
 
-        uintptr_t buffer = alen;
+        // uintptr_t buffer = alen;
                 
         // The ret value will only ever be -1 if there are no more get char requests to service
         // per the global variable stored in serial_driver_data
@@ -248,14 +254,14 @@ void handle_irq() {
 
         // ((char *) buffer)[0] = (char) input;
 
-        unsigned char enqueue_a_arr[1];
-        // a[0] = -1;
-        long enqueue_alen = buffer;
-
         unsigned char enqueue_c_arr[2];
         enqueue_c_arr[0] = 0;
         enqueue_c_arr[1] = input;
         long enqueue_clen = 2;
+
+        unsigned char enqueue_a_arr[1];
+        // a[0] = -1;
+        long enqueue_alen = 1;
 
         // Now place in the rx used ring
         serial_enqueue_used(enqueue_c_arr, enqueue_clen, enqueue_a_arr, enqueue_alen);
@@ -286,6 +292,7 @@ void handle_notified(int ch) {
     switch(ch) {
         case IRQ_CH:
             handle_irq();
+            // Might have some issues with the irq ack here, potentially may have to move it to the ffi notified function
             sel4cp_irq_ack(ch);
             return;
         case INIT:

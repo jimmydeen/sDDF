@@ -26,6 +26,30 @@ ring_handle_t tx_ring;
 
 struct serial_driver global_serial_driver_data = {0};
 
+/* FUNCTIONS COPIED OVER FROM BASIS_FFI.C */
+
+void int_to_byte8(int i, unsigned char *b){
+    /* i is encoded on 8 bytes */
+    /* i is cast to long long to ensure having 64 bits */
+    /* assumes CHAR_BIT = 8. use static assertion checks? */
+    b[0] = ((long long) i >> 56) & 0xFF;
+    b[1] = ((long long) i >> 48) & 0xFF;
+    b[2] = ((long long) i >> 40) & 0xFF;
+    b[3] = ((long long) i >> 32) & 0xFF;
+    b[4] = ((long long) i >> 24) & 0xFF;
+    b[5] = ((long long) i >> 16) & 0xFF;
+    b[6] = ((long long) i >> 8) & 0xFF;
+    b[7] =  (long long) i & 0xFF;
+}
+
+int byte8_to_int(unsigned char *b){
+    return (((long long) b[0] << 56) | ((long long) b[1] << 48) |
+             ((long long) b[2] << 40) | ((long long) b[3] << 32) |
+             (b[4] << 24) | (b[5] << 16) | (b[6] << 8) | b[7]);
+}
+
+
+
 /*
  * BaudRate = RefFreq / (16 * (BMR + 1)/(BIR + 1) )
  * BMR and BIR are 16 bit
@@ -224,7 +248,7 @@ void serial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long al
     // a[3]= buffer & 0xff;      
 
     // For now pass buffer addresses through the alen value  
-    alen = buffer;
+    // alen = buffer;
     global_serial_driver_data.num_to_get_chars--;
 }
 
@@ -238,23 +262,14 @@ void serial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long ale
     bool rx_tx = c[0];
     int input = c[1];
 
-    void *cookie = 0;
-
-    // Address that we will pass to dequeue to store the buffer address
-    // This may leak buffers
-    uintptr_t buffer = alen;
-    // buffer = buffer | a[0];
-    // buffer = buffer << 8;
-    // buffer = buffer | a[1];
-    // buffer = buffer << 8;
-    // buffer = buffer | a[2];
-    // buffer = buffer << 8;
-    // buffer = buffer | a[3];
-    // buffer = buffer << 8;
+    uintptr_t buffer = 0;
 
     ((char *) buffer)[0] = (char) input;
+
     // Integer to store the length of the buffer
     unsigned int buffer_len = 0; 
+    
+    void *cookie = 0;
 
     if (rx_tx == 0) {
         a[0] =  enqueue_used(&rx_ring, &buffer, &buffer_len, cookie);
@@ -266,10 +281,16 @@ void serial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long ale
 
 void serial_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (clen != 1) {
-        sel4cp_dbg_puts("There are no arguments supplied when args are expected");
+        sel4cp_dbg_puts("There are no arguments supplied when args are expected\n");
         return;
     }
 
+    if (alen != 2048) {
+        // We always need the a array to be 2048 bytes long, the same length as the buffers 
+        // in the ring buffers. 
+        sel4cp_dbg_puts("Argument alen not of correct size\n");
+        return;
+    }
     bool rx_tx = c[0];
 
     void *cookie = 0;
@@ -286,12 +307,17 @@ void serial_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, l
     }
 
     if (ret != 0) {
-        alen = 0;
+        // alen = 0;
+        c[0] = 0;
         return;
     } else {
         memcpy(buffer, a);
-        clen = buffer;
-        alen = buffer_len;
+        // clen = buffer;
+        // alen = buffer_len;
+        c[0] = 1;
+
+        // Copy over the length of the buffer that is to be printed
+        int_to_byte8(buffer_len, &c[1]);
     }
 }
 
@@ -306,8 +332,8 @@ void serial_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long al
     void *cookie = 0;
 
     // Address that we will pass to dequeue to store the buffer address
-    uintptr_t buffer = alen;
-    alen = 0;
+    uintptr_t buffer = 0;
+    // alen = 0;
 
     // Integer to store the length of the buffer
     unsigned int buffer_len = 0; 
@@ -332,10 +358,10 @@ void init(void) {
     // Call init_post here to setup the ring buffer regions. The init_post case in the notified
     // switch statement may be redundant. Init post is now in the serial_driver_data file
 
-    unsigned char *c = 0;
-    long clen = 0;
-    unsigned char *a = 0;
-    long alen = 0;
+    unsigned char c[1];
+    long clen = 1;
+    unsigned char a[1];
+    long alen = 1;
 
     init_post(c, clen, a, alen);
 }

@@ -6,6 +6,10 @@
 Header file to split the handling of data structures and device registers to a seperate interface
 */
 
+/* FUNCTIONS COPIED OVER FROM BASIS_FFI.C */
+void int_to_byte8(int i, unsigned char *b);
+int byte8_to_int(unsigned char *b);
+
 /*
 The following functions deal with interacting with the memory mapped device registers
 */
