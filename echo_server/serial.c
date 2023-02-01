@@ -118,14 +118,22 @@ void handle_tx() {
         sel4cp_dbg_puts("in the driver dequeue loop\n");
         // Buffer cointaining the bytes to write to serial
         //char *phys = (char * )buffer;
+        // Buffer address should be left in the clen var by the serial_driver_dequeue_used function
+        uintptr_t buffer = clen;
+
         // Handle the tx
         // Check if there was an error
         if (alen == 0) {
             break;
         }
+        
+        // The length to be printed should've been left in the alen var
+        len = alen;
         raw_tx(a_arr, len, cookie);
         // Then enqueue this buffer back into the available queue, so that it can be collected and reused by the server
         c_arr[0] = 1;
+        alen = clen;
+        clen = 1;
         serial_enqueue_avail(c_arr, clen, a_arr, alen);
     }
     sel4cp_dbg_puts("Finished handle_tx\n");
@@ -153,9 +161,9 @@ void handle_irq() {
 
     sel4cp_dbg_puts("Entering handle irq function\n");
 
-    unsigned char *getchar_c = 0;
+    unsigned char *getchar_c[1];
     long getchar_clen = 0;
-    unsigned char *getchar_a = 0;
+    unsigned char *getchar_a[1];
     long getchar_alen = 0;
 
     getchar(getchar_c, getchar_clen, getchar_a, getchar_alen);
@@ -189,7 +197,6 @@ void handle_irq() {
     while (1) {
         sel4cp_dbg_puts("In loop\n");
         // Address that we will pass to dequeue to store the buffer address
-        uintptr_t buffer = 0;
         // Integer to store the length of the buffer
         // unsigned int buffer_len = 0; 
 
@@ -226,6 +233,8 @@ void handle_irq() {
 
         int ret = a[0];
 
+        uintptr_t buffer = alen;
+                
         // The ret value will only ever be -1 if there are no more get char requests to service
         // per the global variable stored in serial_driver_data
         if (ret == -1) {
@@ -239,13 +248,13 @@ void handle_irq() {
             return;
         }
 
-        ((char *) buffer)[0] = (char) input;
+        // ((char *) buffer)[0] = (char) input;
 
         // unsigned char *enqueue_a_arr;
         // a[0] = -1;
-        long enqueue_alen = 4;
+        long enqueue_alen = buffer;
 
-        unsigned char *enqueue_c_arr[2];
+        unsigned char *enqueue_c_arr[1];
         c[0] = 0;
         c[1] = (char) input;
         long enqueue_clen = 1;

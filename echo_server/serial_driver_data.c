@@ -218,11 +218,13 @@ void serial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long al
     }
 
     // uintptr_t buffer_addr = &buffer;
-    a[0]= (buffer >> 24) & 0xff;
-    a[1]= (buffer >> 16) & 0xff;
-    a[2]= (buffer >> 8) & 0xff;
-    a[3]= buffer & 0xff;        
+    // a[0]= (buffer >> 24) & 0xff;
+    // a[1]= (buffer >> 16) & 0xff;
+    // a[2]= (buffer >> 8) & 0xff;
+    // a[3]= buffer & 0xff;      
 
+    // For now pass buffer addresses through the alen value  
+    alen = buffer;
     global_serial_driver_data.num_to_get_chars--;
 }
 
@@ -239,15 +241,16 @@ void serial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long ale
     void *cookie = 0;
 
     // Address that we will pass to dequeue to store the buffer address
-    uintptr_t buffer = 0;
-    buffer = buffer | a[0];
-    buffer = buffer << 8;
-    buffer = buffer | a[1];
-    buffer = buffer << 8;
-    buffer = buffer | a[2];
-    buffer = buffer << 8;
-    buffer = buffer | a[3];
-    buffer = buffer << 8;
+    // This may leak buffers
+    uintptr_t buffer = alen;
+    // buffer = buffer | a[0];
+    // buffer = buffer << 8;
+    // buffer = buffer | a[1];
+    // buffer = buffer << 8;
+    // buffer = buffer | a[2];
+    // buffer = buffer << 8;
+    // buffer = buffer | a[3];
+    // buffer = buffer << 8;
 
     ((char *) buffer)[0] = (char) input;
     // Integer to store the length of the buffer
@@ -258,6 +261,7 @@ void serial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long ale
     } else {
         a[0] =  enqueue_used(&tx_ring, &buffer, &buffer_len, cookie);
     }
+
 }
 
 void serial_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -286,7 +290,8 @@ void serial_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, l
         return;
     } else {
         memcpy(buffer, a);
-        alen = buffer;
+        clen = buffer;
+        alen = buffer_len;
     }
 }
 
@@ -301,7 +306,9 @@ void serial_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long al
     void *cookie = 0;
 
     // Address that we will pass to dequeue to store the buffer address
-    uintptr_t buffer = 0;
+    uintptr_t buffer = alen;
+    alen = 0;
+
     // Integer to store the length of the buffer
     unsigned int buffer_len = 0; 
 
