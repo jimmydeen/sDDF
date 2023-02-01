@@ -210,6 +210,7 @@ void serial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long al
 
     if (clen != 1) {
         sel4cp_dbg_puts("There are no arguments supplied when args are expected");
+        a[0] = 1;
         return;
     }
 
@@ -220,6 +221,7 @@ void serial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long al
 
     if (global_serial_driver_data.num_to_get_chars <= 0) {
         // We have no more get char requests to service. 
+        a[0] = 1;
         return;
     }
 

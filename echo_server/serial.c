@@ -175,11 +175,6 @@ void handle_irq() {
 
     getchar(getchar_c, getchar_clen, getchar_a, getchar_alen);
 
-    // int input = (getchar_a[0] >> 24) & 0xff;
-    // input |= (getchar_a[1] >> 16) & 0xff;
-    // input |= (getchar_a[2] >> 8) & 0xff;
-    // input |= (getchar_a[3]) & 0xff;
-
     char input = getchar_a[0];
 
     if (input == -1) {
@@ -190,14 +185,6 @@ void handle_irq() {
 
     // Only process the character if we need to, that is the server is waiting on a getchar request
 
-    /*
-    I'm not too sure if we need to loop here, as we only have one server and one driver, and the 
-    server should be blocking on getchar calls. Additionally, currently the driver has an unlimited budget, 
-    and is running at a higher priority than any of the other PD's so it shouldn't be pre-empted. 
-
-    However, if we have multiple clients waiting on getchars we may have an issue, I need to look 
-    more into the expected behaviour of getchar in these situations.
-    */
     sel4cp_dbg_puts("Looping to service all current requests to getchar\n");
 
     // The break condition will now happen after the serial_dequeue_avail call
