@@ -215,7 +215,7 @@ void handle_irq() {
         // // Rx tx boolean
         // c[8] = 0;
         // long clen = 9;
-        unsigned char a[1];
+        unsigned char a[10];
         a[0] = 0;
         long alen = 0;
 
@@ -249,12 +249,12 @@ void handle_irq() {
         enqueue_c_arr[1] = input;
         long enqueue_clen = 2;
 
-        unsigned char enqueue_a_arr[1];
+        // unsigned char enqueue_a_arr[1];
         // a[0] = -1;
         long enqueue_alen = 1;
 
         // Now place in the rx used ring
-        serial_enqueue_used(enqueue_c_arr, enqueue_clen, enqueue_a_arr, enqueue_alen);
+        serial_enqueue_used(enqueue_c_arr, enqueue_clen, a, enqueue_alen);
 
         ret = a[0];
 

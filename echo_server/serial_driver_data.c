@@ -139,16 +139,6 @@ int serial_configure(
 
     sel4cp_dbg_puts("Configured serial, enabling uart\n");
 
-    /* Enable the UART */
-    regs->cr1 |= UART_CR1_UARTEN;                /* Enable The uart.                  */
-    regs->cr2 |= UART_CR2_RXEN | UART_CR2_TXEN;  /* RX/TX enable                      */
-    regs->cr2 |= UART_CR2_IRTS;                  /* Ignore RTS                        */
-    regs->cr3 |= UART_CR3_RXDMUXDEL;             /* Configure the RX MUX              */
-    /* Initialise the receiver interrupt.                                             */
-    regs->cr1 &= ~UART_CR1_RRDYEN;               /* Disable recv interrupt.           */
-    regs->fcr &= ~UART_FCR_RXTL_MASK;            /* Clear the rx trigger level value. */
-    regs->fcr |= UART_FCR_RXTL(1);               /* Set the rx tigger level to 1.     */
-    regs->cr1 |= UART_CR1_RRDYEN;                /* Enable recv interrupt.            */
     return 0;
 }
 
@@ -193,6 +183,8 @@ void init_post(unsigned char *c, long clen, unsigned char *a, long alen) {
 
     sel4cp_dbg_puts("Init the ring buffers\n");
 
+    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
+
     // Init the shared ring buffers
     ring_init(&rx_ring, (ring_buffer_t *)rx_avail, (ring_buffer_t *)rx_used, NULL, 0);
     ring_init(&tx_ring, (ring_buffer_t *)tx_avail, (ring_buffer_t *)tx_used, NULL, 0);
@@ -211,11 +203,22 @@ void init_post(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (ret != 0) {
         sel4cp_dbg_puts("Error occured during line configuration\n");
     }
+
+        /* Enable the UART */
+    regs->cr1 |= UART_CR1_UARTEN;                /* Enable The uart.                  */
+    regs->cr2 |= UART_CR2_RXEN | UART_CR2_TXEN;  /* RX/TX enable                      */
+    regs->cr2 |= UART_CR2_IRTS;                  /* Ignore RTS                        */
+    regs->cr3 |= UART_CR3_RXDMUXDEL;             /* Configure the RX MUX              */
+    /* Initialise the receiver interrupt.                                             */
+    regs->cr1 &= ~UART_CR1_RRDYEN;               /* Disable recv interrupt.           */
+    regs->fcr &= ~UART_FCR_RXTL_MASK;            /* Clear the rx trigger level value. */
+    regs->fcr |= UART_FCR_RXTL(1);               /* Set the rx tigger level to 1.     */
+    regs->cr1 |= UART_CR1_RRDYEN;                /* Enable recv interrupt.            */
 }
 
 void serial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
     // Dequeue from shared mem avail avail buffer
-
+    sel4cp_dbg_puts("In serial dequeue avail function\n");
     if (clen != 1) {
         sel4cp_dbg_puts("There are no arguments supplied when args are expected");
         a[0] = 1;
@@ -229,6 +232,7 @@ void serial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long al
 
     if (global_serial_driver_data.num_to_get_chars <= 0) {
         // We have no more get char requests to service. 
+        sel4cp_dbg_puts("No requests for get char outstanding\n");
         a[0] = 1;
         return;
     }
@@ -243,9 +247,9 @@ void serial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long al
     unsigned int buffer_len = 0; 
 
     if (rx_tx == 0) {
-        a[0] = dequeue_avail(&rx_ring, &buffer, &buffer_len, cookie);
+        a[0] = dequeue_avail(&rx_ring, &buffer, &buffer_len, &cookie);
     } else {
-        a[0] = dequeue_avail(&tx_ring, &buffer, &buffer_len, cookie);
+        a[0] = dequeue_avail(&tx_ring, &buffer, &buffer_len, &cookie);
     }
     if (a[0] != 0) {
         return;
@@ -257,14 +261,17 @@ void serial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long al
     // a[2]= (buffer >> 8) & 0xff;
     // a[3]= buffer & 0xff;      
 
+    int_to_byte8(buffer, &a[1]);
+
     // For now pass buffer addresses through the alen value  
     // alen = buffer;
     global_serial_driver_data.num_to_get_chars--;
+    sel4cp_dbg_puts("Finished serial dequeue avail function\n");
 }
 
 void serial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
-    
-    if (clen != 1) {
+    sel4cp_dbg_puts("Starting serial enqueue used function\n");
+    if (clen <= 0) {
         sel4cp_dbg_puts("There are no arguments supplied when args are expected");
         return;
     }
@@ -272,7 +279,7 @@ void serial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long ale
     bool rx_tx = c[0];
     int input = c[1];
 
-    uintptr_t buffer = 0;
+    uintptr_t buffer = byte8_to_int(&a[1]);
 
     ((char *) buffer)[0] = (char) input;
 
@@ -282,9 +289,9 @@ void serial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long ale
     void *cookie = 0;
 
     if (rx_tx == 0) {
-        a[0] =  enqueue_used(&rx_ring, &buffer, &buffer_len, cookie);
+        a[0] =  enqueue_used(&rx_ring, buffer, 1, &cookie);
     } else {
-        a[0] =  enqueue_used(&tx_ring, &buffer, &buffer_len, cookie);
+        a[0] =  enqueue_used(&tx_ring, buffer, 1, &cookie);
     }
 
 }
