@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <sel4cp.h>
+#include <string.h>
 #include <sel4/sel4.h>
 #include "serial.h"
 #include "shared_ringbuffer.h"
@@ -80,10 +81,14 @@ void internal_is_tx_fifo_busy(unsigned char *c, long clen, unsigned char *a, lon
      * might still be in progress.
      */
 
-    char ret = (0 == (regs->sr2 & UART_SR2_TXFIFO_EMPTY));
-    sel4cp_dbg_puts("Attempting to access a buffer\n");
-    a[0] = ret;
-    sel4cp_dbg_puts("Returning from tx fifo busy function\n");
+    int ret = (0 == (regs->sr2 & UART_SR2_TXFIFO_EMPTY));
+    // sel4cp_dbg_puts("Attempting to access a buffer\n");
+    if (ret) {
+        a[0] = 1;
+    } else {
+        a[0] = 0;
+    }
+    // sel4cp_dbg_puts("Returning from tx fifo busy function\n");
 }
 
 int serial_configure(
@@ -169,10 +174,13 @@ void getchar(unsigned char *c, long clen, unsigned char *a, long alen)
 // Putchar that is using the hardware FIFO buffers --> Switch to DMA later 
 void putchar_regs(unsigned char *c, long clen, unsigned char *a, long alen) {
     sel4cp_dbg_puts("Entered putchar in serial_driver_data\n");
-    
+    // sel4cp_dbg_puts("\t");
+    // // sel4cp_dbg_puts(c[0]);
+    // sel4cp_dbg_puts("\n");
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
     regs->txd = c[0];
+    sel4cp_dbg_puts("Finished putchar regs\n");
 }
 
 void increment_num_chars(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -282,6 +290,7 @@ void serial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long ale
 }
 
 void serial_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("In the serial driver dequeue used function\n");
     if (clen != 1) {
         sel4cp_dbg_puts("There are no arguments supplied when args are expected\n");
         return;
@@ -296,26 +305,33 @@ void serial_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, l
     bool rx_tx = c[0];
 
     void *cookie = 0;
-
+    sel4cp_dbg_puts("Attempting driver dequeue\n");
     // Address that we will pass to dequeue to store the buffer address
     uintptr_t buffer = 0;
     // Integer to store the length of the buffer
     unsigned int buffer_len = 0; 
     int ret = 0;
     if (rx_tx == 0) {
-        ret = driver_dequeue(rx_ring.used_ring, &buffer, &buffer_len, cookie);
+        ret = driver_dequeue(rx_ring.used_ring, &buffer, &buffer_len, &cookie);
     } else {
-        ret = driver_dequeue(tx_ring.used_ring, &buffer, &buffer_len, cookie);
+        ret = driver_dequeue(tx_ring.used_ring, &buffer, &buffer_len, &cookie);
     }
 
     if (ret != 0) {
         // alen = 0;
+        sel4cp_dbg_puts("Driver dequeue was unsuccessful\n");
         c[0] = 0;
         return;
     } else {
-        memcpy(buffer, a);
+        sel4cp_dbg_puts("Driver dequeue successful, attempting memcpy\n");
+        if (buffer_len >= 2048) {
+            sel4cp_dbg_puts("Buffer len too large\n");
+            return;
+        }
+        int mem_ret = memcpy(a, (char *) buffer, buffer_len);
         // clen = buffer;
         // alen = buffer_len;
+
         c[0] = 1;
 
         // Copy over the length of the buffer that is to be printed
