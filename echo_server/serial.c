@@ -103,15 +103,16 @@ void handle_tx() {
     // Dequeue something from the Tx ring -> the server will have placed something in here, if its empty then nothing to do
     sel4cp_dbg_puts("Dequeuing and printing everything currently in the ring buffer\n");
     
-    unsigned char c_arr[20];
-    c_arr[0] = 1;
-    long clen = 1;
-    // For now, can only accomodate for inputs of up to 2048 characters. The same size as the buffers
-    unsigned char a_arr[2048];
-    // a_arr[0] = 1;
-    long alen = 2048;
-
+  
     while (1) {
+        unsigned char c_arr[20];
+        c_arr[0] = 1;
+        long clen = 1;
+        // For now, can only accomodate for inputs of up to 2048 characters. The same size as the buffers
+        unsigned char a_arr[2048];
+        // a_arr[0] = 1;
+        long alen = 2048;
+
         sel4cp_dbg_puts("In the driver dequeue loop\n");
         serial_driver_dequeue_used(c_arr, clen, a_arr, alen);
         sel4cp_dbg_puts("in the driver dequeue loop\n");
@@ -126,12 +127,12 @@ void handle_tx() {
         }
 
         // The length of the buffer should start from index 1 in the c array
-        // int len = byte8_to_int(&c_arr[1]);
+        int len = byte8_to_int(&c_arr[1]);
         // sel4cp_dbg_puts("len is ");
         // sel4cp_dbg_puts(len);
         // sel4cp_dbg_puts("\n");
-        int len = 5;
-        raw_tx(a_arr, len, cookie);
+        // int len = 5;
+        raw_tx(a_arr, 1, cookie);
         
         // Then enqueue this buffer back into the available queue, so that it can be collected and reused by the server
         c_arr[0] = 1;
