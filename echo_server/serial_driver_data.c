@@ -27,6 +27,14 @@ ring_handle_t tx_ring;
 
 struct serial_driver global_serial_driver_data = {0};
 
+/* exported in cake.S - Memory regions for cakeML*/
+extern void cml_main(void);
+extern void *cml_heap;
+extern void *cml_stack;
+extern void *cml_stackend;
+
+static char cml_memory[4096*1024*2];
+
 /* FUNCTIONS COPIED OVER FROM BASIS_FFI.C */
 
 void int_to_byte8(int i, unsigned char *b){
@@ -370,6 +378,20 @@ void serial_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long al
     }
 }
 
+void init_pancake_mem() {
+    char *heap_env = getenv("CML_HEAP_SIZE");
+    char *stack_env = getenv("CML_STACK_SIZE");
+    char *temp; //used to store remainder of strtoul parse
+
+    unsigned long sz = 4096*1024; // 4 MB unit
+    unsigned long cml_heap_sz = sz;    // Default: 1 GB heap
+    unsigned long cml_stack_sz = sz;   // Default: 1 GB stack
+
+    cml_heap = cml_memory;
+    cml_stack = cml_heap + cml_heap_sz;
+    cml_stackend = cml_stack + cml_stack_sz;
+}
+
 /*
 Placing these functions in here for now. These are the entry points required by the core platform, however,
 we can only have 1 entry point in our pancake program. So we will have to have these entry points in our c code.
@@ -389,6 +411,7 @@ void init(void) {
     long alen = 1;
 
     init_post(c, clen, a, alen);
+    init_pancake_mem();
 }
 
 // Entry point that is invoked on a serial interrupt, or notifications from the server using the TX and RX channels
@@ -396,5 +419,7 @@ void notified(sel4cp_channel ch) {
     sel4cp_dbg_puts(sel4cp_name);
     sel4cp_dbg_puts(": elf PD notified function running\n");
 
+
+    // Here, we want to call to cakeml main - this will be our entry point into the pancake program.
     handle_notified(ch);
 }
