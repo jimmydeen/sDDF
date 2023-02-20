@@ -28,10 +28,17 @@ ring_handle_t tx_ring;
 struct serial_driver global_serial_driver_data = {0};
 
 /* exported in cake.S - Memory regions for cakeML*/
-extern void cml_main(void);
-extern void *cml_heap;
-extern void *cml_stack;
-extern void *cml_stackend;
+// extern void cml_main(void);
+// extern void *cml_heap;
+// extern void *cml_stack;
+// extern void *cml_stackend;
+
+// Remove extern for now to keep compiler happy, revert when using pancake
+void cml_main(void);
+void *cml_heap;
+void *cml_stack;
+void *cml_stackend;
+
 
 static char cml_memory[4096*1024*2];
 
