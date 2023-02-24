@@ -48,7 +48,7 @@ ring_handle_t tx_ring;
 
 struct serial_driver global_serial_driver_data = {0};
 
-static char cml_memory[4096*1024*2];
+static char cml_memory[1024*1024*2];
 
 unsigned int argc;
 char **argv;
@@ -246,8 +246,15 @@ void cml_exit(int arg) {
 //   }
 //   #endif
 
-//   exit(arg);
 
+  // exit(arg);
+
+    // Might be able to leave this empty for now. I think this gets called after the pancake program terminates. 
+    // We don't want to kill our process because we need this to be persistant. We can just wait here in this case
+    // and wait to be notified. 
+
+    sel4cp_dbg_puts("We have made a call to exit, we might need to do some additional stuff here to avoid faulting again\n");
+    while(1) {}
 }
 
 // // void ffiexit (unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -328,8 +335,11 @@ void cml_exit(int arg) {
 //   // assert (bytes_written <= 255);
 // }
 
+
+/* Need to come up with a replacement for this clear cache function. Might be worth testing just flushing the entire l1 cache, but might cause issues with returning to this file*/
 void cml_clear() {
-  // __builtin___clear_cache(&cake_codebuffer_begin, &cake_codebuffer_end);
+//   __builtin___clear_cache(&cake_codebuffer_begin, &cake_codebuffer_end);
+    sel4cp_dbg_puts("Trying to clear cache\n");
 }
 
 /*
@@ -352,8 +362,22 @@ static void imx_uart_set_baud(long bps)
     regs->fcr = fcr;
 }
 
+void ffitest(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("We have made a successful ffi call from the pancake program\n");
+}
+
+void ffiloop_exit(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("We have hit a break statement\n");
+}
+
+void ffireturn_call(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("We have hit a return statement\n");
+}
+
 void ffiinternal_is_tx_fifo_busy(unsigned char *c, long clen, unsigned char *a, long alen)
 {
+
+    // sel4cp_dbg_puts("Checking if the fifo buffer is busy\n");
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
     /* check the TXFE (transmit buffer FIFO empty) flag, which is cleared
@@ -365,8 +389,10 @@ void ffiinternal_is_tx_fifo_busy(unsigned char *c, long clen, unsigned char *a, 
     int ret = (0 == (regs->sr2 & UART_SR2_TXFIFO_EMPTY));
     // sel4cp_dbg_puts("Attempting to access a buffer\n");
     if (ret) {
+        // sel4cp_dbg_puts("FIFO was busy\n");
         a[0] = 1;
     } else {
+        sel4cp_dbg_puts("FIFO was not busy");
         a[0] = 0;
     }
     // sel4cp_dbg_puts("Returning from tx fifo busy function\n");
@@ -443,7 +469,7 @@ void ffigetchar(unsigned char *c, long clen, unsigned char *a, long alen)
 }
 
 // Putchar that is using the hardware FIFO buffers --> Switch to DMA later 
-void putchar_regs(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffiputchar_regs(unsigned char *c, long clen, unsigned char *a, long alen) {
     sel4cp_dbg_puts("Entered putchar in serial_driver_data\n");
     // sel4cp_dbg_puts("\t");
     // // sel4cp_dbg_puts(c[0]);
@@ -625,6 +651,7 @@ void ffiserial_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a
         // Copy over the length of the buffer that is to be printed
         int_to_byte8(buffer_len, &c[1]);
     }
+    sel4cp_dbg_puts("Finished buffer dequeue\n");
 }
 
 void ffiserial_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -652,14 +679,20 @@ void ffiserial_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long
 }
 
 void init_pancake_mem() {
-    char *heap_env = getenv("CML_HEAP_SIZE");
-    char *stack_env = getenv("CML_STACK_SIZE");
-    char *temp; //used to store remainder of strtoul parse
+    // char *heap_env = getenv("CML_HEAP_SIZE");
+    // char *stack_env = getenv("CML_STACK_SIZE");
+    // char *temp; //used to store remainder of strtoul parse
 
-    unsigned long sz = 4096*1024; // 4 MB unit
-    unsigned long cml_heap_sz = sz;    // Default: 1 GB heap
-    unsigned long cml_stack_sz = sz;   // Default: 1 GB stack
+    // unsigned long sz = 4096*1024; // 4 MB unit
+    // unsigned long cml_heap_sz = sz;    // Default: 1 GB heap
+    // unsigned long cml_stack_sz = sz;   // Default: 1 GB stack
 
+    // cml_heap = cml_memory;
+    // cml_stack = cml_heap + cml_heap_sz;
+    // cml_stackend = cml_stack + cml_stack_sz;
+    unsigned long sz = 1024*1024; // 1 MB unit\n",
+    unsigned long cml_heap_sz = sz;    // Default: 1 MB heap\n", (* TODO: parameterise *)
+    unsigned long cml_stack_sz = sz;   // Default: 1 MB stack\n", (* TODO: parameterise *)
     cml_heap = cml_memory;
     cml_stack = cml_heap + cml_heap_sz;
     cml_stackend = cml_stack + cml_stack_sz;
@@ -685,6 +718,7 @@ void init(void) {
 
     init_post(c, clen, a, alen);
     init_pancake_mem();
+    sel4cp_dbg_puts("Finished initing the pancake mem and the device driver\n");
 }
 
 // Entry point that is invoked on a serial interrupt, or notifications from the server using the TX and RX channels
@@ -692,7 +726,11 @@ void notified(sel4cp_channel ch) {
     sel4cp_dbg_puts(sel4cp_name);
     sel4cp_dbg_puts(": elf PD notified function running\n");
 
-
+    sel4cp_dbg_puts("Attempting to jump to pancake main\n");
     // Here, we want to call to cakeml main - this will be our entry point into the pancake program.
-    cml_main();
+    if (ch == 8) {
+        cml_main();
+    }
+
+    sel4cp_dbg_puts("After main call, I'm not sure if we should ever get here\n");
 }
