@@ -19,7 +19,7 @@ void internal_is_tx_fifo_busy(unsigned char *c, long clen, unsigned char *a, lon
 
 int serial_configure(long bps, int char_size, enum serial_parity parity, int stop_bits);
 
-void getchar(unsigned char *c, long clen, unsigned char *a, long alen);
+// void getchar(unsigned char *c, long clen, unsigned char *a, long alen);
 
 void putchar_regs(unsigned char *c, long clen, unsigned char *a, long alen);
 

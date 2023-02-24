@@ -2,7 +2,7 @@
   Implements the foreign function interface (FFI) used in the CakeML basis
   library, as a thin wrapper around the relevant system calls.
 */
-// #include <stdio.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -155,180 +155,181 @@ int byte8_to_int(unsigned char *b){
 /* fsFFI (file system and I/O) */
 
 void ffiopen_in (unsigned char *c, long clen, unsigned char *a, long alen) {
-  assert(9 <= alen);
-  int fd = open((const char *) c, O_RDONLY);
-  if (0 <= fd){
-    a[0] = 0;
-    int_to_byte8(fd, &a[1]);
-  }
-  else
-    a[0] = 1;
+  // assert(9 <= alen);
+  // int fd = open((const char *) c, O_RDONLY);
+  // if (0 <= fd){
+  //   a[0] = 0;
+  //   int_to_byte8(fd, &a[1]);
+  // }
+  // else
+  //   a[0] = 1;
 }
 
 void ffiopen_out (unsigned char *c, long clen, unsigned char *a, long alen) {
-  assert(9 <= alen);
-  #ifdef EVAL
-  int fd = open((const char *) c, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-  #else
-  int fd = open((const char *) c, O_RDWR|O_CREAT|O_TRUNC);
-  #endif
-  if (0 <= fd){
-    a[0] = 0;
-    int_to_byte8(fd, &a[1]);
-  }
-  else
-    a[0] = 1;
+  // assert(9 <= alen);
+  // #ifdef EVAL
+  // int fd = open((const char *) c, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+  // #else
+  // int fd = open((const char *) c, O_RDWR|O_CREAT|O_TRUNC);
+  // #endif
+  // if (0 <= fd){
+  //   a[0] = 0;
+  //   int_to_byte8(fd, &a[1]);
+  // }
+  // else
+  //   a[0] = 1;
 }
 
 void ffiread (unsigned char *c, long clen, unsigned char *a, long alen) {
-  assert(clen == 8);
-  int fd = byte8_to_int(c);
-  int n = byte2_to_int(a);
-  assert(alen >= n + 4);
-  int nread = read(fd, &a[4], n);
-  if(nread < 0){
-    a[0] = 1;
-  }
-  else{
-    a[0] = 0;
-    int_to_byte2(nread,&a[1]);
-  }
+  // assert(clen == 8);
+  // int fd = byte8_to_int(c);
+  // int n = byte2_to_int(a);
+  // assert(alen >= n + 4);
+  // int nread = read(fd, &a[4], n);
+  // if(nread < 0){
+  //   a[0] = 1;
+  // }
+  // else{
+  //   a[0] = 0;
+  //   int_to_byte2(nread,&a[1]);
+  // }
 }
 
 void ffiwrite (unsigned char *c, long clen, unsigned char *a, long alen){
-  assert(clen == 8);
-  int fd = byte8_to_int(c);
-  int n = byte2_to_int(a);
-  int off = byte2_to_int(&a[2]);
-  assert(alen >= n + off + 4);
-  int nw = write(fd, &a[4 + off], n);
-  if(nw < 0){
-      a[0] = 1;
-  }
-  else{
-    a[0] = 0;
-    int_to_byte2(nw,&a[1]);
-  }
+  // assert(clen == 8);
+  // int fd = byte8_to_int(c);
+  // int n = byte2_to_int(a);
+  // int off = byte2_to_int(&a[2]);
+  // assert(alen >= n + off + 4);
+  // int nw = write(fd, &a[4 + off], n);
+  // if(nw < 0){
+  //     a[0] = 1;
+  // }
+  // else{
+  //   a[0] = 0;
+  //   int_to_byte2(nw,&a[1]);
+  // }
 }
 
-void fficlose (unsigned char *c, long clen, unsigned char *a, long alen) {
-  assert(alen >= 1);
-  assert(clen == 8);
-  int fd = byte8_to_int(c);
-  if (close(fd) == 0) a[0] = 0;
-  else a[0] = 1;
-}
+// void fficlose (unsigned char *c, long clen, unsigned char *a, long alen) {
+//   // assert(alen >= 1);
+//   // assert(clen == 8);
+//   // int fd = byte8_to_int(c);
+//   // if (close(fd) == 0) a[0] = 0;
+//   // else a[0] = 1;
+// }
 
-/* GC FFI */
-int inGC = 0;
-struct timeval t1,t2,lastT;
-long microsecs = 0;
-int numGC = 0;
-int hasT = 0;
+// /* GC FFI */
+// int inGC = 0;
+// struct timeval t1,t2,lastT;
+// long microsecs = 0;
+// int numGC = 0;
+// int hasT = 0;
 
 void cml_exit(int arg) {
 
-  #ifdef STDERR_MEM_EXHAUST
-  if (arg != 0) {
-    // fprintf(stderr,"Program exited with nonzero exit code.\n");
-  }
-  #endif
+//   #ifdef STDERR_MEM_EXHAUST
+//   if (arg != 0) {
+//     // fprintf(stderr,"Program exited with nonzero exit code.\n");
+//   }
+//   #endif
 
-  #ifdef DEBUG_FFI
-  {
-    if(arg == 1) {
-      fprintf(stderr,"CakeML heap space exhausted.\n");
-    }
-    else if(arg == 2) {
-      fprintf(stderr,"CakeML stack space exhausted.\n");
-    }
-    fprintf(stderr,"GCNum: %d, GCTime(us): %ld\n",numGC,microsecs);
-  }
-  #endif
+//   #ifdef DEBUG_FFI
+//   {
+//     if(arg == 1) {
+//       fprintf(stderr,"CakeML heap space exhausted.\n");
+//     }
+//     else if(arg == 2) {
+//       fprintf(stderr,"CakeML stack space exhausted.\n");
+//     }
+//     fprintf(stderr,"GCNum: %d, GCTime(us): %ld\n",numGC,microsecs);
+//   }
+//   #endif
 
-  exit(arg);
+//   exit(arg);
+
 }
 
-void ffiexit (unsigned char *c, long clen, unsigned char *a, long alen) {
-  assert(alen == 1);
-  exit((int)a[0]);
-}
+// // void ffiexit (unsigned char *c, long clen, unsigned char *a, long alen) {
+// //   assert(alen == 1);
+// //   exit((int)a[0]);
+// // }
 
 
-/* empty FFI (assumed to do nothing, but can be used for tracing/logging) */
-void ffi (unsigned char *c, long clen, unsigned char *a, long alen) {
-  #ifdef DEBUG_FFI
-  {
-    if (clen == 0)
-    {
-      if(inGC==1)
-      {
-        gettimeofday(&t2, NULL);
-        microsecs += (t2.tv_usec - t1.tv_usec) + (t2.tv_sec - t1.tv_sec)*1e6;
-        numGC++;
-        inGC = 0;
-      }
-      else
-      {
-        inGC = 1;
-        gettimeofday(&t1, NULL);
-      }
-    } else {
-      int indent = 30;
-      for (int i=0; i<clen; i++) {
-        putc(c[i],stderr);
-        indent--;
-      }
-      for (int i=0; i<indent; i++) {
-        putc(' ',stderr);
-      }
-      struct timeval nowT;
-      gettimeofday(&nowT, NULL);
-      if (hasT) {
-        long usecs = (nowT.tv_usec - lastT.tv_usec) +
-                     (nowT.tv_sec - lastT.tv_sec)*1e6;
-        fprintf(stderr," --- %ld milliseconds\n",usecs / (long)1000);
-      } else {
-        fprintf(stderr,"\n");
-      }
-      gettimeofday(&lastT, NULL);
-      hasT = 1;
-    }
-  }
-  #endif
-}
+// /* empty FFI (assumed to do nothing, but can be used for tracing/logging) */
+// void ffi (unsigned char *c, long clen, unsigned char *a, long alen) {
+//   #ifdef DEBUG_FFI
+//   {
+//     if (clen == 0)
+//     {
+//       if(inGC==1)
+//       {
+//         gettimeofday(&t2, NULL);
+//         microsecs += (t2.tv_usec - t1.tv_usec) + (t2.tv_sec - t1.tv_sec)*1e6;
+//         numGC++;
+//         inGC = 0;
+//       }
+//       else
+//       {
+//         inGC = 1;
+//         gettimeofday(&t1, NULL);
+//       }
+//     } else {
+//       int indent = 30;
+//       for (int i=0; i<clen; i++) {
+//         putc(c[i],stderr);
+//         indent--;
+//       }
+//       for (int i=0; i<indent; i++) {
+//         putc(' ',stderr);
+//       }
+//       struct timeval nowT;
+//       gettimeofday(&nowT, NULL);
+//       if (hasT) {
+//         long usecs = (nowT.tv_usec - lastT.tv_usec) +
+//                      (nowT.tv_sec - lastT.tv_sec)*1e6;
+//         fprintf(stderr," --- %ld milliseconds\n",usecs / (long)1000);
+//       } else {
+//         fprintf(stderr,"\n");
+//       }
+//       gettimeofday(&lastT, NULL);
+//       hasT = 1;
+//     }
+//   }
+//   #endif
+// }
 
-typedef union {
-  double d;
-  char bytes[8];
-} double_bytes;
+// typedef union {
+//   double d;
+//   char bytes[8];
+// } double_bytes;
 
-// FFI calls for floating-point parsing
-void ffidouble_fromString (char *c, long clen, char *a, long alen) {
-  double_bytes d;
-  sscanf(c, "%lf",&d.d);
-  assert (8 == alen);
-  for (int i = 0; i < 8; i++){
-    a[i] = d.bytes[i];
-  }
-}
+// // FFI calls for floating-point parsing
+// void ffidouble_fromString (char *c, long clen, char *a, long alen) {
+//   // double_bytes d;
+//   // // sscanf(c, "%lf",&d.d);
+//   // assert (8 == alen);
+//   // for (int i = 0; i < 8; i++){
+//   //   a[i] = d.bytes[i];
+//   // }
+// }
 
-void ffidouble_toString (char *c, long clen, char *a, long alen) {
-  double_bytes d;
-  assert (256 == alen);
-  for (int i = 0; i < 8; i++){
-    d.bytes[i] = a[i];
-  }
-  //snprintf always terminates with a 0 byte if space was sufficient
-  int bytes_written = snprintf(&a[0], 255, "%.20g", d.d);
-  // snprintf returns number of bytes it would have written if the buffer was
-  // large enough -> check that it did not write more than the buffer size - 1
-  // for the 0 byte
-  assert (bytes_written <= 255);
-}
+// void ffidouble_toString (char *c, long clen, char *a, long alen) {
+//   // double_bytes d;
+//   // assert (256 == alen);
+//   // for (int i = 0; i < 8; i++){
+//   //   d.bytes[i] = a[i];
+//   // }
+//   //snprintf always terminates with a 0 byte if space was sufficient
+//   // int bytes_written = snprintf(&a[0], 255, "%.20g", d.d);
+//   // snprintf returns number of bytes it would have written if the buffer was
+//   // large enough -> check that it did not write more than the buffer size - 1
+//   // for the 0 byte
+//   // assert (bytes_written <= 255);
+// }
 
 void cml_clear() {
-  __builtin___clear_cache(&cake_codebuffer_begin, &cake_codebuffer_end);
+  // __builtin___clear_cache(&cake_codebuffer_begin, &cake_codebuffer_end);
 }
 
 /*
@@ -422,7 +423,7 @@ int serial_configure(
     return 0;
 }
 
-void getchar(unsigned char *c, long clen, unsigned char *a, long alen)
+void ffigetchar(unsigned char *c, long clen, unsigned char *a, long alen)
 {
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 

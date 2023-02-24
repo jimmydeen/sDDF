@@ -52,11 +52,11 @@ all: directories $(IMAGE_FILE)
 $(BUILD_DIR)/%.o: %.c Makefile
 	$(CC) -c $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/%.o: %.s Makefile
-	$(AS) -g3 -mcpu=$(CPU) $< -o $@
+$(BUILD_DIR)/%.o: %.S Makefile
+	$(CC) -c -mcpu=$(CPU) $< -o $@
 
 $(BUILD_DIR)/serial.elf: $(addprefix $(BUILD_DIR)/, $(SERIAL_OBJS))
-	$(LD) $(LDFLAGS) -specs=rdimon.specs $^ $(LIBS) -o $@
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
 
 $(BUILD_DIR)/serial_server.elf: $(addprefix $(BUILD_DIR)/, $(SERIAL_SERVER_OBJS))
 	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
