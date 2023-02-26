@@ -21,7 +21,7 @@ $(error SEL4CP_CONFIG must be specified)
 endif
 
 TOOLCHAIN := aarch64-none-elf
-
+CAKE_COMPILER := /home/krishnan/TS/sDDF/cake-unverified-x64-64/cake
 CPU := cortex-a53
 
 CC := $(TOOLCHAIN)-gcc
@@ -49,11 +49,15 @@ SERIAL_OBJS := serial.o libsharedringbuffer/shared_ringbuffer.o basis_ffi.o
 SERIAL_SERVER_OBJS := serial_server.o libsharedringbuffer/shared_ringbuffer.o
 all: directories $(IMAGE_FILE)
 
+$(BUILD_DIR)/serial.o: $(BUILD_DIR)/serial.S Makefile
+	$(CC) -c -mcpu=$(CPU) $< -o $@
+
+$(BUILD_DIR)/serial.S: serial.pnk Makefile
+	$(CAKE_COMPILER) --target=arm8 --pancake < $< > $@
+
 $(BUILD_DIR)/%.o: %.c Makefile
 	$(CC) -c $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/%.o: %.S Makefile
-	$(CC) -c -mcpu=$(CPU) $< -o $@
 
 $(BUILD_DIR)/serial.elf: $(addprefix $(BUILD_DIR)/, $(SERIAL_OBJS))
 	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@

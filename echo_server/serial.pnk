@@ -1,0 +1,50 @@
+var c_arr = @base {
+  var clen = 1 {
+    var a_arr = @base + 1 {
+      var alen = 1 {
+        strb c_arr, 72;
+        #putchar_regs(c_arr clen a_arr alen);
+        strb c_arr, 101;
+        #putchar_regs(c_arr clen a_arr alen);
+
+        strb c_arr, 108;
+        #putchar_regs(c_arr clen a_arr alen);
+
+        strb c_arr, 108;
+        #putchar_regs(c_arr clen a_arr alen);
+
+        strb c_arr, 111;
+        #putchar_regs(c_arr clen a_arr alen);
+
+        strb c_arr, 32;
+        #putchar_regs(c_arr clen a_arr alen);
+
+        strb c_arr, 87;
+        #putchar_regs(c_arr clen a_arr alen);
+
+        strb c_arr, 111;
+        #putchar_regs(c_arr clen a_arr alen);
+
+        strb c_arr, 114;
+        #putchar_regs(c_arr clen a_arr alen);
+
+        strb c_arr, 108;
+        #putchar_regs(c_arr clen a_arr alen);
+
+        strb c_arr, 100;
+        #putchar_regs(c_arr clen a_arr alen);
+
+        strb c_arr, 33;
+        #putchar_regs(c_arr clen a_arr alen);
+
+        strb c_arr, 10;
+        #putchar_regs(c_arr clen a_arr alen);
+
+        strb c_arr, 0;
+        #putchar_regs(c_arr clen a_arr alen);
+
+
+      }
+    }
+  }
+}
