@@ -63,7 +63,7 @@
 
 // Move this into a seperate file in the future
 #define NUM_BUFFERS 512
-#define BUFFER_SIZE 2048
+#define BUFFER_SIZE 1024
 
 enum serial_parity {
     PARITY_NONE,

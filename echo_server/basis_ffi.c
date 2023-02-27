@@ -48,7 +48,7 @@ ring_handle_t tx_ring;
 
 struct serial_driver global_serial_driver_data = {0};
 
-static char cml_memory[1024*1024*2];
+static char cml_memory[2048*2048*2];
 
 unsigned int argc;
 char **argv;
@@ -363,15 +363,27 @@ static void imx_uart_set_baud(long bps)
 }
 
 void ffitest(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("We have made a successful ffi call from the pancake program\n");
+    // sel4cp_dbg_puts("We have made a successful ffi call from the pancake program\n");
 }
 
 void ffiloop_exit(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("We have hit a break statement\n");
+    // sel4cp_dbg_puts("We have hit a break statement\n");
 }
 
 void ffireturn_call(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("We have hit a return statement\n");
+    // sel4cp_dbg_puts("We have hit a return statement\n");
+}
+
+void ffiloop_continue(unsigned char *c, long clen, unsigned char *a, long alen) {
+    // sel4cp_dbg_puts("We are continuing the loop\n");
+}
+
+void ffiputchar_loop(unsigned char *c, long clen, unsigned char *a, long alen) {
+    // sel4cp_dbg_puts("We are now looping to attempt to call putchar if fifo is ready\n");
+}
+
+void ffireached_end(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("We have reached the end of the program\n");
 }
 
 void ffiinternal_is_tx_fifo_busy(unsigned char *c, long clen, unsigned char *a, long alen)
@@ -392,7 +404,7 @@ void ffiinternal_is_tx_fifo_busy(unsigned char *c, long clen, unsigned char *a, 
         // sel4cp_dbg_puts("FIFO was busy\n");
         a[0] = 1;
     } else {
-        sel4cp_dbg_puts("FIFO was not busy");
+        // sel4cp_dbg_puts("FIFO was not busy\n");
         a[0] = 0;
     }
     // sel4cp_dbg_puts("Returning from tx fifo busy function\n");
@@ -470,14 +482,14 @@ void ffigetchar(unsigned char *c, long clen, unsigned char *a, long alen)
 
 // Putchar that is using the hardware FIFO buffers --> Switch to DMA later 
 void ffiputchar_regs(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("Entered putchar in serial_driver_data\n");
+    // sel4cp_dbg_puts("Entered putchar in serial_driver_data\n");
     // sel4cp_dbg_puts("\t");
-    // // sel4cp_dbg_puts(c[0]);
+    // sel4cp_dbg_puts(c[0]);
     // sel4cp_dbg_puts("\n");
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
     regs->txd = c[0];
-    sel4cp_dbg_puts("Finished putchar regs\n");
+    // sel4cp_dbg_puts("Finished putchar regs\n");
 }
 
 void increment_num_chars(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -610,7 +622,7 @@ void ffiserial_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a
         return;
     }
 
-    if (alen != 2048) {
+    if (alen != BUFFER_SIZE) {
         // We always need the a array to be 2048 bytes long, the same length as the buffers 
         // in the ring buffers. 
         sel4cp_dbg_puts("Argument alen not of correct size\n");
@@ -638,7 +650,7 @@ void ffiserial_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a
         return;
     } else {
         sel4cp_dbg_puts("Driver dequeue successful, attempting memcpy\n");
-        if (buffer_len >= 2048) {
+        if (buffer_len >= BUFFER_SIZE) {
             sel4cp_dbg_puts("Buffer len too large\n");
             return;
         }
@@ -655,6 +667,7 @@ void ffiserial_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a
 }
 
 void ffiserial_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("We are in the ffi serial enqueue available function\n");
     if (clen != 1) {
         sel4cp_dbg_puts("There are no arguments supplied when args are expected");
         return;
@@ -690,7 +703,7 @@ void init_pancake_mem() {
     // cml_heap = cml_memory;
     // cml_stack = cml_heap + cml_heap_sz;
     // cml_stackend = cml_stack + cml_stack_sz;
-    unsigned long sz = 1024*1024; // 1 MB unit\n",
+    unsigned long sz = 2048*2048; // 1 MB unit\n",
     unsigned long cml_heap_sz = sz;    // Default: 1 MB heap\n", (* TODO: parameterise *)
     unsigned long cml_stack_sz = sz;   // Default: 1 MB stack\n", (* TODO: parameterise *)
     cml_heap = cml_memory;
