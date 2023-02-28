@@ -17,18 +17,14 @@ var c_arr = @base {
                     var buff_len = 0 {
                     var phys = @base + 32 {
                     var i = 0 {
-                      var temp = 0 {
+                      var temp = 1 {
 
                         
-                        while temp >= 0 {
+                        while temp >= 1 {
                           #test(c_arr c_len a_arr a_len);
                             temp = ldb phys;
 
-
-
-
-
-                            if temp < 0 {
+                            if temp < 1 {
                               #loop_exit(c_arr c_len a_arr a_len);
                                 break;
                             }
@@ -110,6 +106,9 @@ var c_arr = @base {
                     
                     #serial_enqueue_avail(c_arr c_len a_arr a_len);
 
+
+                    #finished_enqueue(c_arr c_len a_arr a_len);
+
                     var ret2 = 0 {
                       ret2 = ldb a_arr;
                       if ret2 <> 0 {
@@ -118,10 +117,14 @@ var c_arr = @base {
                         return -1;
                       }
                     }
+
+                    #finished_pnk(c_arr c_len a_arr a_len);
+                    return 0;
                   }
               }
           }
       }
     }
+
+    return 0;
   
-  return 0;

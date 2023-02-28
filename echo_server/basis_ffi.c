@@ -28,7 +28,7 @@
  * Note that this is not specified by the basis library.
  * */
 #define STDERR_MEM_EXHAUST
-
+#define CONFIG_ENABLE_BENCHMARKS
 /* clFFI (command line) */
 
 
@@ -45,6 +45,9 @@ uintptr_t uart_base;
 /* Pointers to shared_ringbuffers */
 ring_handle_t rx_ring;
 ring_handle_t tx_ring;
+
+// Attempt to save the address that notified needs to return to
+void *notified_return;
 
 struct serial_driver global_serial_driver_data = {0};
 
@@ -227,34 +230,9 @@ void ffiwrite (unsigned char *c, long clen, unsigned char *a, long alen){
 // int hasT = 0;
 
 void cml_exit(int arg) {
-
-//   #ifdef STDERR_MEM_EXHAUST
-//   if (arg != 0) {
-//     // fprintf(stderr,"Program exited with nonzero exit code.\n");
-//   }
-//   #endif
-
-//   #ifdef DEBUG_FFI
-//   {
-//     if(arg == 1) {
-//       fprintf(stderr,"CakeML heap space exhausted.\n");
-//     }
-//     else if(arg == 2) {
-//       fprintf(stderr,"CakeML stack space exhausted.\n");
-//     }
-//     fprintf(stderr,"GCNum: %d, GCTime(us): %ld\n",numGC,microsecs);
-//   }
-//   #endif
-
-
-  // exit(arg);
-
-    // Might be able to leave this empty for now. I think this gets called after the pancake program terminates. 
-    // We don't want to kill our process because we need this to be persistant. We can just wait here in this case
-    // and wait to be notified. 
-
-    sel4cp_dbg_puts("We have made a call to exit, we might need to do some additional stuff here to avoid faulting again\n");
-    while(1) {}
+    sel4cp_dbg_puts("CALLING CML_EXIT\n");
+    void (*foo)(void) = (void (*)())notified_return;
+    foo();
 }
 
 // // void ffiexit (unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -384,6 +362,18 @@ void ffiputchar_loop(unsigned char *c, long clen, unsigned char *a, long alen) {
 
 void ffireached_end(unsigned char *c, long clen, unsigned char *a, long alen) {
     sel4cp_dbg_puts("We have reached the end of the program\n");
+}
+
+void ffirawtx_loop(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("Entering raw tx loop\n");
+}
+
+void ffifinished_pnk(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("We have finished our pnk program, returning to c code\n");
+}
+
+void ffifinished_enqueue(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("Finsihed the serial enqueue function and back in pnk code\n");
 }
 
 void ffiinternal_is_tx_fifo_busy(unsigned char *c, long clen, unsigned char *a, long alen)
@@ -689,6 +679,10 @@ void ffiserial_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long
     } else {
         a[0] = enqueue_avail(&tx_ring, &buffer, &buffer_len, cookie);
     }
+
+    if (a[0] != 0) {
+        sel4cp_dbg_puts("Error in serial enqueue used\n");
+    }
 }
 
 void init_pancake_mem() {
@@ -736,6 +730,8 @@ void init(void) {
 
 // Entry point that is invoked on a serial interrupt, or notifications from the server using the TX and RX channels
 void notified(sel4cp_channel ch) {
+    notified_return = __builtin_return_address(0);
+
     sel4cp_dbg_puts(sel4cp_name);
     sel4cp_dbg_puts(": elf PD notified function running\n");
 
