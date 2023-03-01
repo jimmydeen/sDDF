@@ -10,7 +10,7 @@ It has been built on top of [seL4 Core Platform](https://github.com/BreakawayCon
 ## Building the sDDF
 
     $ cd echo_server
-    $ make BUILD_DIR=<path/to/build> SEL4CP_SDK=<path/to/core/platform/sdk> SEL4CP_BOARD=imx8mm SEL4CP_CONFIG=(release/debug)
+    $ make BUILD_DIR=<path/to/build> SEL4CP_SDK=<path/to/core/platform/sdk> CAKE_COMPILER=<path/to/cake/compiler/binary> SEL4CP_BOARD=imx8mm SEL4CP_CONFIG=(release/debug)
     
 ## Benchmarking
 

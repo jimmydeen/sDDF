@@ -20,8 +20,11 @@ ifeq ($(strip $(SEL4CP_CONFIG)),)
 $(error SEL4CP_CONFIG must be specified)
 endif
 
+ifeq ($(strip $(CAKE_COMPILER)),)
+$(error CAKE_COMPILER must be specified)
+endif
+
 TOOLCHAIN := aarch64-none-elf
-CAKE_COMPILER := /home/krishnan/TS/sDDF/cake-unverified-x64-64/cake
 CPU := cortex-a53
 
 CC := $(TOOLCHAIN)-gcc
