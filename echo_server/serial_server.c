@@ -212,28 +212,28 @@ void init(void) {
     serial_server_printf("Attempting to use the server printf!\n");
     serial_server_printf("HELLO THERE THIS IS SERVER PRINTF\n");
     serial_server_printf("Enter char to test getchar\n");
-    // char test = getchar();
-    // serial_server_printf("We got the following char: ");
-    // serial_server_printf(&test);
-    // serial_server_printf("\n");
-    // serial_server_printf("Enter char to test getchar\n");
-    // test = getchar();
-    // serial_server_printf("We got the following char: ");
-    // serial_server_printf(&test);
+    char test = getchar();
+    serial_server_printf("We got the following char: ");
+    serial_server_printf(&test);
+    serial_server_printf("\n");
+    serial_server_printf("Enter char to test getchar\n");
+    test = getchar();
+    serial_server_printf("We got the following char: ");
+    serial_server_printf(&test);
 
-    // serial_server_printf("\nEnter char to test scanf\n");
+    serial_server_printf("\nEnter char to test scanf\n");
 
-    // char temp_buffer = 0;
+    char temp_buffer = 0;
 
-    // int scanf_ret = serial_server_scanf(&temp_buffer);
+    int scanf_ret = serial_server_scanf(&temp_buffer);
 
-    // if (scanf_ret == -1) {
-    //     serial_server_printf("Issue with scanf\n");
-    // } else {
-    //     serial_server_printf(&temp_buffer);
-    // }
+    if (scanf_ret == -1) {
+        serial_server_printf("Issue with scanf\n");
+    } else {
+        serial_server_printf(&temp_buffer);
+    }
 
-    // serial_server_printf("\n---END OF TEST---\n");
+    serial_server_printf("\n---END OF TEST---\n");
     
 }
 

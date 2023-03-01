@@ -42,6 +42,8 @@ uintptr_t shared_dma_vaddr;
 // Base of the uart registers
 uintptr_t uart_base;
 
+char current_channel;
+
 /* Pointers to shared_ringbuffers */
 ring_handle_t rx_ring;
 ring_handle_t tx_ring;
@@ -51,7 +53,7 @@ void *notified_return;
 
 struct serial_driver global_serial_driver_data = {0};
 
-static char cml_memory[2048*2048*2];
+static char cml_memory[1024*1024*2];
 
 unsigned int argc;
 char **argv;
@@ -154,165 +156,18 @@ int byte8_to_int(unsigned char *b){
              (b[4] << 24) | (b[5] << 16) | (b[6] << 8) | b[7]);
 }
 
-
-/* fsFFI (file system and I/O) */
-
-void ffiopen_in (unsigned char *c, long clen, unsigned char *a, long alen) {
-  // assert(9 <= alen);
-  // int fd = open((const char *) c, O_RDONLY);
-  // if (0 <= fd){
-  //   a[0] = 0;
-  //   int_to_byte8(fd, &a[1]);
-  // }
-  // else
-  //   a[0] = 1;
-}
-
-void ffiopen_out (unsigned char *c, long clen, unsigned char *a, long alen) {
-  // assert(9 <= alen);
-  // #ifdef EVAL
-  // int fd = open((const char *) c, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-  // #else
-  // int fd = open((const char *) c, O_RDWR|O_CREAT|O_TRUNC);
-  // #endif
-  // if (0 <= fd){
-  //   a[0] = 0;
-  //   int_to_byte8(fd, &a[1]);
-  // }
-  // else
-  //   a[0] = 1;
-}
-
-void ffiread (unsigned char *c, long clen, unsigned char *a, long alen) {
-  // assert(clen == 8);
-  // int fd = byte8_to_int(c);
-  // int n = byte2_to_int(a);
-  // assert(alen >= n + 4);
-  // int nread = read(fd, &a[4], n);
-  // if(nread < 0){
-  //   a[0] = 1;
-  // }
-  // else{
-  //   a[0] = 0;
-  //   int_to_byte2(nread,&a[1]);
-  // }
-}
-
-void ffiwrite (unsigned char *c, long clen, unsigned char *a, long alen){
-  // assert(clen == 8);
-  // int fd = byte8_to_int(c);
-  // int n = byte2_to_int(a);
-  // int off = byte2_to_int(&a[2]);
-  // assert(alen >= n + off + 4);
-  // int nw = write(fd, &a[4 + off], n);
-  // if(nw < 0){
-  //     a[0] = 1;
-  // }
-  // else{
-  //   a[0] = 0;
-  //   int_to_byte2(nw,&a[1]);
-  // }
-}
-
-// void fficlose (unsigned char *c, long clen, unsigned char *a, long alen) {
-//   // assert(alen >= 1);
-//   // assert(clen == 8);
-//   // int fd = byte8_to_int(c);
-//   // if (close(fd) == 0) a[0] = 0;
-//   // else a[0] = 1;
-// }
-
-// /* GC FFI */
-// int inGC = 0;
-// struct timeval t1,t2,lastT;
-// long microsecs = 0;
-// int numGC = 0;
-// int hasT = 0;
-
 void cml_exit(int arg) {
     sel4cp_dbg_puts("CALLING CML_EXIT\n");
+
+    if (current_channel == 1) {
+        // irq ack
+        sel4cp_irq_ack(current_channel);
+    }
+
+    current_channel = 0;
     void (*foo)(void) = (void (*)())notified_return;
     foo();
 }
-
-// // void ffiexit (unsigned char *c, long clen, unsigned char *a, long alen) {
-// //   assert(alen == 1);
-// //   exit((int)a[0]);
-// // }
-
-
-// /* empty FFI (assumed to do nothing, but can be used for tracing/logging) */
-// void ffi (unsigned char *c, long clen, unsigned char *a, long alen) {
-//   #ifdef DEBUG_FFI
-//   {
-//     if (clen == 0)
-//     {
-//       if(inGC==1)
-//       {
-//         gettimeofday(&t2, NULL);
-//         microsecs += (t2.tv_usec - t1.tv_usec) + (t2.tv_sec - t1.tv_sec)*1e6;
-//         numGC++;
-//         inGC = 0;
-//       }
-//       else
-//       {
-//         inGC = 1;
-//         gettimeofday(&t1, NULL);
-//       }
-//     } else {
-//       int indent = 30;
-//       for (int i=0; i<clen; i++) {
-//         putc(c[i],stderr);
-//         indent--;
-//       }
-//       for (int i=0; i<indent; i++) {
-//         putc(' ',stderr);
-//       }
-//       struct timeval nowT;
-//       gettimeofday(&nowT, NULL);
-//       if (hasT) {
-//         long usecs = (nowT.tv_usec - lastT.tv_usec) +
-//                      (nowT.tv_sec - lastT.tv_sec)*1e6;
-//         fprintf(stderr," --- %ld milliseconds\n",usecs / (long)1000);
-//       } else {
-//         fprintf(stderr,"\n");
-//       }
-//       gettimeofday(&lastT, NULL);
-//       hasT = 1;
-//     }
-//   }
-//   #endif
-// }
-
-// typedef union {
-//   double d;
-//   char bytes[8];
-// } double_bytes;
-
-// // FFI calls for floating-point parsing
-// void ffidouble_fromString (char *c, long clen, char *a, long alen) {
-//   // double_bytes d;
-//   // // sscanf(c, "%lf",&d.d);
-//   // assert (8 == alen);
-//   // for (int i = 0; i < 8; i++){
-//   //   a[i] = d.bytes[i];
-//   // }
-// }
-
-// void ffidouble_toString (char *c, long clen, char *a, long alen) {
-//   // double_bytes d;
-//   // assert (256 == alen);
-//   // for (int i = 0; i < 8; i++){
-//   //   d.bytes[i] = a[i];
-//   // }
-//   //snprintf always terminates with a 0 byte if space was sufficient
-//   // int bytes_written = snprintf(&a[0], 255, "%.20g", d.d);
-//   // snprintf returns number of bytes it would have written if the buffer was
-//   // large enough -> check that it did not write more than the buffer size - 1
-//   // for the 0 byte
-//   // assert (bytes_written <= 255);
-// }
-
 
 /* Need to come up with a replacement for this clear cache function. Might be worth testing just flushing the entire l1 cache, but might cause issues with returning to this file*/
 void cml_clear() {
@@ -339,6 +194,8 @@ static void imx_uart_set_baud(long bps)
     regs->bmr = bmr;
     regs->fcr = fcr;
 }
+
+/* Debugging FFI Calls*/
 
 void ffitest(unsigned char *c, long clen, unsigned char *a, long alen) {
     // sel4cp_dbg_puts("We have made a successful ffi call from the pancake program\n");
@@ -374,6 +231,33 @@ void ffifinished_pnk(unsigned char *c, long clen, unsigned char *a, long alen) {
 
 void ffifinished_enqueue(unsigned char *c, long clen, unsigned char *a, long alen) {
     sel4cp_dbg_puts("Finsihed the serial enqueue function and back in pnk code\n");
+}
+
+void ffihandle_irq_fun(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("We are in the handle irq function\n");
+}
+
+void ffiget_channel(unsigned char *c, long clen, unsigned char *a, long alen) {
+    if (alen != 1) {
+        return;
+    }
+
+    a[0] = current_channel;
+}
+
+void ffiprint_int(unsigned char *c, long clen, unsigned char *a, long alen) {
+
+    sel4cp_dbg_puts("The address of c is -- (");
+
+    sel4cp_dbg_puts(c);
+
+    sel4cp_dbg_puts("\n");
+
+    char arg = c[0];
+
+    sel4cp_dbg_puts("We received the following int --- (");
+    sel4cp_dbg_puts(arg);
+    sel4cp_dbg_puts(")\n");
 }
 
 void ffiinternal_is_tx_fifo_busy(unsigned char *c, long clen, unsigned char *a, long alen)
@@ -482,7 +366,7 @@ void ffiputchar_regs(unsigned char *c, long clen, unsigned char *a, long alen) {
     // sel4cp_dbg_puts("Finished putchar regs\n");
 }
 
-void increment_num_chars(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffiincrement_num_chars(unsigned char *c, long clen, unsigned char *a, long alen) {
     global_serial_driver_data.num_to_get_chars += 1;
 }
 
@@ -562,18 +446,10 @@ void ffiserial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long
     }
     if (a[0] != 0) {
         return;
-    }
-
-    // uintptr_t buffer_addr = &buffer;
-    // a[0]= (buffer >> 24) & 0xff;
-    // a[1]= (buffer >> 16) & 0xff;
-    // a[2]= (buffer >> 8) & 0xff;
-    // a[3]= buffer & 0xff;      
+    } 
 
     int_to_byte8(buffer, &a[1]);
 
-    // For now pass buffer addresses through the alen value  
-    // alen = buffer;
     global_serial_driver_data.num_to_get_chars--;
     sel4cp_dbg_puts("Finished serial dequeue avail function\n");
 }
@@ -592,7 +468,6 @@ void ffiserial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long 
 
     ((char *) buffer)[0] = (char) input;
 
-    // Integer to store the length of the buffer
     unsigned int buffer_len = 0; 
     
     void *cookie = 0;
@@ -613,7 +488,7 @@ void ffiserial_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a
     }
 
     if (alen != BUFFER_SIZE) {
-        // We always need the a array to be 2048 bytes long, the same length as the buffers 
+        // We always need the a array to be 1024 bytes long, the same length as the buffers 
         // in the ring buffers. 
         sel4cp_dbg_puts("Argument alen not of correct size\n");
         return;
@@ -685,19 +560,57 @@ void ffiserial_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long
     }
 }
 
+void ffidequeue_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
+    // Dequeue from shared mem avail avail buffer
+    sel4cp_dbg_puts("In serial dequeue avail function\n");
+    
+    if (clen != 1) {
+        sel4cp_dbg_puts("There are no arguments supplied when args are expected");
+        a[0] = 1;
+        return;
+    }
+
+    // From our serial driver, this function is only ever called in the handle irq function
+    // to attempt to service all get char requests. Check here how many get char requests we 
+    // have that are outstanding. If none are outstanding then return -1 in a array, 
+    // otherwise continue with the dequeue.
+
+    if (global_serial_driver_data.num_to_get_chars <= 0) {
+        // We have no more get char requests to service. 
+        sel4cp_dbg_puts("No requests for get char outstanding\n");
+        a[0] = -1;
+        return;
+    }
+
+    void *cookie = 0;
+
+    // Address that we will pass to dequeue to store the buffer address
+    uintptr_t buffer = 0;
+    // Integer to store the length of the buffer
+    unsigned int buffer_len = 0; 
+
+    a[0] = dequeue_avail(&rx_ring, &buffer, &buffer_len, &cookie);
+
+    if (a[0] != 0) {
+        return;
+    }
+
+
+    // For now pass buffer addresses through the alen value  
+    // alen = buffer;
+    global_serial_driver_data.num_to_get_chars--;
+    sel4cp_dbg_puts("Finished serial dequeue avail function\n");
+
+    int input = c[1];
+
+    ((char *) buffer)[0] = (char) input;
+
+    a[0] =  enqueue_used(&rx_ring, buffer, 1, &cookie);
+    
+}
+
 void init_pancake_mem() {
-    // char *heap_env = getenv("CML_HEAP_SIZE");
-    // char *stack_env = getenv("CML_STACK_SIZE");
-    // char *temp; //used to store remainder of strtoul parse
-
-    // unsigned long sz = 4096*1024; // 4 MB unit
-    // unsigned long cml_heap_sz = sz;    // Default: 1 GB heap
-    // unsigned long cml_stack_sz = sz;   // Default: 1 GB stack
-
-    // cml_heap = cml_memory;
-    // cml_stack = cml_heap + cml_heap_sz;
-    // cml_stackend = cml_stack + cml_stack_sz;
-    unsigned long sz = 2048*2048; // 1 MB unit\n",
+    unsigned long sz = 1024*1024; // 1 MB unit\n",
     unsigned long cml_heap_sz = sz;    // Default: 1 MB heap\n", (* TODO: parameterise *)
     unsigned long cml_stack_sz = sz;   // Default: 1 MB stack\n", (* TODO: parameterise *)
     cml_heap = cml_memory;
@@ -736,9 +649,20 @@ void notified(sel4cp_channel ch) {
     sel4cp_dbg_puts(": elf PD notified function running\n");
 
     sel4cp_dbg_puts("Attempting to jump to pancake main\n");
+
+
     // Here, we want to call to cakeml main - this will be our entry point into the pancake program.
-    if (ch == 8) {
+    if (ch == 8 || ch == 1 || ch == 10) {
+        current_channel = (char) ch;
+        // char *heap_arr = (char *) cml_heap;
+
+        // sel4cp_dbg_puts("This is the address of heap_arr -- ");
+        // sel4cp_dbg_puts();
+        // sel4cp_dbg_puts("\n");
+        // heap_arr[1] = 8;
+
         cml_main();
+
     }
 
     sel4cp_dbg_puts("After main call, I'm not sure if we should ever get here\n");
