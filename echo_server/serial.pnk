@@ -16,32 +16,23 @@
                                   #serial_driver_dequeue_used(c_arr c_len a_arr a_len);
                                   ret = ldb c_arr;
                                   if ret == 0 {
-                                    #loop_exit(c_arr c_len a_arr a_len);
                                     break;
                                   }
-                                  #loop_continue(c_arr c_len a_arr a_len);
                                 }
-                                #test(c_arr c_len a_arr a_len);
                                 var buff_len = 0 {
                                 var phys = @base + 32 {
                                 var i = 0 {
                                   var temp = 1 {
-
-                                    
                                     while temp >= 1 {
-                                      #test(c_arr c_len a_arr a_len);
                                         temp = ldb phys;
 
                                         if temp < 1 {
-                                          #loop_exit(c_arr c_len a_arr a_len);
                                             break;
                                         }
 
 
-                                        #test(c_arr c_len a_arr a_len);
                                         var rawtx_ret = 1 {
                                           while rawtx_ret <> 0 {
-                                            #test(c_arr c_len a_arr a_len);
                                             var c_arr_uart = @base  + 1056{
                                               var clen_uart = 1 {
                                                 var a_arr_uart = @base + 1057 {
@@ -50,30 +41,23 @@
                                                       var temp_clen_uart = 1 {
                                                         var temp_a_uart = @base + 1059 {
                                                           var temp_alen_uart = 1 {
-                                                          #test(c_arr c_len a_arr a_len);
                                                           #internal_is_tx_fifo_busy(temp_c_uart temp_clen_uart temp_a_uart temp_alen_uart);
                                                           var tx_fifo_ret  = 0 {
                                                               tx_fifo_ret = ldb temp_a_uart;
                                                               if tx_fifo_ret == 1 {
-                                                                #loop_exit(c_arr c_len a_arr a_len);
-                                                                #return_call(c_arr c_len a_arr a_len);
                                                                 continue;
                                                               } else {
                                                                   if temp == 10 {
-                                                                    #test(c_arr c_len a_arr a_len);
                                                                     strb c_arr_uart, 13;
                                                                     #putchar_regs(c_arr_uart clen_uart a_arr_uart alen_uart);
                                                                   }
 
                                                                 var putchar_break = 0 {
                                                                   while putchar_break == 0 {
-                                                                        #putchar_loop(c_arr c_len a_arr a_len);
-                                                                        #test(c_arr c_len a_arr a_len);
                                                                         #internal_is_tx_fifo_busy(temp_c_uart temp_clen_uart temp_a_uart temp_alen_uart);
                                                                         
                                                                         tx_fifo_ret = ldb temp_a_uart;
                                                                         if tx_fifo_ret <> 1 {
-                                                                            #loop_exit(c_arr c_len a_arr a_len);
                                                                             strb c_arr_uart, temp;
                                                                             #putchar_regs(c_arr_uart clen_uart a_arr_uart alen_uart);
 
@@ -81,12 +65,8 @@
                                                                         }
                                                                   }
                                                                 }
-
-                                                              #reached_end(c_arr c_len a_arr a_len);
                                                               rawtx_ret = 0;
-
                                                               }
-
                                                             }
                                                           }
                                                         }
@@ -94,19 +74,16 @@
                                                     }
                                                   }
                                                 }
-
                                               }
-              
                                             }
                                           }
                                         }
-
                                         i = i + 1;
                                         phys = phys + 1;
                                     }
                                   }
                                   
-                                }
+                                  }
                                 }
                                 }
                                 strb c_arr, 1;
@@ -114,18 +91,14 @@
                                 
                                 #serial_enqueue_avail(c_arr c_len a_arr a_len);
                                 
-                                #finished_enqueue(c_arr c_len a_arr a_len);
 
                                 var ret2 = 0 {
                                   ret2 = ldb a_arr;
                                   if ret2 <> 0 {
-                                    #return_call(c_arr c_len a_arr a_len);
-                                    #return_call(c_arr c_len a_arr a_len);
                                     return -1;
                                   }
                                 }
 
-                                #finished_pnk(c_arr c_len a_arr a_len);
                                 return 0;
                               }
                           }
@@ -140,7 +113,6 @@
                     var getchar_clen = 1 {
                       var getchar_a = @base + 1 {
                         var getchar_alen = 0 {
-                          #handle_irq_fun(getchar_c getchar_clen getchar_a getchar_alen);
                           #getchar(getchar_c getchar_clen getchar_a getchar_alen);
                           got_char = ldb getchar_a;
                           if got_char == -1 {
@@ -157,7 +129,6 @@
                                       var dequeue_ret = 0 {
                                       dequeue_ret = ldb a_arr;
                                         if dequeue_ret == -1 {
-                                          #return_call(c_arr c_len a_arr a_len);
                                           return 0;
                                         }
                                         if dequeue_ret <> 0 {
@@ -219,5 +190,5 @@
   
 
 
-    return 0;
+  return 0;
   

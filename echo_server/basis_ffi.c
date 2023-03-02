@@ -195,48 +195,8 @@ static void imx_uart_set_baud(long bps)
     regs->fcr = fcr;
 }
 
-/* Debugging FFI Calls*/
-
-void ffitest(unsigned char *c, long clen, unsigned char *a, long alen) {
-    // sel4cp_dbg_puts("We have made a successful ffi call from the pancake program\n");
-}
-
-void ffiloop_exit(unsigned char *c, long clen, unsigned char *a, long alen) {
-    // sel4cp_dbg_puts("We have hit a break statement\n");
-}
-
-void ffireturn_call(unsigned char *c, long clen, unsigned char *a, long alen) {
-    // sel4cp_dbg_puts("We have hit a return statement\n");
-}
-
-void ffiloop_continue(unsigned char *c, long clen, unsigned char *a, long alen) {
-    // sel4cp_dbg_puts("We are continuing the loop\n");
-}
-
-void ffiputchar_loop(unsigned char *c, long clen, unsigned char *a, long alen) {
-    // sel4cp_dbg_puts("We are now looping to attempt to call putchar if fifo is ready\n");
-}
-
-void ffireached_end(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("We have reached the end of the program\n");
-}
-
-void ffirawtx_loop(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("Entering raw tx loop\n");
-}
-
-void ffifinished_pnk(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("We have finished our pnk program, returning to c code\n");
-}
-
-void ffifinished_enqueue(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("Finsihed the serial enqueue function and back in pnk code\n");
-}
-
-void ffihandle_irq_fun(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("We are in the handle irq function\n");
-}
-
+/* FFI call to get the current channel that has notified us. Need to find a better
+way to pass an argument to cml_main() */
 void ffiget_channel(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (alen != 1) {
         return;
