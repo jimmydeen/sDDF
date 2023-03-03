@@ -207,3 +207,6 @@ struct enet_regs {
     uint32_t tccr3;  /* 624 Timer Compare Capture Register */
 };
 
+void handle_notified(int ch);
+
+void handle_ppcall(int ch);

@@ -20,7 +20,7 @@ ifeq ($(strip $(SEL4CP_CONFIG)),)
 $(error SEL4CP_CONFIG must be specified)
 endif
 
-TOOLCHAIN := aarch64-unknown-linux-gnu
+TOOLCHAIN := aarch64-none-elf
 
 CPU := cortex-a53
 
@@ -89,7 +89,7 @@ NETIFFILES=$(LWIPDIR)/netif/ethernet.c
 LWIPFILES=lwip.c $(COREFILES) $(CORE4FILES) $(NETIFFILES)
 LWIP_OBJS := $(LWIPFILES:.c=.o) lwip.o libsharedringbuffer/shared_ringbuffer.o utilization_socket.o udp_echo_socket.o timer.o
 
-ETH_OBJS := eth.o libsharedringbuffer/shared_ringbuffer.o
+ETH_OBJS := eth.o libsharedringbuffer/shared_ringbuffer.o basis_ffi.o
 BENCH_OBJS := benchmark/benchmark.o
 IDLE_OBJS := benchmark/idle.o
 
