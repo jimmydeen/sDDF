@@ -43,6 +43,10 @@ uintptr_t uart_base;
 ring_handle_t rx_ring;
 ring_handle_t tx_ring;
 
+
+_Static_assert((512 * 2) * PACKET_BUFFER_SIZE <= 0x200000, "Expect rx+tx buffers to fit in single 2MB page");
+_Static_assert(sizeof(ring_buffer_t) <= 0x200000, "Expect ring buffer ring to fit in single 2MB page");
+
 static uint8_t mac[6];
 
 volatile struct enet_regs *eth = (void *)(uintptr_t)0x2000000;
@@ -117,8 +121,7 @@ dump_mac(uint8_t *mac)
     }
 }
 
-static uintptr_t 
-getPhysAddr(uintptr_t virtual)
+uintptr_t getPhysAddr(uintptr_t virtual)
 {
     uint64_t offset = virtual - shared_dma_vaddr;
     uintptr_t phys;
@@ -140,8 +143,7 @@ enable_irqs(volatile struct enet_regs *eth, uint32_t mask)
     eth->eimr = mask;
 }
 
-static uintptr_t 
-alloc_rx_buf(size_t buf_size, void **cookie)
+uintptr_t alloc_rx_buf(size_t buf_size, void **cookie)
 {
     uintptr_t addr;
     unsigned int len;
@@ -164,23 +166,6 @@ eth_setup(void)
     sel4cp_dbg_puts("MAC: ");
     dump_mac(mac);
     sel4cp_dbg_puts("\n");
-
-    /* set up descriptor rings */
-    rx.cnt = RX_COUNT;
-    rx.remain = rx.cnt - 2;
-    rx.tail = 0;
-    rx.head = 0;
-    rx.phys = shared_dma_paddr;
-    rx.cookies = (void **)rx_cookies;
-    rx.descr = (volatile struct descriptor *)hw_ring_buffer_vaddr;
-
-    tx.cnt = TX_COUNT;
-    tx.remain = tx.cnt - 2;
-    tx.tail = 0;
-    tx.head = 0;
-    tx.phys = shared_dma_paddr + (sizeof(struct descriptor) * RX_COUNT);
-    tx.cookies = (void **)tx_cookies;
-    tx.descr = (volatile struct descriptor *)(hw_ring_buffer_vaddr + (sizeof(struct descriptor) * RX_COUNT));
 
     /* Perform reset */
     eth->ecr = ECR_RESET;
@@ -267,26 +252,21 @@ void get_irq(unsigned char *c, long clen, unsigned char *a, long alen) {
 /* Wrappers around the libsharedringbuffer functions for the pancake FFI */
 
 void eth_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
+
+    // We expect the calling program to place the appropriate arguments in the following order
+    uintptr_t buffer = (uintptr_t) byte8_to_int(c);
+    unsigned int buffer_len = (unsigned int) byte8_to_int(&c[8]);
+    void * cookie = (void *) byte8_to_int(&c[16]);
+
     sel4cp_dbg_puts("In the serial driver dequeue used function\n");
     if (clen != 1) {
         sel4cp_dbg_puts("There are no arguments supplied when args are expected\n");
         return;
     }
 
-    if (alen != BUFFER_SIZE) {
-        // We always need the a array to be 1024 bytes long, the same length as the buffers 
-        // in the ring buffers. 
-        sel4cp_dbg_puts("Argument alen not of correct size\n");
-        return;
-    }
-    bool rx_tx = c[0];
+    bool rx_tx = a[0];
 
-    void *cookie = 0;
     sel4cp_dbg_puts("Attempting driver dequeue\n");
-    // Address that we will pass to dequeue to store the buffer address
-    uintptr_t buffer = 0;
-    // Integer to store the length of the buffer
-    unsigned int buffer_len = 0; 
     int ret = 0;
     if (rx_tx == 0) {
         ret = driver_dequeue(rx_ring.used_ring, &buffer, &buffer_len, &cookie);
@@ -294,35 +274,23 @@ void eth_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, long
         ret = driver_dequeue(tx_ring.used_ring, &buffer, &buffer_len, &cookie);
     }
 
-    if (ret != 0) {
-        // alen = 0;
-        sel4cp_dbg_puts("Driver dequeue was unsuccessful\n");
-        c[0] = 0;
-        return;
-    } else {
-        sel4cp_dbg_puts("Driver dequeue successful, attempting memcpy\n");
-        if (buffer_len >= BUFFER_SIZE) {
-            sel4cp_dbg_puts("Buffer len too large\n");
-            return;
-        }
-        int mem_ret = memcpy(a, (char *) buffer, buffer_len);
-        // clen = buffer;
-        // alen = buffer_len;
-
-        c[0] = 1;
-
-        // Copy over the length of the buffer that is to be printed
-        int_to_byte8(buffer_len, &c[1]);
-    }
     sel4cp_dbg_puts("Finished buffer dequeue\n");
 }
 
 void eth_driver_enqueue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
+    // In this case we assume that the 'c' array will contain the address of the cookie that we need
+    
+    buff_desc_t *desc = (buff_desc_t *) byte8_to_int(c);
 
+    enqueue_used(&tx_ring, desc->encoded_addr, desc->len, desc->cookie);
 }
 
 void eth_driver_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
+    // In this case we assume that the 'c' array will contain the address of the cookie that we need
+    
+    buff_desc_t *desc = (buff_desc_t *) byte8_to_int(c);
 
+    enqueue_avail(&tx_ring, desc->encoded_addr, desc->len, desc->cookie);
 }
 
 void eth_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -331,7 +299,7 @@ void eth_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
 }
 
 void eth_ring_size(unsigned char *c, long clen, unsigned char *a, long alen) {
-    int ret = ring_size(rx.avail_ring);
+    int ret = ring_size(rx_ring.avail_ring);
     int_to_byte4(ret, a);
 }
 
@@ -345,13 +313,37 @@ void tx_descr_active() {
     }
 }
 
+void get_rx_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
+    int_to_byte8(a, shared_dma_paddr);
+}
+
+void get_tx_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
+    int_to_byte8(a, shared_dma_paddr + sizeof(struct descriptor) * RX_COUNT);
+}
+
+void get_rx_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
+    int_to_byte8(a, (void **)rx_cookies);
+}
+
+void get_tx_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
+    int_to_byte8(a, (void **)tx_cookies);
+}
+
+void get_rx_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
+    int_to_byte8(a, (volatile struct descriptor *)hw_ring_buffer_vaddr);
+}
+
+void get_tx_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
+    int_to_byte8(a, (volatile struct descriptor *)(hw_ring_buffer_vaddr + (sizeof(struct descriptor) * RX_COUNT)));
+}
+
 void init_post()
 {
     /* Set up shared memory regions */
     ring_init(&rx_ring, (ring_buffer_t *)rx_avail, (ring_buffer_t *)rx_used, NULL, 0);
     ring_init(&tx_ring, (ring_buffer_t *)tx_avail, (ring_buffer_t *)tx_used, NULL, 0);
 
-    fill_rx_bufs();
+    // fill_rx_bufs();
     sel4cp_dbg_puts(sel4cp_name);
     sel4cp_dbg_puts(": init complete -- waiting for interrupt\n");
     sel4cp_notify(INIT);
@@ -373,6 +365,9 @@ void init(void)
 
     eth_setup();
 
+    // For now we are going to call handle_notified with a negative integer to get pseudo-pancake 
+    // to setup its structs and populate them
+    handle_notified(INIT_PAN_DS);
     /* Now wait for notification from lwip that buffers are initialised */
 }
 

@@ -7,15 +7,13 @@
 void int_to_byte4(int i, unsigned char *b);
 int byte4_to_int(unsigned char *b);
 
+void int_to_byte8(int i, unsigned char *b);
+int byte8_to_int(unsigned char *b);
+
 /* Driver functions */
-static void get_mac_addr(volatile struct enet_regs *reg, uint8_t *mac);
-static void set_mac(volatile struct enet_regs *reg, uint8_t *mac);
-static void dump_mac(uint8_t *mac);
-static uintptr_t getPhysAddr(uintptr_t virtual);
-static inline void enable_irqs(volatile struct enet_regs *eth, uint32_t mask);
-static uintptr_t alloc_rx_buf(size_t buf_size, void **cookie);
-static void fill_rx_bufs();
-static void eth_setup(void);
+
+uintptr_t getPhysAddr(uintptr_t virtual);
+uintptr_t alloc_rx_buf(size_t buf_size, void **cookie);
 void init_post();
 void enable_rx();
 void synchronise_call();
@@ -25,5 +23,10 @@ void eth_driver_enqueue_used(unsigned char *c, long clen, unsigned char *a, long
 void eth_driver_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long alen);
 void eth_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen);
 void eth_ring_size(unsigned char *c, long clen, unsigned char *a, long alen);
+void get_rx_phys(unsigned char *c, long clen, unsigned char *a, long alen);
+void get_tx_phys(unsigned char *c, long clen, unsigned char *a, long alen);
+void get_rx_cookies(unsigned char *c, long clen, unsigned char *a, long alen);
+void get_tx_cookies(unsigned char *c, long clen, unsigned char *a, long alen);
+void get_rx_descr(unsigned char *c, long clen, unsigned char *a, long alen);
+void get_tx_descr(unsigned char *c, long clen, unsigned char *a, long alen);
 
-static void handle_eth(volatile struct enet_regs *eth);

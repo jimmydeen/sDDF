@@ -7,34 +7,6 @@
 #include "util.h"
 #include "basis_ffi.h"
 
-#define IRQ_CH 1
-#define TX_CH  2
-#define RX_CH  2
-#define INIT   4
-/* Make the minimum frame buffer 2k. This is a bit of a waste of memory, but ensures alignment */
-#define PACKET_BUFFER_SIZE  2048
-#define MAX_PACKET_SIZE     1536
-
-#define RX_COUNT 256
-#define TX_COUNT 256
-_Static_assert((512 * 2) * PACKET_BUFFER_SIZE <= 0x200000, "Expect rx+tx buffers to fit in single 2MB page");
-_Static_assert(sizeof(ring_buffer_t) <= 0x200000, "Expect ring buffer ring to fit in single 2MB page");
-
-struct descriptor {
-    uint16_t len;
-    uint16_t stat;
-    uint32_t addr;
-};
-
-typedef struct {
-    unsigned int cnt;
-    unsigned int remain;
-    unsigned int tail;
-    unsigned int head;
-    volatile struct descriptor *descr;
-    uintptr_t phys;
-    void **cookies;
-} ring_ctx_t;
 
 ring_ctx_t rx;
 ring_ctx_t tx;
@@ -99,10 +71,27 @@ handle_rx()
     unsigned int head = ring->head;
 
     int num = 1;
-    int was_empty = ring_empty(rx_ring.used_ring);
+
+    unsigned char empty_c[1];
+    long empty_clen = 1;
+    unsigned char empty_a[1];
+    long empty_alen = 1;
+
+    eth_ring_empty(empty_c, empty_clen, empty_a, empty_alen);
+
+    int was_empty = empty_a[0];
+
+    unsigned char size_c[1];
+    long size_clen = 1;
+    unsigned char size_a[1];
+    long size_alen = 1;
+
+    eth_ring_size(size_c, size_clen, size_a, size_alen);
+
+    int ring_size = size_a[0];
 
     // we don't want to dequeue packets if we have nothing to replace it with
-    while (head != ring->tail && (ring_size(rx_ring.avail_ring) > num)) {
+    while (head != ring->tail && (ring_size > num)) {
         volatile struct descriptor *d = &(ring->descr[head]);
 
         /* If the slot is still marked as empty we are done. */
@@ -120,10 +109,19 @@ handle_rx()
         /* There is a race condition here if add/remove is not synchronized. */
         ring->remain++;
 
-        buff_desc_t *desc = (buff_desc_t *)cookie;
+        unsigned char c_arr[8];
+        long clen = 8;
+        unsigned char a_arr[1];
+        long alen = 0;
+        int_to_byte8(cookie, c_arr);
 
-        enqueue_used(&rx_ring, desc->encoded_addr, d->len, desc->cookie);
+        eth_driver_enqueue_avail(c_arr, clen, a_arr, alen);
+
         num++;
+
+        // This might not be correct
+        eth_ring_size(size_c, size_clen, size_a, size_alen);
+        ring_size = size_a[0];
     }
 
     /* Notify client (only if we have actually processed a packet and 
@@ -177,9 +175,14 @@ complete_tx()
             /* race condition if add/remove is not synchronized. */
             ring->remain += cnt_org;
             /* give the buffer back */
-            buff_desc_t *desc = (buff_desc_t *)cookie;
+            unsigned char c_arr[8];
+            long clen = 8;
+            unsigned char a_arr[1];
+            long alen = 0;
+            int_to_byte8(cookie, c_arr);
 
-            enqueue_avail(&tx_ring, desc->encoded_addr, desc->len, desc->cookie);
+            eth_driver_enqueue_avail(c_arr, clen, a_arr, alen);
+
         }
     }
 
@@ -251,7 +254,7 @@ handle_eth()
 
     get_irq(c_arr, clen, a_arr, alen);
 
-    uint32_t e = byte4_to_int(a);
+    uint32_t e = byte4_to_int(a_arr);
 
     while (e & IRQ_MASK) {
         if (e & NETIRQ_TXF) {
@@ -267,7 +270,7 @@ handle_eth()
         }
         get_irq(c_arr, clen, a_arr, alen);
 
-        uint32_t e = byte4_to_int(a);
+        uint32_t e = byte4_to_int(a_arr);
     }
 }
 
@@ -279,28 +282,77 @@ handle_tx()
     void *cookie = NULL;
 
     // Setting up a driver dequeue ffi call
-    unsigned char c_arr[20];
-    c_arr[0] = 1;
-    long clen = 1;
+    unsigned char c_arr[64];
+    long clen = 64;
     // For now, can only accomodate for inputs of up to 2048 characters. The same size as the buffers
-    unsigned char a_arr[2048];
+    unsigned char a_arr[1];
+    a_arr[0] = 1;
     // a_arr[0] = 1;
-    long alen = 2048;
+    long alen = 1;
+
+    int_to_byte8(buffer, c_arr);
+    int_to_byte8(len, &c_arr[8]);
+    int_to_byte8(cookie, &c_arr[16]);
 
     eth_driver_dequeue_used(c_arr, clen, a_arr, alen);
     int driver_dequeue_ret = a_arr[0];
 
+    //driver_dequeue(tx_ring.used_ring, &buffer, &len, &cookie)
+
     // We need to put in an empty condition here. 
-    while ((tx.remain > 1) && !driver_dequeue(tx_ring.used_ring, &buffer, &len, &cookie)) {
+
+    while ((tx.remain > 1) && !driver_dequeue_ret) {
         uintptr_t phys = getPhysAddr(buffer);
         raw_tx(1, &phys, &len, cookie);
+
+        eth_driver_dequeue_used(c_arr, clen, a_arr, alen);
+        int driver_dequeue_ret = a_arr[0];
     }
 }
 
+void create_ds() {
+    /* set up descriptor rings */
 
+    unsigned char c_arr[8];
+    long clen = 8;
+    unsigned char a_arr[1];
+    long alen = 0;
+
+    rx.cnt = RX_COUNT;
+    rx.remain = rx.cnt - 2;
+    rx.tail = 0;
+    rx.head = 0;
+    get_rx_phys(c_arr, clen, a_arr, alen);
+    uintptr_t shared_dma_paddr = byte8_to_int(a_arr);
+    rx.phys = shared_dma_paddr;
+    get_rx_cookies(c_arr, clen, a_arr, alen);
+    void **rx_cookies = (void **) byte8_to_int(a_arr);
+    rx.cookies = rx_cookies;
+    get_rx_descr(c_arr, clen, a_arr, alen);
+    volatile struct descriptor *hw_ring_buffer_vaddr = (volatile struct descriptor *) byte8_to_int(a_arr);
+    rx.descr = (volatile struct descriptor *)hw_ring_buffer_vaddr;
+
+    tx.cnt = TX_COUNT;
+    tx.remain = tx.cnt - 2;
+    tx.tail = 0;
+    tx.head = 0;
+    get_tx_phys(c_arr, clen, a_arr, alen);
+    uintptr_t tx_phys = byte8_to_int(a_arr);
+    tx.phys = tx_phys;
+    get_tx_cookies(c_arr, clen, a_arr, alen);
+    void **tx_cookies = (void **) byte8_to_int(a_arr);
+    tx.cookies = tx_cookies;
+    get_tx_descr(c_arr, clen, a_arr, alen);
+    volatile struct descriptor *tx_hw_ring_buffer_vaddr = (volatile struct descriptor *) byte8_to_int(a_arr);
+    tx.descr = tx_hw_ring_buffer_vaddr;
+
+}
 
 void handle_notified(int ch) {
     switch(ch) {
+
+    case INIT_PAN_DS:
+        create_ds();
     case IRQ_CH:
         handle_eth();
         have_signal = true;
@@ -309,6 +361,7 @@ void handle_notified(int ch) {
         return;
     case INIT:
         init_post();
+        fill_rx_bufs();
         break;
     case TX_CH:
         handle_tx();

@@ -1,0 +1,31 @@
+var rx_cnt = 1 {
+ var rx_remain = 1 {
+  var rx_remain = 1 {
+   var rx_tail = 1 {
+    var rx_head = 1 {
+     var rx_descr = @base {
+      var rx_phys = 1 {
+       var rx_cookies = @base + 2048 {
+        var tx_cnt = 1 {
+         var tx_remain = 1 {
+          var tx_tail = 1 {
+            var tx_head = 1 {
+             var tx_descr = @base + 4096 {
+              var tx_phys = 1 {
+               var tx_cookies = @base + 6144 {
+                
+               }
+              }
+             }
+            }
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ }
+}

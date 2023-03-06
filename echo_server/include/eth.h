@@ -207,6 +207,34 @@ struct enet_regs {
     uint32_t tccr3;  /* 624 Timer Compare Capture Register */
 };
 
+#define IRQ_CH 1
+#define TX_CH  2
+#define RX_CH  2
+#define INIT   4
+#define INIT_PAN_DS -1
+/* Make the minimum frame buffer 2k. This is a bit of a waste of memory, but ensures alignment */
+#define PACKET_BUFFER_SIZE  2048
+#define MAX_PACKET_SIZE     1536
+
+#define RX_COUNT 256
+#define TX_COUNT 256
+
+struct descriptor {
+    uint16_t len;
+    uint16_t stat;
+    uint32_t addr;
+};
+
+typedef struct {
+    unsigned int cnt;
+    unsigned int remain;
+    unsigned int tail;
+    unsigned int head;
+    volatile struct descriptor *descr;
+    uintptr_t phys;
+    void **cookies;
+} ring_ctx_t;
+
 void handle_notified(int ch);
 
-void handle_ppcall(int ch);
+static void handle_eth();
