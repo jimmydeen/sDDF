@@ -23,7 +23,7 @@ if argc == 8 {
     var phys = @base + 32;
     var i = 0;
     var temp = 1;
-      while temp >= 1 {
+      while temp > 0 {
         temp = ldb phys;
 
         if temp < 1 {
