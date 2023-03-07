@@ -1,194 +1,150 @@
 
-  var argc_arr = @base {
-    var argc_len = 0 {
-      var arga_arr = @base + 1 {
-        var arga_len = 1 {
-          #get_channel(argc_arr argc_len arga_arr arga_len);
-          var argc = ldb arga_arr {
-            if argc == 8 {
-              var c_arr = @base {
-                  var c_len = 1 {
-                      strb c_arr, 1;
-                      var a_arr = @base + 32 {
-                          var a_len = 1024 {
-                              while 1 == 1 {
-                                var ret = 0 {
-                                  #serial_driver_dequeue_used(c_arr c_len a_arr a_len);
-                                  ret = ldb c_arr;
-                                  if ret == 0 {
-                                    break;
-                                  }
-                                }
-                                var buff_len = 0 {
-                                var phys = @base + 32 {
-                                var i = 0 {
-                                  var temp = 1 {
-                                    while temp >= 1 {
-                                        temp = ldb phys;
+var argc_arr = @base;
+var argc_len = 0;
+var arga_arr = @base + 1;
+var arga_len = 1;
+#get_channel(argc_ar, argc_len, arga_arr, arga_len);
+var argc = ldb arga_arr;
 
-                                        if temp < 1 {
-                                            break;
-                                        }
+if argc == 8 {
+  var c_arr = @base;
+  var c_len = 1;
+  strb c_arr, 1;
+  var a_arr = @base + 32;
+  var a_len = 1024;
+  while 1 == 1 {
+    var ret = 0;
+    #serial_driver_dequeue_used(c_arr, c_len, a_arr, a_len);
+    ret = ldb c_arr;
+    if ret == 0 {
+      break;
+    }
+    var buff_len = 0;
+    var phys = @base + 32;
+    var i = 0;
+    var temp = 1;
+      while temp >= 1 {
+        temp = ldb phys;
 
+        if temp < 1 {
+            break;
+        }
 
-                                        var rawtx_ret = 1 {
-                                          while rawtx_ret <> 0 {
-                                            var c_arr_uart = @base  + 1056{
-                                              var clen_uart = 1 {
-                                                var a_arr_uart = @base + 1057 {
-                                                  var alen_uart = 1 {
-                                                    var temp_c_uart = @base + 1058 {
-                                                      var temp_clen_uart = 1 {
-                                                        var temp_a_uart = @base + 1059 {
-                                                          var temp_alen_uart = 1 {
-                                                          #internal_is_tx_fifo_busy(temp_c_uart temp_clen_uart temp_a_uart temp_alen_uart);
-                                                          var tx_fifo_ret  = 0 {
-                                                              tx_fifo_ret = ldb temp_a_uart;
-                                                              if tx_fifo_ret == 1 {
-                                                                continue;
-                                                              } else {
-                                                                  if temp == 10 {
-                                                                    strb c_arr_uart, 13;
-                                                                    #putchar_regs(c_arr_uart clen_uart a_arr_uart alen_uart);
-                                                                  }
+        var rawtx_ret = 1;
+        while rawtx_ret <> 0 {
+          var c_arr_uart = @base  + 1056;
+          var clen_uart = 1;
+          var a_arr_uart = @base + 1057;
+          var alen_uart = 1;
+          var temp_c_uart = @base + 1058;
+          var temp_clen_uart = 1;
+          var temp_a_uart = @base + 1059;
+          var temp_alen_uart = 1;
+          #internal_is_tx_fifo_busy(temp_c_uart, temp_clen_uart, temp_a_uart, temp_alen_uart);
+          var tx_fifo_ret  = 0;
+          tx_fifo_ret = ldb temp_a_uart;
+          if tx_fifo_ret == 1 {
+            continue;
+          } else {
+              if temp == 10 {
+                strb c_arr_uart, 13;
+                #putchar_regs(c_arr_uart, clen_uart, a_arr_uart, alen_uart);
+              }
+              var putchar_break = 0;
+              while putchar_break == 0 {
+                #internal_is_tx_fifo_busy(temp_c_uart, temp_clen_uart, temp_a_uart, temp_alen_uart);
+                tx_fifo_ret = ldb temp_a_uart;
+                if tx_fifo_ret <> 1 {
+                  strb c_arr_uart, temp;
+                    #putchar_regs(c_arr_uart, clen_uart, a_arr_uart, alen_uart);
 
-                                                                var putchar_break = 0 {
-                                                                  while putchar_break == 0 {
-                                                                        #internal_is_tx_fifo_busy(temp_c_uart temp_clen_uart temp_a_uart temp_alen_uart);
-                                                                        
-                                                                        tx_fifo_ret = ldb temp_a_uart;
-                                                                        if tx_fifo_ret <> 1 {
-                                                                            strb c_arr_uart, temp;
-                                                                            #putchar_regs(c_arr_uart clen_uart a_arr_uart alen_uart);
-
-                                                                            putchar_break = 1;
-                                                                        }
-                                                                  }
-                                                                }
-                                                              rawtx_ret = 0;
-                                                              }
-                                                            }
-                                                          }
-                                                        }
-                                                      }
-                                                    }
-                                                  }
-                                                }
-                                              }
-                                            }
-                                          }
-                                        }
-                                        i = i + 1;
-                                        phys = phys + 1;
-                                    }
-                                  }
-                                  
-                                  }
-                                }
-                                }
-                                strb c_arr, 1;
-                                c_len = 1;
-                                
-                                #serial_enqueue_avail(c_arr c_len a_arr a_len);
-                                
-
-                                var ret2 = 0 {
-                                  ret2 = ldb a_arr;
-                                  if ret2 <> 0 {
-                                    return -1;
-                                  }
-                                }
-
-                                return 0;
-                              }
-                          }
-                      }
-                  }
+                    putchar_break = 1;
                 }
               }
-
-              if argc == 1 {
-                var got_char = 0 {
-                  var getchar_c = @base {
-                    var getchar_clen = 1 {
-                      var getchar_a = @base + 1 {
-                        var getchar_alen = 0 {
-                          #getchar(getchar_c getchar_clen getchar_a getchar_alen);
-                          got_char = ldb getchar_a;
-                          if got_char == -1 {
-                            return -1;
-                          } else {
-                            while 1 == 1 {
-                              var c_arr = @base + 2 {
-                                var c_len = 1 {
-                                  var a_arr = @base + 3 {
-                                    var a_len = 1 {
-                                      strb c_arr, 0;
-                                      strb a_arr, 0;
-                                      #serial_dequeue_avail(c_arr c_len a_arr a_len);
-                                      var dequeue_ret = 0 {
-                                      dequeue_ret = ldb a_arr;
-                                        if dequeue_ret == -1 {
-                                          return 0;
-                                        }
-                                        if dequeue_ret <> 0 {
-                                          return -1;
-                                        }
-                                      }
-                                      var enqueue_c_arr = @base + 128 {
-                                        var enqueue_clen = 2 {
-                                          var enqueue_a_arr = @base + 256 {
-                                            var enqueue_alen = a_len {
-                                              strb enqueue_c_arr, 0;
-                                              strb enqueue_c_arr + 1, got_char;
-                                              #serial_enqueue_used(enqueue_c_arr enqueue_clen a_arr enqueue_alen);
-                                              var enqueue_ret = 0 {
-                                                enqueue_ret = ldb a_arr;
-                                                if enqueue_ret <> 0 {
-                                                  return -1;
-                                                }
-                                              }
-                                            }
-                                          }
-                                        }
-                                      }
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-
-              if argc == 10 {
-                var c_arr = @base {
-                  var clen = 0 {
-                    var a_arr = @base + 1 {
-                      var alen = 0 {
-                        #increment_num_chars(c_arr clen a_arr alen);
-                        var increment_ret = 0 {
-                          increment_ret = ldb a_arr;
-                          if increment_ret <> 0 {
-                            return -1;
-                          }
-                        }
-                      }
-                    } 
-                  }
-                }
-              }
-            }
+                
+              rawtx_ret = 0;
           }
         }
+
+        i = i + 1;
+        phys = phys + 1;
       }
+
+      strb c_arr, 1;
+      c_len = 1;
+      
+      #serial_enqueue_avail(c_arr, c_len, a_arr, a_len);
+      
+      var ret2 = 0;
+        ret2 = ldb a_arr;
+        if ret2 <> 0 {
+          return -1;
+        }
+      return 0;
     }
-  
+  }
 
 
-  return 0;
+
+if argc == 1 {
+  var got_char = 0;
+  var getchar_c = @base;
+  var getchar_clen = 1;
+  var getchar_a = @base + 1;
+  var getchar_alen = 0;
+  #getchar(getchar_c, getchar_clen, getchar_a, getchar_alen);
+  got_char = ldb getchar_a;
+  if got_char == -1 {
+    return -1;
+  } else {
+    while 1 == 1 {
+      var c_arr = @base + 2;
+      var c_len = 1;
+      var a_arr = @base + 3;
+      var a_len = 1;
+      strb c_arr, 0;
+      strb a_arr, 0;
+      #serial_dequeue_avail(c_arr, c_len, a_arr, a_len);
+      var dequeue_ret = 0;
+      dequeue_ret = ldb a_arr;
+      if dequeue_ret == -1 {
+        return 0;
+      }
+      if dequeue_ret <> 0 {
+        return -1;
+      }
+      var enqueue_c_arr = @base + 128;
+      var enqueue_clen = 2;
+      var enqueue_a_arr = @base + 256;
+      var enqueue_alen = a_len;
+      strb enqueue_c_arr, 0;
+      strb enqueue_c_arr + 1, got_char;
+      #serial_enqueue_used(enqueue_c_arr, enqueue_clen, a_arr, enqueue_alen);
+      var enqueue_ret = 0;
+      enqueue_ret = ldb a_arr;
+      if enqueue_ret <> 0 {
+        return -1;
+      }
+      
+    }
+  }
+}
+
+if argc == 10 {
+  var c_arr = @base;
+  var clen = 0;
+  var a_arr = @base + 1;
+  var alen = 0;
+  #increment_num_chars(c_arr, clen, a_arr, alen);
+  var increment_ret = 0;
+  increment_ret = ldb a_arr;
+  if increment_ret <> 0 {
+    return -1;
+  }        
+}
+      
+    
+
+
+return 0;
   
