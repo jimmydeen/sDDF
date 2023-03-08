@@ -43,8 +43,9 @@ if argc == -1 {
   #get_tx_descr(c_arr, 0, tx_cookies, 8);
 }
 
-/base = 83 - reuse the space c_arr above used
+//base = 83 - reuse the space c_arr above used
 
+// INIT case from notified
 if argc == 4 {
   var c_arr = @base + 83;
   var a_arr = @bae + 84;
@@ -145,6 +146,100 @@ if argc == 4 {
 
   if (rx_tail <> rx_head) {
     #enable_rx(0,0,0,0);
+  }
+
+}
+
+// Handle TX case
+if argc == 2 {
+  var dequeue_c = @base + 83;
+  strb dequeue_c, 1;
+  // dequeue_a will be 24 in size
+  var dequeue_a = @base + 84;
+
+  #eth_driver_dequeue_used(dequeue_c, 1, dequeue_a, 24);
+
+  var driver_ret = ldb dequeue_c;
+
+  var buffer = @base + 84;
+  var len = @base + 92;
+  var cookie = @base + 100;
+
+  while tx_remain > 1 {
+    if driver_dequeue == 1 {
+      break;
+    }
+
+    var phys = @base + 108;
+    #get_phys(buffer, 8, phys, 8);
+
+    // Handle the raw_tx function here
+    if rx_remain < 1 {
+      // Complete TX function here
+
+      if rx_remain < 1 {
+        // TX queue lacks space
+        return;
+      }
+
+    }
+
+    #sychronise_call(0,0,0,0);
+    var tail = rx_tail;
+    var tail_new = tail;
+    var i = 1;
+    while i > 0 {
+      i = i - 1;
+      var stat = (1 << 15);
+      if (i == 0) {
+        stat = stat | (1 << 10) | (1 << 11);
+      }
+
+      var index = tail_new;
+      
+      if tail_new + 1 == 256 {
+        tail_new = 0;
+        stat = stat | (1 << 13);
+      } 
+
+      // update the ring slot
+    }
+
+    // Set the cookie 
+    var set_cookie_c = @base + 109;
+    var set_cookie_a = @base + 126;
+    strb set_cookie_c, index;
+
+    // Setting bytes of cookie address
+    strb set_cookie_c + 1, cookie;
+    strb set_cookie_c + 2, cookie + 1;
+    strb set_cookie_c + 3, cookie + 2;
+    strb set_cookie_c + 4, cookie + 3;
+    strb set_cookie_c + 5, cookie + 4;
+    strb set_cookie_c + 6, cookie + 5;
+    strb set_cookie_c + 7, cookie + 6;
+    strb set_cookie_c + 8, cookie + 7;
+
+    strb set_cookie_c + 9, tx_cookies;
+    strb set_cookie_c + 10, tx_cookies + 1;
+    strb set_cookie_c + 11, tx_cookies + 2;
+    strb set_cookie_c + 12, tx_cookies + 3;
+    strb set_cookie_c + 13, tx_cookies + 4;
+    strb set_cookie_c + 14, tx_cookies + 5;
+    strb set_cookie_c + 15, tx_cookies + 6;
+    strb set_cookie_c + 16, tx_cookies + 7;
+
+    #set_cookies(set_cookie_c, 17, set_cookie_a, 0);
+
+    // Dequeue another buffer to service
+    var dequeue_c = @base + 83;
+    strb dequeue_c, 1;
+    // dequeue_a will be 24 in size
+    var dequeue_a = @base + 84;
+
+    #eth_driver_dequeue_used(dequeue_c, 1, dequeue_a, 24);
+
+    var driver_ret = ldb dequeue_c;
   }
 
 }

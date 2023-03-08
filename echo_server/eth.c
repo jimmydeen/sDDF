@@ -284,15 +284,15 @@ handle_tx()
     // Setting up a driver dequeue ffi call
     unsigned char c_arr[64];
     long clen = 64;
-    // For now, can only accomodate for inputs of up to 2048 characters. The same size as the buffers
     unsigned char a_arr[1];
+    // Denoting that we want the rx buffer dequeued from
     a_arr[0] = 1;
     // a_arr[0] = 1;
     long alen = 1;
 
-    int_to_byte8(buffer, c_arr);
-    int_to_byte8(len, &c_arr[8]);
-    int_to_byte8(cookie, &c_arr[16]);
+    uintptr_to_byte8(buffer, c_arr);
+    uintptr_to_byte8(len, &c_arr[8]);
+    uintptr_to_byte8(cookie, &c_arr[16]);
 
     eth_driver_dequeue_used(c_arr, clen, a_arr, alen);
     int driver_dequeue_ret = a_arr[0];

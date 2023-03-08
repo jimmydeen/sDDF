@@ -293,10 +293,14 @@ void get_irq(unsigned char *c, long clen, unsigned char *a, long alen) {
 
 void eth_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
 
-    // We expect the calling program to place the appropriate arguments in the following order
-    uintptr_t buffer = (uintptr_t) byte8_to_int(c);
-    unsigned int buffer_len = (unsigned int) byte8_to_int(&c[8]);
-    void * cookie = (void *) byte8_to_int(&c[16]);
+    // // We expect the calling program to place the appropriate arguments in the following order
+    // uintptr_t buffer = (uintptr_t) byte8_to_int(c);
+    // unsigned int buffer_len = (unsigned int) byte8_to_int(&c[8]);
+    // void * cookie = (void *) byte8_to_int(&c[16]);
+
+    uintptr_t buffer = 0;
+    unsigned int buffer_len = 0;
+    void *cookie = NULL;
 
     sel4cp_dbg_puts("In the serial driver dequeue used function\n");
     if (clen != 1) {
@@ -313,6 +317,11 @@ void eth_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, long
     } else {
         ret = driver_dequeue(tx_ring.used_ring, &buffer, &buffer_len, &cookie);
     }
+
+    // Place the values that we have gotten from the dequeue function into the a array
+    uintptr_to_byte8(buffer, c);
+    uintptr_to_byte8(buffer_len, &c[8]);
+    uintptr_to_byte8(cookie, &c[16]);
 
     sel4cp_dbg_puts("Finished buffer dequeue\n");
 }
@@ -419,8 +428,8 @@ void get_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
 
 void set_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
     int index = c[0];
-    void **cookies = (void **) byte8_to_uintptr(&c[1]);
-    void *cookie = (void *) byte8_to_int(&c[9]);
+    void *cookie = (void **) byte8_to_uintptr(&c[1]);
+    void**cookies = (void *) byte8_to_int(&c[9]);
 
     cookies[index] = cookie;
 }
@@ -499,6 +508,20 @@ void ffiupdate_descr_slot(unsigned char *c, long clen, unsigned char *a, long al
     __sync_synchronize();
 
     d->stat = stat;
+}
+
+void ffiget_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
+    if (clen != 8 || alen != 8) {
+        sel4cp_dbg_puts("Len was not of correct size -- get_phys\n");
+        return;
+    }
+
+    // Buffer address will be in c[0]
+    uintptr_t buffer = byte8_to_uintptr(c);
+
+    uintptr_t phys = getPhysAddr(buffer);
+
+    uintptr_to_byte8(a, phys);
 }
 
 void init_post()
