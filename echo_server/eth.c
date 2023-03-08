@@ -329,6 +329,7 @@ void create_ds() {
     void **rx_cookies = (void **) byte8_to_int(a_arr);
     rx.cookies = rx_cookies;
     get_rx_descr(c_arr, clen, a_arr, alen);
+    // I belive this is essentially a 256 entry buffer
     volatile struct descriptor *hw_ring_buffer_vaddr = (volatile struct descriptor *) byte8_to_int(a_arr);
     rx.descr = (volatile struct descriptor *)hw_ring_buffer_vaddr;
 
@@ -343,6 +344,7 @@ void create_ds() {
     void **tx_cookies = (void **) byte8_to_int(a_arr);
     tx.cookies = tx_cookies;
     get_tx_descr(c_arr, clen, a_arr, alen);
+    
     volatile struct descriptor *tx_hw_ring_buffer_vaddr = (volatile struct descriptor *) byte8_to_int(a_arr);
     tx.descr = tx_hw_ring_buffer_vaddr;
 
