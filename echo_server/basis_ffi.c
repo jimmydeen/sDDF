@@ -43,6 +43,7 @@ uintptr_t uart_base;
 ring_handle_t rx_ring;
 ring_handle_t tx_ring;
 
+char current_channel;
 
 _Static_assert((512 * 2) * PACKET_BUFFER_SIZE <= 0x200000, "Expect rx+tx buffers to fit in single 2MB page");
 _Static_assert(sizeof(ring_buffer_t) <= 0x200000, "Expect ring buffer ring to fit in single 2MB page");
@@ -116,6 +117,15 @@ uintptr_t byte8_to_uintptr(unsigned char *b){
              ((uintptr_t) b[4] << 24) | (uintptr_t) (b[5] << 16) | (uintptr_t) (b[6] << 8) | b[7]);
 }
 
+/* FFI call to get the current channel that has notified us. Need to find a better
+way to pass an argument to cml_main() */
+void ffiget_channel(unsigned char *c, long clen, unsigned char *a, long alen) {
+    if (alen != 1) {
+        return;
+    }
+
+    a[0] = current_channel;
+}
 
 /* Eth driver functions */
 
@@ -344,27 +354,151 @@ void tx_descr_active() {
 }
 
 void get_rx_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
+    if (alen != 8) {
+        sel4cp_dbg_puts("Alen not of expected length\n");
+        return;
+    }
     uintptr_to_byte8(a, shared_dma_paddr);
 }
 
 void get_tx_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
+    if (alen != 8) {
+        sel4cp_dbg_puts("Alen not of expected length\n");
+        return;
+    }
     uintptr_to_byte8(a, shared_dma_paddr + sizeof(struct descriptor) * RX_COUNT);
 }
 
 void get_rx_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
+    if (alen != 8) {
+        sel4cp_dbg_puts("Alen not of expected length\n");
+        return;
+    }
     uintptr_to_byte8(a, (void **)rx_cookies);
 }
 
 void get_tx_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
+    if (alen != 8) {
+        sel4cp_dbg_puts("Alen not of expected length\n");
+        return;
+    }
     uintptr_to_byte8(a, (void **)tx_cookies);
 }
 
 void get_rx_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
+    if (alen != 8) {
+        sel4cp_dbg_puts("Alen not of expected length\n");
+        return;
+    }
     uintptr_to_byte8(a, (volatile struct descriptor *)hw_ring_buffer_vaddr);
 }
 
 void get_tx_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
+    if (alen != 8) {
+        sel4cp_dbg_puts("Alen not of expected length\n");
+        return;
+    }
     uintptr_to_byte8(a, (volatile struct descriptor *)(hw_ring_buffer_vaddr + (sizeof(struct descriptor) * RX_COUNT)));
+}
+
+// Getters and Setters for the cookies, descr and phys arrays
+
+/* 
+Index will be in c[0], address starts from c[1]
+The address that we get will be stored starting from a[0]
+*/
+
+void get_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
+    int index = c[0];
+    void **cookies = (void **) byte8_to_uintptr(&c[1]);
+
+    void *cookie = cookies[index];
+
+    uintptr_to_byte8(cookie, a);
+}
+
+void set_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
+    int index = c[0];
+    void **cookies = (void **) byte8_to_uintptr(&c[1]);
+    void *cookie = (void *) byte8_to_int(&c[9]);
+
+    cookies[index] = cookie;
+}
+
+void get_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
+    int index = c[0];
+    struct descriptor **desc = (struct descriptor **) byte8_to_uintptr(&c[1]);
+    struct descriptor *d = desc[index];
+    
+    uintptr_to_byte8(d, a);
+}
+
+void set_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
+    // DO NOT NEED FOR NOW
+}
+
+void get_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
+    // DO NOT NEED FOR NOW
+}
+
+void set_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
+    // DO NOT NEED FOR NOW
+}
+
+void ffialloc_rx_buff(unsigned char *c, long clen, unsigned char *a, long alen) {
+    if (alen != 8 || clen != 8) {
+        sel4cp_dbg_puts("Len was not of correct size -- alloc_rx_buf\n");
+        return;
+    }
+
+    void *cookie = (void *) byte8_to_uintptr(c);
+    uintptr_t addr;
+    unsigned int len;
+
+    /* Try to grab a buffer from the available ring */
+    if (driver_dequeue(rx_ring.avail_ring, &addr, &len, cookie)) {
+        print("RX Available ring is empty\n");
+        return 0;
+    }
+
+    uintptr_t phys = getPhysAddr(addr);
+
+    uintptr_to_byte8(phys, a);
+}
+
+void ffiupdate_descr_slot(unsigned char *c, long clen, unsigned char *a, long alen) {
+    if (clen != 26) {
+        sel4cp_dbg_puts("Clen was not of correct size -- update_descr_slot\n");
+        return;
+    }
+
+    // Descriptor array address in c[0]
+    struct descriptor *descr = (struct descriptor *) byte8_to_uintptr(c);
+
+    // Index in c[9]
+    int index = c[8];
+
+    // Phys from c[9]
+    uintptr_t phys = byte8_to_uintptr(&c[9]);
+
+    // Len in c[17]
+    int len = c[17];
+
+    // Stat in c[18]
+    int64_t stat = (int64_t) byte8_to_uintptr(&c[18]);
+
+    // Array of size 26
+
+    volatile struct descriptor *d = &descr[index];
+    d->addr = phys;
+    d->len = len;
+
+    /* Ensure all writes to the descriptor complete, before we set the flags
+     * that makes hardware aware of this slot.
+     */
+    __sync_synchronize();
+
+    d->stat = stat;
 }
 
 void init_post()
@@ -423,5 +557,6 @@ protected(sel4cp_channel ch, sel4cp_msginfo msginfo)
 
 void notified(sel4cp_channel ch)
 {
+    current_channel = ch;
     handle_notified(ch);
 }
