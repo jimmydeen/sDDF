@@ -66,6 +66,16 @@ int byte4_to_int(unsigned char *b){
     return ((b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]);
 }
 
+void int_to_byte2(int i, unsigned char *b){
+    /* i is encoded on 2 bytes */
+    b[0] = (i >> 8) & 0xFF;
+    b[1] = i & 0xFF;
+}
+
+int byte2_to_int(unsigned char *b){
+    return ((b[0] << 8) | b[1]);
+}
+
 void int_to_byte8(int i, unsigned char *b){
     /* i is encoded on 8 bytes */
     /* i is cast to long long to ensure having 64 bits */
@@ -84,6 +94,26 @@ int byte8_to_int(unsigned char *b){
     return (((long long) b[0] << 56) | ((long long) b[1] << 48) |
              ((long long) b[2] << 40) | ((long long) b[3] << 32) |
              (b[4] << 24) | (b[5] << 16) | (b[6] << 8) | b[7]);
+}
+
+void uintptr_to_byte8(uintptr_t i, unsigned char *b){
+    /* i is encoded on 8 bytes */
+    /* i is cast to long long to ensure having 64 bits */
+    /* assumes CHAR_BIT = 8. use static assertion checks? */
+    b[0] = (char) ( i >> 56) & 0xFF;
+    b[1] = (char) ( i >> 48) & 0xFF;
+    b[2] = (char) ( i >> 40) & 0xFF;
+    b[3] = (char) ( i >> 32) & 0xFF;
+    b[4] = (char) ( i >> 24) & 0xFF;
+    b[5] = (char) ( i >> 16) & 0xFF;
+    b[6] = (char) ( i >> 8) & 0xFF;
+    b[7] = (char) i & 0xFF;
+}
+
+uintptr_t byte8_to_uintptr(unsigned char *b){
+    return (((uintptr_t) b[0] << 56) | ((uintptr_t) b[1] << 48) |
+             ((uintptr_t) b[2] << 40) | ((uintptr_t) b[3] << 32) |
+             ((uintptr_t) b[4] << 24) | (uintptr_t) (b[5] << 16) | (uintptr_t) (b[6] << 8) | b[7]);
 }
 
 
@@ -314,27 +344,27 @@ void tx_descr_active() {
 }
 
 void get_rx_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
-    int_to_byte8(a, shared_dma_paddr);
+    uintptr_to_byte8(a, shared_dma_paddr);
 }
 
 void get_tx_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
-    int_to_byte8(a, shared_dma_paddr + sizeof(struct descriptor) * RX_COUNT);
+    uintptr_to_byte8(a, shared_dma_paddr + sizeof(struct descriptor) * RX_COUNT);
 }
 
 void get_rx_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
-    int_to_byte8(a, (void **)rx_cookies);
+    uintptr_to_byte8(a, (void **)rx_cookies);
 }
 
 void get_tx_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
-    int_to_byte8(a, (void **)tx_cookies);
+    uintptr_to_byte8(a, (void **)tx_cookies);
 }
 
 void get_rx_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
-    int_to_byte8(a, (volatile struct descriptor *)hw_ring_buffer_vaddr);
+    uintptr_to_byte8(a, (volatile struct descriptor *)hw_ring_buffer_vaddr);
 }
 
 void get_tx_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
-    int_to_byte8(a, (volatile struct descriptor *)(hw_ring_buffer_vaddr + (sizeof(struct descriptor) * RX_COUNT)));
+    uintptr_to_byte8(a, (volatile struct descriptor *)(hw_ring_buffer_vaddr + (sizeof(struct descriptor) * RX_COUNT)));
 }
 
 void init_post()

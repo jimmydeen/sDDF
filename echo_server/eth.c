@@ -323,14 +323,14 @@ void create_ds() {
     rx.tail = 0;
     rx.head = 0;
     get_rx_phys(c_arr, clen, a_arr, alen);
-    uintptr_t shared_dma_paddr = byte8_to_int(a_arr);
+    uintptr_t shared_dma_paddr = byte8_to_uintptr(a_arr);
     rx.phys = shared_dma_paddr;
     get_rx_cookies(c_arr, clen, a_arr, alen);
-    void **rx_cookies = (void **) byte8_to_int(a_arr);
+    void **rx_cookies = (void **) byte8_to_uintptr(a_arr);
     rx.cookies = rx_cookies;
     get_rx_descr(c_arr, clen, a_arr, alen);
     // I belive this is essentially a 256 entry buffer
-    volatile struct descriptor *hw_ring_buffer_vaddr = (volatile struct descriptor *) byte8_to_int(a_arr);
+    volatile struct descriptor *hw_ring_buffer_vaddr = (volatile struct descriptor *) byte8_to_uintptr(a_arr);
     rx.descr = (volatile struct descriptor *)hw_ring_buffer_vaddr;
 
     tx.cnt = TX_COUNT;
@@ -338,14 +338,14 @@ void create_ds() {
     tx.tail = 0;
     tx.head = 0;
     get_tx_phys(c_arr, clen, a_arr, alen);
-    uintptr_t tx_phys = byte8_to_int(a_arr);
+    uintptr_t tx_phys = byte8_to_uintptr(a_arr);
     tx.phys = tx_phys;
     get_tx_cookies(c_arr, clen, a_arr, alen);
-    void **tx_cookies = (void **) byte8_to_int(a_arr);
+    void **tx_cookies = (void **) byte8_to_uintptr(a_arr);
     tx.cookies = tx_cookies;
     get_tx_descr(c_arr, clen, a_arr, alen);
     
-    volatile struct descriptor *tx_hw_ring_buffer_vaddr = (volatile struct descriptor *) byte8_to_int(a_arr);
+    volatile struct descriptor *tx_hw_ring_buffer_vaddr = (volatile struct descriptor *) byte8_to_uintptr(a_arr);
     tx.descr = tx_hw_ring_buffer_vaddr;
 
 }
