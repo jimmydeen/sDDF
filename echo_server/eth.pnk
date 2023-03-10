@@ -25,7 +25,7 @@ var tx_lengths = @base + 600;
 //base = 82
 
 // Called from init entry point
-if argc == -1 {
+if argc == 10 {
   rx_cnt = 256;
   rx_remain = 256 - 2;
   rx_tail = 0;
@@ -406,6 +406,145 @@ if argc == 2 {
     #eth_driver_dequeue_used(dequeue_c, 1, dequeue_a, 24);
 
     driver_ret = ldb dequeue_c;
+  }
+
+}
+
+// Handle eth case - use heap addresses above + 200
+if argc == 1 {
+  var irq_c = @base + 200;
+  var irq_a = @base + 201;
+  #get_irq(irq_c, 0, irq_a, 4);
+
+  var irq_num_1 = (ldb irq_a) << 24;
+  var irq_num_2 = (ldb irq_a + 1) << 16;
+  var irq_num_3 = (ldb irq_a + 2) << 8;
+  var irq_num_4 = (ldb irq_a + 3);
+
+  var e = irq_num_1 | irq_num_2 | irq_num_3 | irq_num_4;
+
+  var irq_mask = (1 << 25) | (1 << 27) | (1 << 22);
+
+  while e & irq_mask == 1 {
+    if e & (1 << 27) {
+      // Complete TX here
+            var cnt_org = 0;
+      var complete_cookie = @base + 130;
+      var head = tx_head;
+      var cnt = 0;
+
+      while head <> rx_tail {
+        if cnt == 0 {
+          // Calculate offset into tx_lengths array
+          var tx_index = tx_lengths;
+          var tx_index_cnt = 0;
+          while tx_index_cnt <= head {
+            tx_index_cnt = tx_index_cnt + 4;
+          }
+
+          var cnt = ldb tx_index;
+
+          // Error cases
+          if cnt == 0 {
+            return 1;
+          }
+
+          if cnt > 256 {
+            return 1;
+          }
+
+          cnt_org = cnt;
+
+          // Get the cookie
+          var get_cookie_c = @base + 138;
+          var get_cookie_a = @base + 148;
+          strb get_cookie_c, head;
+
+          strb get_cookie_c + 1, tx_cookies;
+          strb get_cookie_c + 2, tx_cookies + 1;
+          strb get_cookie_c + 3, tx_cookies + 2;
+          strb get_cookie_c + 4, tx_cookies + 3;
+          strb get_cookie_c + 5, tx_cookies + 4;
+          strb get_cookie_c + 6, tx_cookies + 5;
+          strb get_cookie_c + 7, tx_cookies + 6;
+          strb get_cookie_c + 8, tx_cookies + 7;
+
+          #get_cookies(get_cookie_c, 9, get_cookie_a, 0);
+
+          strb complete_cookie, get_cookie_c + 1;
+          strb complete_cookie + 1, get_cookie_c + 2;
+          strb complete_cookie + 2, get_cookie_c + 3;
+          strb complete_cookie + 3, get_cookie_c + 4;
+          strb complete_cookie + 4, get_cookie_c + 5;
+          strb complete_cookie + 5, get_cookie_c + 6;
+          strb complete_cookie + 6, get_cookie_c + 7;
+          strb complete_cookie + 7, get_cookie_c + 8;
+
+          // Try and release buffer, need to pass cookie to ffi call
+          var buffer_release_c = @base + 150;
+          var buffer_release_a = @base + 159;
+
+          strb buffer_release_c, tx_descr;
+          strb buffer_release_c + 1, tx_descr + 1;
+          strb buffer_release_c + 2, tx_descr + 2;
+          strb buffer_release_c + 3, tx_descr + 3;
+          strb buffer_release_c + 4, tx_descr + 4;
+          strb buffer_release_c + 5, tx_descr + 5;
+          strb buffer_release_c + 6, tx_descr + 6;
+          strb buffer_release_c + 7, tx_descr + 7;
+
+          strb buffer_release_c + 8, head;
+
+          #try_buffer_release(buffer_release_c, 9, buffer_release_a, 1);
+          var try_ret = ldb buffer_release_a;
+          
+          // Can't release buffer
+          if try_ret <> 0 {
+            return 1;
+          }
+
+          // Handling rollover
+          head = head + 1;
+          if head == 256 {
+            head = 0;
+          }
+          
+          if cnt == 0 {
+            cnt = cnt - 1;
+            rx_head = head;
+            rx_remain = rx_remain + 1;
+            var driver_enqueue_c = @base + 150;
+            var driver_enqueue_a = @base + 158;
+
+            // Place cookie into c array and enqueue the buffer it holds back into the control region
+            strb driver_enqueue_c, complete_cookie;
+            strb driver_enqueue_c + 1, complete_cookie + 1;
+            strb driver_enqueue_c + 2, complete_cookie + 2;
+            strb driver_enqueue_c + 3, complete_cookie + 3;
+            strb driver_enqueue_c + 4, complete_cookie + 4;
+            strb driver_enqueue_c + 5, complete_cookie + 5;
+            strb driver_enqueue_c + 6, complete_cookie + 6;
+            strb driver_enqueue_c + 7, complete_cookie + 7;
+
+            #eth_driver_enqueue_avail(driver_enqueue_c, 8, driver_enqueue_a, 0);
+          }
+        }
+      }
+    }
+
+    if e & (1 << 25) {
+      // Handle RX
+
+      // Fill RX buf 
+      i = i + 1;
+    }
+
+    if e & (1 << 22) {
+      // Error here, infinitely loop
+      while 1 == 1 {
+        i = 1;
+      }
+    }
   }
 
 }

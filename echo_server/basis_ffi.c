@@ -297,11 +297,11 @@ eth_setup(void)
     eth->eimr = IRQ_MASK;
 }
 
-void enable_rx() {
+void ffienable_rx() {
     eth->rdar = RDAR_RDAR;
 }
 
-void get_irq(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffiget_irq(unsigned char *c, long clen, unsigned char *a, long alen) {
     uint32_t e = eth->eir & IRQ_MASK;
     /* write to clear events */
     eth->eir = e;
@@ -312,7 +312,7 @@ void get_irq(unsigned char *c, long clen, unsigned char *a, long alen) {
 
 /* Wrappers around the libsharedringbuffer functions for the pancake FFI */
 
-void eth_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffieth_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
 
     // // We expect the calling program to place the appropriate arguments in the following order
     // uintptr_t buffer = (uintptr_t) byte8_to_int(c);
@@ -347,7 +347,7 @@ void eth_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, long
     sel4cp_dbg_puts("Finished buffer dequeue\n");
 }
 
-void eth_driver_enqueue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffieth_driver_enqueue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
     // In this case we assume that the 'c' array will contain the address of the cookie that we need
     
     buff_desc_t *desc = (buff_desc_t *) byte8_to_int(c);
@@ -355,7 +355,7 @@ void eth_driver_enqueue_used(unsigned char *c, long clen, unsigned char *a, long
     enqueue_used(&tx_ring, desc->encoded_addr, desc->len, desc->cookie);
 }
 
-void eth_driver_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffieth_driver_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
     // In this case we assume that the 'c' array will contain the address of the cookie that we need
     
     buff_desc_t *desc = (buff_desc_t *) byte8_to_int(c);
@@ -363,27 +363,27 @@ void eth_driver_enqueue_avail(unsigned char *c, long clen, unsigned char *a, lon
     enqueue_avail(&tx_ring, desc->encoded_addr, desc->len, desc->cookie);
 }
 
-void eth_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffieth_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
     char ret = (char) ring_empty(rx_ring.used_ring);
     a[0] = ret;
 }
 
-void eth_ring_size(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffieth_ring_size(unsigned char *c, long clen, unsigned char *a, long alen) {
     int ret = ring_size(rx_ring.avail_ring);
     int_to_byte4(ret, a);
 }
 
-void synchronise_call() {
+void ffisynchronise_call() {
     __sync_synchronize();
 }
 
-void tx_descr_active() {
+void ffitx_descr_active() {
     if (!(eth->tdar & TDAR_TDAR)) {
         eth->tdar = TDAR_TDAR;
     }
 }
 
-void get_rx_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffiget_rx_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (alen != 8) {
         sel4cp_dbg_puts("Alen not of expected length\n");
         return;
@@ -391,7 +391,7 @@ void get_rx_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
     uintptr_to_byte8(a, shared_dma_paddr);
 }
 
-void get_tx_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffiget_tx_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (alen != 8) {
         sel4cp_dbg_puts("Alen not of expected length\n");
         return;
@@ -399,7 +399,7 @@ void get_tx_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
     uintptr_to_byte8(a, shared_dma_paddr + sizeof(struct descriptor) * RX_COUNT);
 }
 
-void get_rx_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffiget_rx_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (alen != 8) {
         sel4cp_dbg_puts("Alen not of expected length\n");
         return;
@@ -407,7 +407,7 @@ void get_rx_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
     uintptr_to_byte8(a, (void **)rx_cookies);
 }
 
-void get_tx_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffiget_tx_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (alen != 8) {
         sel4cp_dbg_puts("Alen not of expected length\n");
         return;
@@ -415,7 +415,7 @@ void get_tx_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
     uintptr_to_byte8(a, (void **)tx_cookies);
 }
 
-void get_rx_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffiget_rx_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (alen != 8) {
         sel4cp_dbg_puts("Alen not of expected length\n");
         return;
@@ -423,7 +423,7 @@ void get_rx_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
     uintptr_to_byte8(a, (volatile struct descriptor *)hw_ring_buffer_vaddr);
 }
 
-void get_tx_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffiget_tx_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (alen != 8) {
         sel4cp_dbg_puts("Alen not of expected length\n");
         return;
@@ -438,7 +438,7 @@ Index will be in c[0], address starts from c[1]
 The address that we get will be stored starting from a[0]
 */
 
-void get_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffiget_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
     int index = c[0];
     void **cookies = (void **) byte8_to_uintptr(&c[1]);
 
@@ -447,7 +447,7 @@ void get_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
     uintptr_to_byte8(cookie, &c[1]);
 }
 
-void set_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffiset_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
     int index = c[0];
     void *cookie = (void **) byte8_to_uintptr(&c[1]);
     void**cookies = (void *) byte8_to_int(&c[9]);
@@ -455,7 +455,7 @@ void set_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
     cookies[index] = cookie;
 }
 
-void get_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffiget_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
     int index = c[0];
     struct descriptor **desc = (struct descriptor **) byte8_to_uintptr(&c[1]);
     struct descriptor *d = desc[index];
@@ -463,15 +463,15 @@ void get_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
     uintptr_to_byte8(d, a);
 }
 
-void set_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffiset_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
     // DO NOT NEED FOR NOW
 }
 
-void get_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffiget_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
     // DO NOT NEED FOR NOW
 }
 
-void set_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
+void ffiset_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
     // DO NOT NEED FOR NOW
 }
 

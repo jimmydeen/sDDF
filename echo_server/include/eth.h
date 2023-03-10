@@ -211,7 +211,7 @@ struct enet_regs {
 #define TX_CH  2
 #define RX_CH  2
 #define INIT   4
-#define INIT_PAN_DS -1
+#define INIT_PAN_DS 10
 /* Make the minimum frame buffer 2k. This is a bit of a waste of memory, but ensures alignment */
 #define PACKET_BUFFER_SIZE  2048
 #define MAX_PACKET_SIZE     1536
