@@ -726,6 +726,15 @@ if argc == 1 {
     }
 
     // Get next IRQ here
+    #get_irq(irq_c, 0, irq_a, 4);
+
+    irq_num_1 = (ldb irq_a) << 24;
+    irq_num_2 = (ldb irq_a + 1) << 16;
+    irq_num_3 = (ldb irq_a + 2) << 8;
+    irq_num_4 = (ldb irq_a + 3);
+
+    e = irq_num_1 | irq_num_2 | irq_num_3 | irq_num_4;
+
   }
 
 }
