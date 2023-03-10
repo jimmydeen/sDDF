@@ -19,6 +19,9 @@ var arga_arr = @base + 81;
 #get_channel(argc_ar, 0, arga_arr, 1);
 var argc = ldb arga_arr;
 
+// @base + 600 -> @base + 1634 -- reserved for tx_lengths array
+var tx_lengths = @base + 600;
+
 //base = 82
 
 // Called from init entry point
@@ -48,7 +51,7 @@ if argc == -1 {
 // INIT case from notified
 if argc == 4 {
   var c_arr = @base + 83;
-  var a_arr = @bae + 84;
+  var a_arr = @base + 84;
   #init_post(c_arr, 0, a_arr, 0);
   
   //fill_rx_bufs() function:
@@ -203,6 +206,49 @@ if argc == 2 {
       } 
 
       // update the ring slot
+      var update_c = @base + 150;
+      var update_a = @base + 148;
+
+      // Storing descriptor in 0-7
+      strb update_c + 0, tx_descr;
+      strb update_c + 1, tx_descr + 1;
+      strb update_c + 2, tx_descr + 2;
+      strb update_c + 3, tx_descr + 3;
+      strb update_c + 4, tx_descr + 4;
+      strb update_c + 5, tx_descr + 5;
+      strb update_c + 6, tx_descr + 6;
+      strb update_c + 7, tx_descr + 7;
+
+      // Storing index in 8
+      strb update_c + 8, index;
+
+      // Storing phys in 9-16
+      strb update_c + 9, phys;
+      strb update_c + 10, phys + 1;
+      strb update_c + 11, phys + 2;
+      strb update_c + 12, phys + 3;
+      strb update_c + 13, phys + 4;
+      strb update_c + 14, phys + 5;
+      strb update_c + 15, phys + 6;
+      strb update_c + 16, phys + 7;
+
+      // Storing len in 17
+      strb update_c + 17, 0;
+
+      // Storing stat in 18 - 25
+      strb update_c + 18, stat;
+      strb update_c + 19, stat + 1;
+      strb update_c + 20, stat + 2;
+      strb update_c + 21, stat + 3;
+      strb update_c + 22, stat + 4;
+      strb update_c + 23, stat + 5;
+      strb update_c + 24, stat + 6;
+      strb update_c + 25, stat + 7;
+
+      #update_descr_slot(update_c, 26, update_a, 0);
+      // We want to increment len here
+      len = len + 1;  
+
     }
 
     // Set the cookie 
@@ -231,15 +277,27 @@ if argc == 2 {
 
     #set_cookies(set_cookie_c, 17, set_cookie_a, 0);
 
+    // Need to update the tx_length here
+
+    tx_tail = tail_new;
+    tx_remain = tx_remain - 1;
+
+    strb tx_length + (tx_tail * 4), 1;
+
+    #synchronise_call(0,0,0,0);
+    #tx_descr_active(0,0,0,0);
+
     // Dequeue another buffer to service
-    var dequeue_c = @base + 83;
+    // var dequeue_c = @base + 83;
     strb dequeue_c, 1;
     // dequeue_a will be 24 in size
-    var dequeue_a = @base + 84;
+    // var dequeue_a = @base + 84;
 
     #eth_driver_dequeue_used(dequeue_c, 1, dequeue_a, 24);
 
-    var driver_ret = ldb dequeue_c;
+    driver_ret = ldb dequeue_c;
   }
 
 }
+
+return 0;

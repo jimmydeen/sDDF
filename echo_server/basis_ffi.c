@@ -3,6 +3,12 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sel4cp.h>
@@ -11,6 +17,21 @@
 #include "shared_ringbuffer.h"
 #include "util.h"
 #include "basis_ffi.h"
+
+static char cml_memory[2048*2048*2];
+
+unsigned int argc;
+char **argv;
+
+/* exported in cake.S */
+extern void cml_main(void);
+extern void *cml_heap;
+extern void *cml_stack;
+extern void *cml_stackend;
+
+extern char cake_text_begin;
+extern char cake_codebuffer_begin;
+extern char cake_codebuffer_end;
 
 #define IRQ_CH 1
 #define TX_CH  2
@@ -510,6 +531,47 @@ void ffiupdate_descr_slot(unsigned char *c, long clen, unsigned char *a, long al
     d->stat = stat;
 }
 
+void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, long alen) {
+    if (clen != 26) {
+        sel4cp_dbg_puts("Clen was not of correct size -- update_descr_slot\n");
+        return;
+    }
+
+    // Descriptor array address in c[0]
+    struct descriptor *descr = (struct descriptor *) byte8_to_uintptr(c);
+
+    // Index in c[9]
+    int index = c[8];
+
+    // Phys from c[9]
+    uintptr_t phys = byte8_to_uintptr(&c[9]);
+
+    // Len in c[17]
+    int len = c[17];
+
+    // Stat in c[18]
+    int64_t stat = (int64_t) byte8_to_uintptr(&c[18]);
+
+    // Array of size 26
+
+    volatile struct descriptor *d = &descr[index];
+    d->addr = phys;
+    d->len = len;
+
+    /* Ensure all writes to the descriptor complete, before we set the flags
+     * that makes hardware aware of this slot.
+     */
+    __sync_synchronize();
+
+    d->stat = stat;
+
+    // Increment phys here, and store the result 
+    phys++;
+
+    // Store the new phys where the old phys was
+    uintptr_to_byte8(&c[9], phys);
+}
+
 void ffiget_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (clen != 8 || alen != 8) {
         sel4cp_dbg_puts("Len was not of correct size -- get_phys\n");
@@ -542,6 +604,14 @@ void init_post()
     signal = (MONITOR_EP); */
 }
 
+void init_pancake_mem() {
+    unsigned long sz = 2048*2048; // 1 MB unit\n",
+    unsigned long cml_heap_sz = sz;    // Default: 1 MB heap\n", (* TODO: parameterise *)
+    unsigned long cml_stack_sz = sz;   // Default: 1 MB stack\n", (* TODO: parameterise *)
+    cml_heap = cml_memory;
+    cml_stack = cml_heap + cml_heap_sz;
+    cml_stackend = cml_stack + cml_stack_sz;
+}
 
 /* sel4cp Entry Points */
 
@@ -551,7 +621,7 @@ void init(void)
     sel4cp_dbg_puts(": elf PD init function running\n");
 
     eth_setup();
-
+    init_pancake_mem();
     // For now we are going to call handle_notified with a negative integer to get pseudo-pancake 
     // to setup its structs and populate them
     handle_notified(INIT_PAN_DS);
