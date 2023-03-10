@@ -444,7 +444,7 @@ void get_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
 
     void *cookie = cookies[index];
 
-    uintptr_to_byte8(cookie, a);
+    uintptr_to_byte8(cookie, &c[1]);
 }
 
 void set_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -540,7 +540,7 @@ void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, 
     // Descriptor array address in c[0]
     struct descriptor *descr = (struct descriptor *) byte8_to_uintptr(c);
 
-    // Index in c[9]
+    // Index in c[8]
     int index = c[8];
 
     // Phys from c[9]
@@ -571,6 +571,31 @@ void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, 
     // Store the new phys where the old phys was
     uintptr_to_byte8(&c[9], phys);
 }
+
+void ffitry_buffer_release(unsigned char *c, long clen, unsigned char *a, long alen) {
+    if (clen != 9) {
+        sel4cp_dbg_puts("Clen not of correct len -- try_buffer_release\n");
+        a[0] = 1;
+        return;
+    }
+    // Descriptor array address in c[0]
+    struct descriptor *descr = (struct descriptor *) byte8_to_uintptr(c);
+
+    // Index in c[8]
+    int index = c[8];
+
+    volatile struct descriptor *d = &descr[index];
+
+    if (d->stat & TXD_READY) {
+        tx_descr_active();
+        
+        if (d->stat & TXD_READY) {
+            a[0] = 1;
+            return;
+        }
+    }
+    a[0] = 0;
+}   
 
 void ffiget_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (clen != 8 || alen != 8) {
