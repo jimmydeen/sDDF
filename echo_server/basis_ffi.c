@@ -19,7 +19,8 @@
 #include "basis_ffi.h"
 
 static char cml_memory[2048*2048*2];
-
+// Attempt to save the address that notified needs to return to
+void *notified_return;
 unsigned int argc;
 char **argv;
 
@@ -488,14 +489,6 @@ void ffiset_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
     // DO NOT NEED FOR NOW
 }
 
-void ffiget_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
-    // DO NOT NEED FOR NOW
-}
-
-void ffiset_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
-    // DO NOT NEED FOR NOW
-}
-
 void ffialloc_rx_buff(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (alen != 8 || clen != 8) {
         sel4cp_dbg_puts("Len was not of correct size -- alloc_rx_buf\n");
@@ -608,7 +601,9 @@ void ffitry_buffer_release(unsigned char *c, long clen, unsigned char *a, long a
     volatile struct descriptor *d = &descr[index];
 
     if (d->stat & TXD_READY) {
-        tx_descr_active();
+        if (!(eth->tdar & TDAR_TDAR)) {
+            eth->tdar = TDAR_TDAR;
+        }
         
         if (d->stat & TXD_READY) {
             a[0] = 1;
@@ -658,7 +653,7 @@ void ffinotify_rx(unsigned char *c, long clen, unsigned char *a, long alen) {
     sel4cp_notify(RX_CH);
 }
 
-void init_post()
+void ffiinit_post()
 {
     /* Set up shared memory regions */
     ring_init(&rx_ring, (ring_buffer_t *)rx_avail, (ring_buffer_t *)rx_used, NULL, 0);
@@ -725,4 +720,8 @@ void notified(sel4cp_channel ch)
     current_channel = ch;
     // Need to also do some signal ack here or in exit
     handle_notified(ch);
+}
+
+void handle_notified(int ch) {
+    cml_main();
 }

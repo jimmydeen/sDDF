@@ -20,6 +20,10 @@ ifeq ($(strip $(SEL4CP_CONFIG)),)
 $(error SEL4CP_CONFIG must be specified)
 endif
 
+ifeq ($(strip $(CAKE_COMPILER)),)
+$(error CAKE_COMPILER must be specified)
+endif
+
 TOOLCHAIN := aarch64-none-elf
 
 CPU := cortex-a53
@@ -94,6 +98,13 @@ BENCH_OBJS := benchmark/benchmark.o
 IDLE_OBJS := benchmark/idle.o
 
 all: directories $(IMAGE_FILE)
+
+$(BUILD_DIR)/eth.o: $(BUILD_DIR)/eth.S Makefile
+	$(CC) -c -mcpu=$(CPU) $< -o $@
+
+$(BUILD_DIR)/eth.S: eth.pnk Makefile
+	$(CAKE_COMPILER) --target=arm8 --pancake < $< > $@
+
 
 $(BUILD_DIR)/%.o: %.c Makefile
 	$(CC) -c $(CFLAGS) $< -o $@

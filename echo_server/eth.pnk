@@ -56,7 +56,7 @@ if argc == 4 {
   
   //fill_rx_bufs() function:
 
-  #sychronise_call(c_arr, 0, a_arr, 0);
+  #synchronise_call(c_arr, 0, a_arr, 0);
   while rx_remain > 0 {
       // Requesting a buffer
       var cookie = @base + 85;
@@ -145,7 +145,7 @@ if argc == 4 {
   }
 
   // Not sure if ffi protocol checks if we passed through valid addresses
-  #sychronise_call(0, 0, 0, 0);
+  #synchronise_call(0, 0, 0, 0);
 
   if (rx_tail <> rx_head) {
     #enable_rx(0,0,0,0);
@@ -291,7 +291,7 @@ if argc == 2 {
 
     }
 
-    #sychronise_call(0,0,0,0);
+    #synchronise_call(0,0,0,0);
     var tail = rx_tail;
     var tail_new = tail;
     var i = 1;
@@ -428,7 +428,7 @@ if argc == 1 {
   while e & irq_mask == 1 {
     if e & (1 << 27) {
       // Complete TX here
-            var cnt_org = 0;
+      var cnt_org = 0;
       var complete_cookie = @base + 130;
       var head = tx_head;
       var cnt = 0;
@@ -560,7 +560,7 @@ if argc == 1 {
         var check_empty_c = @base + 304;
         var check_empty_a = @base + 313;
 
-        #empty_check(check_empty_c, 9, check_empty_a, 1);
+        #check_empty(check_empty_c, 9, check_empty_a, 1);
 
         var check_empty_ret = ldb check_empty_a;
         
@@ -606,7 +606,7 @@ if argc == 1 {
         strb rx_enqueue_c + 6, get_cookie_c + 6;
         strb rx_enqueue_c + 7, get_cookie_c + 7;
 
-        #eth_driver_dequeue_avail(rx_enqueue_c, 8, rx_enqueue_a, 0);
+        #eth_driver_enqueue_avail(rx_enqueue_c, 8, rx_enqueue_a, 0);
 
         num = num + 1;
 
@@ -622,7 +622,7 @@ if argc == 1 {
       }
 
       // Fill RX buf 
-      #sychronise_call(c_arr, 0, a_arr, 0);
+      #synchronise_call(c_arr, 0, a_arr, 0);
       while rx_remain > 0 {
           // Requesting a buffer
           var cookie = @base + 85;
@@ -711,7 +711,7 @@ if argc == 1 {
       }
 
       // Not sure if ffi protocol checks if we passed through valid addresses
-      #sychronise_call(0, 0, 0, 0);
+      #synchronise_call(0, 0, 0, 0);
 
       if (rx_tail <> rx_head) {
         #enable_rx(0,0,0,0);
