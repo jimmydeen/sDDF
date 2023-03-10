@@ -138,6 +138,27 @@ uintptr_t byte8_to_uintptr(unsigned char *b){
              ((uintptr_t) b[4] << 24) | (uintptr_t) (b[5] << 16) | (uintptr_t) (b[6] << 8) | b[7]);
 }
 
+/* Functions needed by cakeml*/
+void cml_exit(int arg) {
+    sel4cp_dbg_puts("CALLING CML_EXIT\n");
+
+    if (current_channel == IRQ_CH) {
+        have_signal = true;
+        signal_msg = seL4_MessageInfo_new(IRQAckIRQ, 0, 0, 0);
+        signal = (BASE_IRQ_CAP + IRQ_CH);
+    }
+
+    current_channel = 0;
+    void (*foo)(void) = (void (*)())notified_return;
+    foo();
+}
+
+/* Need to come up with a replacement for this clear cache function. Might be worth testing just flushing the entire l1 cache, but might cause issues with returning to this file*/
+void cml_clear() {
+//   __builtin___clear_cache(&cake_codebuffer_begin, &cake_codebuffer_end);
+    sel4cp_dbg_puts("Trying to clear cache\n");
+}
+
 /* FFI call to get the current channel that has notified us. Need to find a better
 way to pass an argument to cml_main() */
 void ffiget_channel(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -597,6 +618,28 @@ void ffitry_buffer_release(unsigned char *c, long clen, unsigned char *a, long a
     a[0] = 0;
 }   
 
+void fficheck_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
+    if (clen != 9) {
+        sel4cp_dbg_puts("Clen not of correct len -- try_buffer_release\n");
+        a[0] = 1;
+        return;
+    }
+    // Descriptor array address in c[0]
+    struct descriptor *descr = (struct descriptor *) byte8_to_uintptr(c);
+
+    // Index in c[8]
+    int index = c[8];
+
+    volatile struct descriptor *d = &descr[index];
+
+    if (d->stat & RXD_EMPTY) {
+        a[0] = 1;
+    } else {
+        a[0] = 0;
+    }
+
+}
+
 void ffiget_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (clen != 8 || alen != 8) {
         sel4cp_dbg_puts("Len was not of correct size -- get_phys\n");
@@ -609,6 +652,10 @@ void ffiget_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
     uintptr_t phys = getPhysAddr(buffer);
 
     uintptr_to_byte8(a, phys);
+}
+
+void ffinotify_rx(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_notify(RX_CH);
 }
 
 void init_post()
@@ -676,5 +723,6 @@ protected(sel4cp_channel ch, sel4cp_msginfo msginfo)
 void notified(sel4cp_channel ch)
 {
     current_channel = ch;
+    // Need to also do some signal ack here or in exit
     handle_notified(ch);
 }
