@@ -154,6 +154,7 @@ if argc == 4 {
 }
 
 // Handle TX case
+// Handle TX case
 if argc == 2 {
   var dequeue_c = @base + 83;
   strb dequeue_c, 1;
@@ -179,10 +180,10 @@ if argc == 2 {
     // Handle the raw_tx function here
     if rx_remain < 1 {
       // Complete TX function here
-
+      i = i + 1;
       if rx_remain < 1 {
         // TX queue lacks space
-        return;
+        return 1;
       }
 
     }
@@ -194,13 +195,13 @@ if argc == 2 {
     while i > 0 {
       i = i - 1;
       var stat = (1 << 15);
-      if (i == 0) {
+      if i == 0 {
         stat = stat | (1 << 10) | (1 << 11);
       }
 
       var index = tail_new;
-      
-      if tail_new + 1 == 256 {
+      var temp_tail = tail_new + 1;
+      if temp_tail == 256 {
         tail_new = 0;
         stat = stat | (1 << 13);
       } 
@@ -282,7 +283,13 @@ if argc == 2 {
     tx_tail = tail_new;
     tx_remain = tx_remain - 1;
 
-    strb tx_length + (tx_tail * 4), 1;
+    var tx_index = tx_length;
+    var pointer_increase = 0;
+    while pointer_increase < tail_new {
+        tx_index = tx_index + 4;
+    }
+
+    strb tx_index, 1;
 
     #synchronise_call(0,0,0,0);
     #tx_descr_active(0,0,0,0);
