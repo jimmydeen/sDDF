@@ -150,8 +150,12 @@ void cml_exit(int arg) {
     }
 
     current_channel = 0;
+    if (notified_return == 0) {
+        sel4cp_dbg_puts("We have not saved notified return properly\n");    
+    }
     void (*foo)(void) = (void (*)())notified_return;
     foo();
+
 }
 
 /* Need to come up with a replacement for this clear cache function. Might be worth testing just flushing the entire l1 cache, but might cause issues with returning to this file*/
@@ -653,12 +657,10 @@ void ffinotify_rx(unsigned char *c, long clen, unsigned char *a, long alen) {
     sel4cp_notify(RX_CH);
 }
 
-void ffiinit_post()
+void ffiinit_post(unsigned char *c, long clen, unsigned char *a, long alen)
 {
-    /* Set up shared memory regions */
-    ring_init(&rx_ring, (ring_buffer_t *)rx_avail, (ring_buffer_t *)rx_used, NULL, 0);
-    ring_init(&tx_ring, (ring_buffer_t *)tx_avail, (ring_buffer_t *)tx_used, NULL, 0);
 
+    sel4cp_dbg_puts("In the init_post function\n");
     // fill_rx_bufs();
     sel4cp_dbg_puts(sel4cp_name);
     sel4cp_dbg_puts(": init complete -- waiting for interrupt\n");
@@ -669,6 +671,14 @@ void ffiinit_post()
     msg = seL4_MessageInfo_new(0, 0, 0, 1);
     seL4_SetMR(0, 0);
     signal = (MONITOR_EP); */
+}
+
+void ffisetup_ring_init(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("In the setup ring init function\n");
+    /* Set up shared memory regions */
+    ring_init(&rx_ring, (ring_buffer_t *)rx_avail, (ring_buffer_t *)rx_used, NULL, 0);
+    ring_init(&tx_ring, (ring_buffer_t *)tx_avail, (ring_buffer_t *)tx_used, NULL, 0);
+    sel4cp_dbg_puts("Finished the setup ring function\n");
 }
 
 void init_pancake_mem() {
@@ -684,6 +694,7 @@ void init_pancake_mem() {
 
 void init(void)
 {
+    notified_return = __builtin_return_address(0);
     sel4cp_dbg_puts(sel4cp_name);
     sel4cp_dbg_puts(": elf PD init function running\n");
 
@@ -691,6 +702,7 @@ void init(void)
     init_pancake_mem();
     // For now we are going to call handle_notified with a negative integer to get pseudo-pancake 
     // to setup its structs and populate them
+
     handle_notified(INIT_PAN_DS);
     /* Now wait for notification from lwip that buffers are initialised */
 }
@@ -698,6 +710,9 @@ void init(void)
 seL4_MessageInfo_t
 protected(sel4cp_channel ch, sel4cp_msginfo msginfo)
 {
+    notified_return = __builtin_return_address(0);
+    sel4cp_dbg_puts("Entering protected function\n");
+
     switch (ch) {
         case INIT:
             // return the MAC address. 
@@ -717,11 +732,24 @@ protected(sel4cp_channel ch, sel4cp_msginfo msginfo)
 
 void notified(sel4cp_channel ch)
 {
+    notified_return = __builtin_return_address(0);
+    
+    sel4cp_dbg_puts("Entering the notified function\n");
+    if (ch == INIT) {
+        sel4cp_dbg_puts("Notified INIT case\n");
+    } else if (ch == TX_CH) {
+        sel4cp_dbg_puts("Notified TX case\n");
+    } else if (ch == RX_CH) {
+        sel4cp_dbg_puts("Notified RX case\n");
+    } else if (ch == IRQ_CH) {
+        sel4cp_dbg_puts("Notified IRQ case\n");
+    }
     current_channel = ch;
     // Need to also do some signal ack here or in exit
     handle_notified(ch);
 }
 
 void handle_notified(int ch) {
+    sel4cp_dbg_puts("Jumping to pancake main function\n");
     cml_main();
 }

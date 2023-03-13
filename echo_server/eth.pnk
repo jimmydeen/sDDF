@@ -52,8 +52,9 @@ if argc == 10 {
 if argc == 4 {
   var c_arr = @base + 83;
   var a_arr = @base + 84;
-  #init_post(c_arr, 0, a_arr, 0);
   
+  #setup_ring_init(0,0,0,0);
+
   //fill_rx_bufs() function:
 
   #synchronise_call(c_arr, 0, a_arr, 0);
@@ -150,6 +151,8 @@ if argc == 4 {
   if (rx_tail <> rx_head) {
     #enable_rx(0,0,0,0);
   }
+  
+  #init_post(c_arr, 0, a_arr, 0);
 
 }
 
