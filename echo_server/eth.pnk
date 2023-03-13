@@ -157,7 +157,6 @@ if argc == 4 {
 }
 
 // Handle TX case
-// Handle TX case
 if argc == 2 {
   var dequeue_c = @base + 83;
   strb dequeue_c, 1;
@@ -172,8 +171,37 @@ if argc == 2 {
   var len = @base + 92;
   var cookie = @base + 100;
 
+  // Copy over the buffer, buffer len and the cookie
+  strb buffer, dequeue_a;
+  strb buffer + 1, dequeue_a + 1;
+  strb buffer + 2, dequeue_a + 2;
+  strb buffer + 3, dequeue_a + 3;
+  strb buffer + 4, dequeue_a + 4;
+  strb buffer + 5, dequeue_a + 5;
+  strb buffer + 6, dequeue_a + 6;
+  strb buffer + 7, dequeue_a + 7;
+
+  strb len, dequeue_a + 8;
+  strb len + 1, dequeue_a + 9;
+  strb len + 2, dequeue_a + 10;
+  strb len + 3, dequeue_a + 11;
+  strb len + 4, dequeue_a + 12;
+  strb len + 5, dequeue_a + 13;
+  strb len + 6, dequeue_a + 14;
+  strb len + 7, dequeue_a + 15;
+
+  strb cookie, dequeue_a + 16;
+  strb cookie + 1, dequeue_a + 17;
+  strb cookie + 2, dequeue_a + 18;
+  strb cookie + 3, dequeue_a + 19;
+  strb cookie + 4, dequeue_a + 20;
+  strb cookie + 5, dequeue_a + 21;
+  strb cookie + 6, dequeue_a + 22;
+  strb cookie + 7, dequeue_a + 23;
+
+
   while tx_remain > 1 {
-    if driver_dequeue == 1 {
+    if driver_ret == 1 {
       break;
     }
 

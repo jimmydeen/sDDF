@@ -210,6 +210,7 @@ dump_mac(uint8_t *mac)
 
 uintptr_t getPhysAddr(uintptr_t virtual)
 {
+    sel4cp_dbg_puts("In the getPhysAddr func\n");
     uint64_t offset = virtual - shared_dma_vaddr;
     uintptr_t phys;
 
@@ -219,6 +220,7 @@ uintptr_t getPhysAddr(uintptr_t virtual)
     }
 
     phys = shared_dma_paddr + offset;
+    sel4cp_dbg_puts("Finishing getPhysAddr function\n");
     return phys;
 }
 
@@ -232,6 +234,7 @@ enable_irqs(volatile struct enet_regs *eth, uint32_t mask)
 
 uintptr_t alloc_rx_buf(size_t buf_size, void **cookie)
 {
+    sel4cp_dbg_puts("Entering the alloc rx_buff function\n");
     uintptr_t addr;
     unsigned int len;
 
@@ -244,6 +247,8 @@ uintptr_t alloc_rx_buf(size_t buf_size, void **cookie)
     uintptr_t phys = getPhysAddr(addr);
 
     return getPhysAddr(addr);
+
+    sel4cp_dbg_puts("Finshed alloc_rx_buff function\n");
 }
 
 static void 
@@ -355,7 +360,7 @@ void ffieth_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, l
         return;
     }
 
-    bool rx_tx = a[0];
+    bool rx_tx = c[0];
 
     sel4cp_dbg_puts("Attempting driver dequeue\n");
     int ret = 0;
@@ -366,10 +371,10 @@ void ffieth_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, l
     }
 
     // Place the values that we have gotten from the dequeue function into the a array
-    uintptr_to_byte8(buffer, c);
-    uintptr_to_byte8(buffer_len, &c[8]);
-    uintptr_to_byte8(cookie, &c[16]);
-
+    uintptr_to_byte8(buffer, a);
+    uintptr_to_byte8(buffer_len, &a[8]);
+    uintptr_to_byte8(cookie, &a[16]);
+    c[0] = ret;
     sel4cp_dbg_puts("Finished buffer dequeue\n");
 }
 
@@ -474,11 +479,14 @@ void ffiget_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
 }
 
 void ffiset_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("Entering set cookies function\n");
     int index = c[0];
     void *cookie = (void **) byte8_to_uintptr(&c[1]);
     void**cookies = (void *) byte8_to_int(&c[9]);
 
     cookies[index] = cookie;
+
+    sel4cp_dbg_puts("Finsihed the set cookies function\n");
 }
 
 void ffiget_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -494,27 +502,33 @@ void ffiset_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
 }
 
 void ffialloc_rx_buff(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("Entering the ffi alloc rx_buff function\n");
+
     if (alen != 8 || clen != 8) {
         sel4cp_dbg_puts("Len was not of correct size -- alloc_rx_buf\n");
         return;
     }
 
-    void *cookie = (void *) byte8_to_uintptr(c);
+    void *cookie = NULL;
     uintptr_t addr;
     unsigned int len;
 
     /* Try to grab a buffer from the available ring */
-    if (driver_dequeue(rx_ring.avail_ring, &addr, &len, cookie)) {
+    if (driver_dequeue(rx_ring.avail_ring, &addr, &len, &cookie)) {
         print("RX Available ring is empty\n");
         return 0;
     }
 
     uintptr_t phys = getPhysAddr(addr);
-
+    sel4cp_dbg_puts("copying physical address over to array\n");
+    uintptr_to_byte8(cookie, c);
     uintptr_to_byte8(phys, a);
+    sel4cp_dbg_puts("Finishing the alloc rx_buff function\n");
+
 }
 
 void ffiupdate_descr_slot(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("Entering the update descr slot function\n");
     if (clen != 26) {
         sel4cp_dbg_puts("Clen was not of correct size -- update_descr_slot\n");
         return;
@@ -588,6 +602,7 @@ void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, 
 
     // Store the new phys where the old phys was
     uintptr_to_byte8(&c[9], phys);
+    sel4cp_dbg_puts("Finished the update descr slot function\n");
 }
 
 void ffitry_buffer_release(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -640,6 +655,7 @@ void fficheck_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
 }
 
 void ffiget_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("Entering the ffi get phys function\n");
     if (clen != 8 || alen != 8) {
         sel4cp_dbg_puts("Len was not of correct size -- get_phys\n");
         return;
@@ -648,9 +664,15 @@ void ffiget_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
     // Buffer address will be in c[0]
     uintptr_t buffer = byte8_to_uintptr(c);
 
+    if (buffer == 0) {
+        sel4cp_dbg_puts("NULL buffer for some reason\n");
+    }
+    sel4cp_dbg_puts("Calling getPhysAddr\n");
     uintptr_t phys = getPhysAddr(buffer);
+    sel4cp_dbg_puts("Returned from getPhysAddr, attempting to place into return array\n");
+    uintptr_to_byte8(phys, a);
 
-    uintptr_to_byte8(a, phys);
+    sel4cp_dbg_puts("Finishing the ffi get phys function\n");
 }
 
 void ffinotify_rx(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -724,7 +746,7 @@ protected(sel4cp_channel ch, sel4cp_msginfo msginfo)
             break;
         default:
             sel4cp_dbg_puts("Received ppc on unexpected channel ");
-            puthex64(ch);
+            // puthex64(ch);
             break;
     }
     return sel4cp_msginfo_new(0, 0);
