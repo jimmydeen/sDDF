@@ -225,16 +225,6 @@ struct descriptor {
     uint32_t addr;
 };
 
-typedef struct {
-    unsigned int cnt;
-    unsigned int remain;
-    unsigned int tail;
-    unsigned int head;
-    volatile struct descriptor *descr;
-    uintptr_t phys;
-    void **cookies;
-} ring_ctx_t;
-
 void handle_notified(int ch);
 
 static void handle_eth();

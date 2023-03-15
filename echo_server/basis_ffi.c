@@ -25,7 +25,7 @@ unsigned int argc;
 char **argv;
 
 /* exported in cake.S */
-extern void cml_main(void);
+extern __attribute__((noreturn)) void cml_main(void);
 extern void *cml_heap;
 extern void *cml_stack;
 extern void *cml_stackend;
@@ -53,6 +53,19 @@ uintptr_t rx_used;
 uintptr_t tx_avail;
 uintptr_t tx_used;
 uintptr_t uart_base;
+
+typedef struct {
+    unsigned int cnt;
+    unsigned int remain;
+    unsigned int tail;
+    unsigned int head;
+    volatile struct descriptor *descr;
+    uintptr_t phys;
+    void **cookies;
+} ring_ctx_t;
+
+ring_ctx_t rx;
+ring_ctx_t tx;
 
 /* Make the minimum frame buffer 2k. This is a bit of a waste of memory, but ensures alignment */
 #define PACKET_BUFFER_SIZE  2048
@@ -143,16 +156,21 @@ uintptr_t byte8_to_uintptr(unsigned char *b){
 void cml_exit(int arg) {
     sel4cp_dbg_puts("CALLING CML_EXIT\n");
 
-    if (current_channel == IRQ_CH) {
-        have_signal = true;
-        signal_msg = seL4_MessageInfo_new(IRQAckIRQ, 0, 0, 0);
-        signal = (BASE_IRQ_CAP + IRQ_CH);
+    // if (current_channel == IRQ_CH) {
+    //     have_signal = true;
+    //     signal_msg = seL4_MessageInfo_new(IRQAckIRQ, 0, 0, 0);
+    //     signal = (BASE_IRQ_CAP + IRQ_CH);
+    //     sel4cp_irq_ack(current_channel);
+    // } 
+     if (current_channel == INIT) {
+        sel4cp_notify(INIT);
     }
-
+    
     current_channel = 0;
     if (notified_return == 0) {
         sel4cp_dbg_puts("We have not saved notified return properly\n");    
     }
+    sel4cp_dbg_puts("Jumping back to sel4cp handler loop\n");
     void (*foo)(void) = (void (*)())notified_return;
     foo();
 
@@ -254,6 +272,22 @@ uintptr_t alloc_rx_buf(size_t buf_size, void **cookie)
 static void 
 eth_setup(void)
 {
+    rx.cnt = RX_COUNT;
+    rx.remain = rx.cnt - 2;
+    rx.tail = 0;
+    rx.head = 0;
+    rx.phys = shared_dma_paddr;
+    rx.cookies = (void **)rx_cookies;
+    rx.descr = (volatile struct descriptor *)hw_ring_buffer_vaddr;  
+
+    tx.cnt = TX_COUNT;
+    tx.remain = tx.cnt - 2;
+    tx.tail = 0;
+    tx.head = 0;
+    tx.phys = shared_dma_paddr + (sizeof(struct descriptor) * RX_COUNT);
+    tx.cookies = (void **)tx_cookies;
+    tx.descr = (volatile struct descriptor *)(hw_ring_buffer_vaddr + (sizeof(struct descriptor) * RX_COUNT));
+
     get_mac_addr(eth, mac);
     sel4cp_dbg_puts("MAC: ");
     dump_mac(mac);
@@ -328,6 +362,34 @@ eth_setup(void)
     eth->eimr = IRQ_MASK;
 }
 
+void ffiget_rx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
+    a[0] = (unsigned char) rx.cnt;
+    a[1] = (unsigned char) rx.remain;
+    a[2] = (unsigned char) rx.tail;
+    a[3] = (unsigned char) rx.head;
+}
+
+void ffiget_tx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
+    a[0] = (unsigned char) tx.cnt;
+    a[1] = (unsigned char) tx.remain;
+    a[2] = (unsigned char) tx.tail;
+    a[3] = (unsigned char) tx.head;
+}
+
+void ffistore_rx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
+    rx.cnt = c[0];
+    rx.remain = c[1];
+    rx.tail = c[2];
+    rx.head = c[3];
+}
+
+void ffistore_tx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
+    tx.cnt = c[0];
+    tx.remain = c[1];
+    tx.tail = c[2];
+    tx.head = c[3];
+}
+
 void ffienable_rx() {
     eth->rdar = RDAR_RDAR;
 }
@@ -374,22 +436,26 @@ void ffieth_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, l
     uintptr_to_byte8(buffer, a);
     uintptr_to_byte8(buffer_len, &a[8]);
     uintptr_to_byte8(cookie, &a[16]);
+    if (ret == 1) {
+        sel4cp_dbg_puts("Driver dequeue failed!\n");
+        c[0] = 1;
+    }
     c[0] = ret;
     sel4cp_dbg_puts("Finished buffer dequeue\n");
 }
 
 void ffieth_driver_enqueue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
     // In this case we assume that the 'c' array will contain the address of the cookie that we need
-    
-    buff_desc_t *desc = (buff_desc_t *) byte8_to_int(c);
+    sel4cp_dbg_puts("Entering the driver enqueue used function\n");
+    buff_desc_t *desc = (buff_desc_t *) byte8_to_uintptr(c);
 
     enqueue_used(&tx_ring, desc->encoded_addr, desc->len, desc->cookie);
 }
 
 void ffieth_driver_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
     // In this case we assume that the 'c' array will contain the address of the cookie that we need
-    
-    buff_desc_t *desc = (buff_desc_t *) byte8_to_int(c);
+    sel4cp_dbg_puts("Entering the driver enqueue avail function\n");
+    buff_desc_t *desc = (buff_desc_t *) byte8_to_uintptr(c);
 
     enqueue_avail(&tx_ring, desc->encoded_addr, desc->len, desc->cookie);
 }
@@ -404,7 +470,12 @@ void ffieth_ring_size(unsigned char *c, long clen, unsigned char *a, long alen) 
     int_to_byte4(ret, a);
 }
 
+void fficalling_init(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("In the init function called from the init entry point\n");
+}
+
 void ffisynchronise_call() {
+    sel4cp_dbg_puts("In the ffi synchronise call function\n");
     __sync_synchronize();
 }
 
@@ -470,8 +541,15 @@ The address that we get will be stored starting from a[0]
 */
 
 void ffiget_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("Entering the get_cookies function\n");
     int index = c[0];
-    void **cookies = (void **) byte8_to_uintptr(&c[1]);
+    int ring = c[1];
+    void **cookies;
+    if (ring == 0) {
+        cookies = tx.cookies;
+    } else {
+        cookies = rx.cookies;
+    }
 
     void *cookie = cookies[index];
 
@@ -481,8 +559,15 @@ void ffiget_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
 void ffiset_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
     sel4cp_dbg_puts("Entering set cookies function\n");
     int index = c[0];
+    int ring = c[9];
     void *cookie = (void **) byte8_to_uintptr(&c[1]);
-    void**cookies = (void *) byte8_to_int(&c[9]);
+    void**cookies;
+    
+    if (ring == 0) {
+        cookies = tx.cookies;
+    } else {
+        cookies = rx.cookies;
+    }
 
     cookies[index] = cookie;
 
@@ -516,6 +601,7 @@ void ffialloc_rx_buff(unsigned char *c, long clen, unsigned char *a, long alen) 
     /* Try to grab a buffer from the available ring */
     if (driver_dequeue(rx_ring.avail_ring, &addr, &len, &cookie)) {
         print("RX Available ring is empty\n");
+        a[8] = 0;
         return 0;
     }
 
@@ -523,19 +609,32 @@ void ffialloc_rx_buff(unsigned char *c, long clen, unsigned char *a, long alen) 
     sel4cp_dbg_puts("copying physical address over to array\n");
     uintptr_to_byte8(cookie, c);
     uintptr_to_byte8(phys, a);
+    a[8] = 1;
     sel4cp_dbg_puts("Finishing the alloc rx_buff function\n");
 
 }
 
+void ffidummy_call(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("Dummy call\n");
+}
+
 void ffiupdate_descr_slot(unsigned char *c, long clen, unsigned char *a, long alen) {
     sel4cp_dbg_puts("Entering the update descr slot function\n");
-    if (clen != 26) {
+    if (clen != 32) {
         sel4cp_dbg_puts("Clen was not of correct size -- update_descr_slot\n");
         return;
     }
+    
+    int ring = c[0];
 
     // Descriptor array address in c[0]
-    struct descriptor *descr = (struct descriptor *) byte8_to_uintptr(c);
+    struct descriptor *descr;
+
+    if (ring == 0) {
+        descr = (struct descriptor *) tx.descr;
+    } else {
+        descr = (struct descriptor *) rx.descr;
+    }
 
     // Index in c[9]
     int index = c[8];
@@ -544,10 +643,10 @@ void ffiupdate_descr_slot(unsigned char *c, long clen, unsigned char *a, long al
     uintptr_t phys = byte8_to_uintptr(&c[9]);
 
     // Len in c[17]
-    int len = c[17];
+    int len = byte8_to_int(&c[17]);
 
     // Stat in c[18]
-    int64_t stat = (int64_t) byte8_to_uintptr(&c[18]);
+    int64_t stat = (int64_t) byte8_to_uintptr(&c[25]);
 
     // Array of size 26
 
@@ -561,6 +660,10 @@ void ffiupdate_descr_slot(unsigned char *c, long clen, unsigned char *a, long al
     __sync_synchronize();
 
     d->stat = stat;
+
+    len++;
+
+    int_to_byte8(index, &c[17]);
 }
 
 void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -569,8 +672,16 @@ void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, 
         return;
     }
 
+    int ring = c[0];
+
     // Descriptor array address in c[0]
-    struct descriptor *descr = (struct descriptor *) byte8_to_uintptr(c);
+    struct descriptor *descr;
+
+    if (ring == 0) {
+        descr = (struct descriptor *) tx.descr;
+    } else {
+        descr = (struct descriptor *) rx.descr;
+    }
 
     // Index in c[8]
     int index = c[8];
@@ -601,18 +712,36 @@ void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, 
     phys++;
 
     // Store the new phys where the old phys was
-    uintptr_to_byte8(&c[9], phys);
+    uintptr_to_byte8(phys, &c[9]);
     sel4cp_dbg_puts("Finished the update descr slot function\n");
 }
 
+void ffibreakpoint_1(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("This is breakpoint 1\n");
+}
+
+void ffibreak_loop(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("We are trying to break out of a loop\n");
+}
+
 void ffitry_buffer_release(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("In the try buffer release function\n");
     if (clen != 9) {
         sel4cp_dbg_puts("Clen not of correct len -- try_buffer_release\n");
         a[0] = 1;
         return;
     }
+
+    int ring = c[0];
+
     // Descriptor array address in c[0]
-    struct descriptor *descr = (struct descriptor *) byte8_to_uintptr(c);
+    struct descriptor *descr;
+
+    if (ring == 0) {
+        descr = (struct descriptor *) tx.descr;
+    } else {
+        descr = (struct descriptor *) rx.descr;
+    }
 
     // Index in c[8]
     int index = c[8];
@@ -679,11 +808,69 @@ void ffinotify_rx(unsigned char *c, long clen, unsigned char *a, long alen) {
     sel4cp_notify(RX_CH);
 }
 
-void ffiinit_post(unsigned char *c, long clen, unsigned char *a, long alen)
-{
 
-    sel4cp_dbg_puts("In the init_post function\n");
-    // fill_rx_bufs();
+static void update_ring_slot(
+    ring_ctx_t *ring,
+    unsigned int idx,
+    uintptr_t phys,
+    uint16_t len,
+    uint16_t stat)
+{
+    volatile struct descriptor *d = &(ring->descr[idx]);
+    d->addr = phys;
+    d->len = len;
+
+    /* Ensure all writes to the descriptor complete, before we set the flags
+     * that makes hardware aware of this slot.
+     */
+    __sync_synchronize();
+
+    d->stat = stat;
+}
+
+static void fill_rx_bufs()
+{
+    ring_ctx_t *ring = &rx;
+    __sync_synchronize();
+    while (ring->remain > 0) {
+        /* request a buffer */
+        void *cookie = NULL;
+        uintptr_t phys = alloc_rx_buf(MAX_PACKET_SIZE, &cookie);
+        if (!phys) {
+            break;
+        }
+        uint16_t stat = RXD_EMPTY;
+        int idx = ring->tail;
+        int new_tail = idx + 1;
+        if (new_tail == ring->cnt) {
+            new_tail = 0;
+            stat |= WRAP;
+        }
+        ring->cookies[idx] = cookie;
+        update_ring_slot(ring, idx, phys, 0, stat);
+        ring->tail = new_tail;
+        /* There is a race condition if add/remove is not synchronized. */
+        ring->remain--;
+    }
+    __sync_synchronize();
+
+    if (ring->tail != ring->head) {
+        /* Make sure rx is enabled */
+        eth->rdar = RDAR_RDAR;
+    }
+}
+
+void ffiinit_post() {
+
+}
+
+void init_post()
+{
+    /* Set up shared memory regions */
+    ring_init(&rx_ring, (ring_buffer_t *)rx_avail, (ring_buffer_t *)rx_used, NULL, 0);
+    ring_init(&tx_ring, (ring_buffer_t *)tx_avail, (ring_buffer_t *)tx_used, NULL, 0);
+
+    fill_rx_bufs();
     sel4cp_dbg_puts(sel4cp_name);
     sel4cp_dbg_puts(": init complete -- waiting for interrupt\n");
     sel4cp_notify(INIT);
@@ -716,17 +903,39 @@ void init_pancake_mem() {
 
 void init(void)
 {
-    notified_return = __builtin_return_address(0);
     sel4cp_dbg_puts(sel4cp_name);
     sel4cp_dbg_puts(": elf PD init function running\n");
-
-    eth_setup();
     init_pancake_mem();
+    eth_setup();
     // For now we are going to call handle_notified with a negative integer to get pseudo-pancake 
     // to setup its structs and populate them
 
-    handle_notified(INIT_PAN_DS);
+    // handle_notified(INIT_PAN_DS);
     /* Now wait for notification from lwip that buffers are initialised */
+}
+
+static void 
+handle_eth(volatile struct enet_regs *eth)
+{
+    uint32_t e = eth->eir & IRQ_MASK;
+    /* write to clear events */
+    eth->eir = e;
+
+    while (e & IRQ_MASK) {
+        // if (e & NETIRQ_TXF) {
+        //     complete_tx(eth);
+        // }
+        // if (e & NETIRQ_RXF) {
+        //     handle_rx(eth);
+        //     fill_rx_bufs(eth);
+        // }
+        // if (e & NETIRQ_EBERR) {
+        //     print("Error: System bus/uDMA");
+        //     while (1);
+        // }
+        e = eth->eir & IRQ_MASK;
+        eth->eir = e;
+    }
 }
 
 seL4_MessageInfo_t
@@ -742,6 +951,7 @@ protected(sel4cp_channel ch, sel4cp_msginfo msginfo)
             sel4cp_mr_set(1, eth->paur);
             return sel4cp_msginfo_new(0, 2);
         case TX_CH:
+            sel4cp_dbg_puts("TX case in protected\n");
             handle_notified(ch);
             break;
         default:
@@ -756,22 +966,36 @@ void notified(sel4cp_channel ch)
 {
     notified_return = __builtin_return_address(0);
     
+    current_channel = ch;
+
     sel4cp_dbg_puts("Entering the notified function\n");
+
     if (ch == INIT) {
         sel4cp_dbg_puts("Notified INIT case\n");
+        init_post();
+        // handle_notified(ch);
+        // sel4cp_notify(INIT);
+
     } else if (ch == TX_CH) {
         sel4cp_dbg_puts("Notified TX case\n");
-    } else if (ch == RX_CH) {
-        sel4cp_dbg_puts("Notified RX case\n");
+        cml_main();
+
     } else if (ch == IRQ_CH) {
         sel4cp_dbg_puts("Notified IRQ case\n");
+        // handle_eth(eth);
+
+        // cml_main();
+        // handle_notified(ch);
+
+    } else {
+        sel4cp_dbg_puts("We have recieved an invalid channel identifier\n");
     }
-    current_channel = ch;
+    // current_channel = ch;
     // Need to also do some signal ack here or in exit
-    handle_notified(ch);
 }
 
 void handle_notified(int ch) {
+    current_channel = ch;
     sel4cp_dbg_puts("Jumping to pancake main function\n");
     cml_main();
 }
