@@ -4,7 +4,8 @@ var get_rx_a = @base + 20;
 
 var get_tx_c = @base + 16;
 var get_tx_a = @base + 20;
-#get_rx_vals(get_tx_c, 0, get_tx_a, 4);
+
+#get_tx_vals(get_tx_c, 0, get_tx_a, 4);
 
 var rx_cnt = ldb get_rx_a;
 var rx_remain = ldb get_rx_a + 1;
@@ -22,7 +23,7 @@ var arga_arr = @base + 81;
 var argc = ldb arga_arr;
 
 // @base + 600 -> @base + 1634 -- reserved for tx_lengths array
-var tx_lengths = @base + 600;
+var tx_lengths = @base + 500;
 
 // Handle TX case
 if argc == 2 {
@@ -40,154 +41,51 @@ if argc == 2 {
   var cookie = @base + 100;
 
   // Copy over the buffer, buffer len and the cookie
-  strb buffer, dequeue_a;
-  strb buffer + 1, dequeue_a + 1;
-  strb buffer + 2, dequeue_a + 2;
-  strb buffer + 3, dequeue_a + 3;
-  strb buffer + 4, dequeue_a + 4;
-  strb buffer + 5, dequeue_a + 5;
-  strb buffer + 6, dequeue_a + 6;
-  strb buffer + 7, dequeue_a + 7;
+  strb buffer, ldb dequeue_a;
+  strb buffer + 1, ldb dequeue_a + 1;
+  strb buffer + 2, ldb dequeue_a + 2;
+  strb buffer + 3, ldb dequeue_a + 3;
+  strb buffer + 4, ldb dequeue_a + 4;
+  strb buffer + 5, ldb dequeue_a + 5;
+  strb buffer + 6, ldb dequeue_a + 6;
+  strb buffer + 7, ldb dequeue_a + 7;
 
-  strb len, dequeue_a + 8;
-  strb len + 1, dequeue_a + 9;
-  strb len + 2, dequeue_a + 10;
-  strb len + 3, dequeue_a + 11;
-  strb len + 4, dequeue_a + 12;
-  strb len + 5, dequeue_a + 13;
-  strb len + 6, dequeue_a + 14;
-  strb len + 7, dequeue_a + 15;
+  strb len, ldb dequeue_a + 8;
+  strb len + 1, ldb dequeue_a + 9;
+  strb len + 2, ldb dequeue_a + 10;
+  strb len + 3, ldb dequeue_a + 11;
+  strb len + 4, ldb dequeue_a + 12;
+  strb len + 5, ldb dequeue_a + 13;
+  strb len + 6, ldb dequeue_a + 14;
+  strb len + 7, ldb dequeue_a + 15;
 
-  strb cookie, dequeue_a + 16;
-  strb cookie + 1, dequeue_a + 17;
-  strb cookie + 2, dequeue_a + 18;
-  strb cookie + 3, dequeue_a + 19;
-  strb cookie + 4, dequeue_a + 20;
-  strb cookie + 5, dequeue_a + 21;
-  strb cookie + 6, dequeue_a + 22;
-  strb cookie + 7, dequeue_a + 23;
+  strb cookie, ldb dequeue_a + 16;
+  strb cookie + 1, ldb dequeue_a + 17;
+  strb cookie + 2, ldb dequeue_a + 18;
+  strb cookie + 3, ldb dequeue_a + 19;
+  strb cookie + 4, ldb dequeue_a + 20;
+  strb cookie + 5, ldb dequeue_a + 21;
+  strb cookie + 6, ldb dequeue_a + 22;
+  strb cookie + 7, ldb dequeue_a + 23;
 
 
   while tx_remain > 1 {
-    if driver_ret == 1 {
+    #dummy_call(0,0,0,0);
+    if driver_ret <> 0 {
+        #break_loop(0,0,0,0);
       break;
     }
+
+    // Temp use phys_a
 
     var phys = @base + 108;
     #get_phys(buffer, 8, phys, 8);
 
     // Handle the raw_tx function here
-    if rx_remain < 1 {
-      // Complete TX function here
-      var cnt_org = 0;
-      var complete_cookie = @base + 130;
-      var head = tx_head;
-      var cnt = 0;
 
-      while head <> rx_tail {
-        if cnt == 0 {
-          // Calculate offset into tx_lengths array
-          var tx_index = tx_lengths;
-          var tx_index_cnt = 0;
-          while tx_index_cnt <= head {
-            tx_index_cnt = tx_index_cnt + 4;
-          }
-
-          var cnt = ldb tx_index;
-
-          // Error cases
-          if cnt == 0 {
-            return 1;
-          }
-
-          if cnt > 256 {
-            return 1;
-          }
-
-          cnt_org = cnt;
-
-          // Get the cookie
-          var get_cookie_c = @base + 138;
-          var get_cookie_a = @base + 148;
-          strb get_cookie_c, head;
-
-          strb get_cookie_c + 1, tx_cookies;
-          strb get_cookie_c + 2, tx_cookies + 1;
-          strb get_cookie_c + 3, tx_cookies + 2;
-          strb get_cookie_c + 4, tx_cookies + 3;
-          strb get_cookie_c + 5, tx_cookies + 4;
-          strb get_cookie_c + 6, tx_cookies + 5;
-          strb get_cookie_c + 7, tx_cookies + 6;
-          strb get_cookie_c + 8, tx_cookies + 7;
-
-          #get_cookies(get_cookie_c, 9, get_cookie_a, 0);
-
-          strb complete_cookie, get_cookie_c + 1;
-          strb complete_cookie + 1, get_cookie_c + 2;
-          strb complete_cookie + 2, get_cookie_c + 3;
-          strb complete_cookie + 3, get_cookie_c + 4;
-          strb complete_cookie + 4, get_cookie_c + 5;
-          strb complete_cookie + 5, get_cookie_c + 6;
-          strb complete_cookie + 6, get_cookie_c + 7;
-          strb complete_cookie + 7, get_cookie_c + 8;
-
-          // Try and release buffer, need to pass cookie to ffi call
-          var buffer_release_c = @base + 150;
-          var buffer_release_a = @base + 159;
-
-          strb buffer_release_c, tx_descr;
-          strb buffer_release_c + 1, tx_descr + 1;
-          strb buffer_release_c + 2, tx_descr + 2;
-          strb buffer_release_c + 3, tx_descr + 3;
-          strb buffer_release_c + 4, tx_descr + 4;
-          strb buffer_release_c + 5, tx_descr + 5;
-          strb buffer_release_c + 6, tx_descr + 6;
-          strb buffer_release_c + 7, tx_descr + 7;
-
-          strb buffer_release_c + 8, head;
-
-          #try_buffer_release(buffer_release_c, 9, buffer_release_a, 1);
-          var try_ret = ldb buffer_release_a;
-          
-          // Can't release buffer
-          if try_ret <> 0 {
-            return 1;
-          }
-
-          // Handling rollover
-          head = head + 1;
-          if head == 256 {
-            head = 0;
-          }
-          
-          if cnt == 0 {
-            cnt = cnt - 1;
-            rx_head = head;
-            rx_remain = rx_remain + 1;
-            var driver_enqueue_c = @base + 150;
-            var driver_enqueue_a = @base + 158;
-
-            // Place cookie into c array and enqueue the buffer it holds back into the control region
-            strb driver_enqueue_c, complete_cookie;
-            strb driver_enqueue_c + 1, complete_cookie + 1;
-            strb driver_enqueue_c + 2, complete_cookie + 2;
-            strb driver_enqueue_c + 3, complete_cookie + 3;
-            strb driver_enqueue_c + 4, complete_cookie + 4;
-            strb driver_enqueue_c + 5, complete_cookie + 5;
-            strb driver_enqueue_c + 6, complete_cookie + 6;
-            strb driver_enqueue_c + 7, complete_cookie + 7;
-
-            #eth_driver_enqueue_avail(driver_enqueue_c, 8, driver_enqueue_a, 0);
-          }
-
-        }
-      }
-
-      if rx_remain < 1 {
-        // TX queue lacks space
-        return 1;
-      }
-
+    if tx_remain < 1 {
+      #breakpoint_1(0,0,0,0);
+      return 1;
     }
 
     #synchronise_call(0,0,0,0);
@@ -213,88 +111,110 @@ if argc == 2 {
       var update_a = @base + 148;
 
       // Storing descriptor in 0-7
-      strb update_c + 0, tx_descr;
-      strb update_c + 1, tx_descr + 1;
-      strb update_c + 2, tx_descr + 2;
-      strb update_c + 3, tx_descr + 3;
-      strb update_c + 4, tx_descr + 4;
-      strb update_c + 5, tx_descr + 5;
-      strb update_c + 6, tx_descr + 6;
-      strb update_c + 7, tx_descr + 7;
-
+      strb update_c + 0, 0;
       // Storing index in 8
       strb update_c + 8, index;
 
+      #breakpoint_1(0,0,0,0);
+
       // Storing phys in 9-16
-      strb update_c + 9, phys;
-      strb update_c + 10, phys + 1;
-      strb update_c + 11, phys + 2;
-      strb update_c + 12, phys + 3;
-      strb update_c + 13, phys + 4;
-      strb update_c + 14, phys + 5;
-      strb update_c + 15, phys + 6;
-      strb update_c + 16, phys + 7;
+      strb update_c + 9, ldb phys;
+      strb update_c + 10, ldb phys + 1;
+      strb update_c + 11, ldb phys + 2;
+      strb update_c + 12, ldb phys + 3;
+      strb update_c + 13, ldb phys + 4;
+      strb update_c + 14, ldb phys + 5;
+      strb update_c + 15, ldb phys + 6;
+      strb update_c + 16, ldb phys + 7;
+
+      #breakpoint_1(0,0,0,0);
 
       // Storing len in 17
-      strb update_c + 17, 0;
+      strb update_c + 17, ldb len;
+      strb update_c + 18, ldb len + 1;
+      strb update_c + 19, ldb len + 2;
+      strb update_c + 20, ldb len + 3;
+      strb update_c + 21, ldb len + 4;
+      strb update_c + 22, ldb len + 5;
+      strb update_c + 23, ldb len + 6;
+      strb update_c + 24, ldb len + 7;
+
+      #breakpoint_1(0,0,0,0);
 
       // Storing stat in 18 - 25
-      strb update_c + 18, stat;
-      strb update_c + 19, stat + 1;
-      strb update_c + 20, stat + 2;
-      strb update_c + 21, stat + 3;
-      strb update_c + 22, stat + 4;
-      strb update_c + 23, stat + 5;
-      strb update_c + 24, stat + 6;
-      strb update_c + 25, stat + 7;
+      strb update_c + 25,  stat;
+      strb update_c + 26,  stat + 1;
+      strb update_c + 27,  stat + 2;
+      strb update_c + 28,  stat + 3;
+      strb update_c + 29,  stat + 4;
+      strb update_c + 30,  stat + 5;
+      strb update_c + 31,  stat + 6;
+      strb update_c + 32,  stat + 7;
 
-      #update_descr_slot(update_c, 26, update_a, 0);
+      #breakpoint_1(0,0,0,0);
+
+      #update_descr_slot_raw_tx(update_c, 32, update_a, 0);
       // We want to increment len here
-      len = len + 1;  
 
+      // Saving phys from 9-16
+      strb phys, ldb update_c + 9;
+      strb phys + 1, ldb update_c + 10;
+      strb phys + 2, ldb update_c + 11;
+      strb phys + 3, ldb update_c + 12;
+      strb phys + 4, ldb update_c + 13;
+      strb phys + 5, ldb update_c + 14;
+      strb phys + 6, ldb update_c + 15;
+      strb phys + 7, ldb update_c + 16;
+
+      // Saving len from 17
+      strb len, ldb update_c + 17;
+      strb len + 1, ldb update_c + 18;
+      strb len + 2, ldb update_c + 19;
+      strb len + 3, ldb update_c + 20;
+      strb len + 4, ldb update_c + 21;
+      strb len + 5, ldb update_c + 22;
+      strb len + 6, ldb update_c + 23;
+      strb len + 7, ldb update_c + 24;
+      
     }
 
     // Set the cookie 
     var set_cookie_c = @base + 109;
     var set_cookie_a = @base + 126;
-    strb set_cookie_c, index;
+    strb set_cookie_c, tail;
 
     // Setting bytes of cookie address
-    strb set_cookie_c + 1, cookie;
-    strb set_cookie_c + 2, cookie + 1;
-    strb set_cookie_c + 3, cookie + 2;
-    strb set_cookie_c + 4, cookie + 3;
-    strb set_cookie_c + 5, cookie + 4;
-    strb set_cookie_c + 6, cookie + 5;
-    strb set_cookie_c + 7, cookie + 6;
-    strb set_cookie_c + 8, cookie + 7;
+    strb set_cookie_c + 1, ldb cookie;
+    strb set_cookie_c + 2, ldb cookie + 1;
+    strb set_cookie_c + 3, ldb cookie + 2;
+    strb set_cookie_c + 4, ldb cookie + 3;
+    strb set_cookie_c + 5, ldb cookie + 4;
+    strb set_cookie_c + 6, ldb cookie + 5;
+    strb set_cookie_c + 7, ldb cookie + 6;
+    strb set_cookie_c + 8, ldb cookie + 7;
 
-    strb set_cookie_c + 9, tx_cookies;
-    strb set_cookie_c + 10, tx_cookies + 1;
-    strb set_cookie_c + 11, tx_cookies + 2;
-    strb set_cookie_c + 12, tx_cookies + 3;
-    strb set_cookie_c + 13, tx_cookies + 4;
-    strb set_cookie_c + 14, tx_cookies + 5;
-    strb set_cookie_c + 15, tx_cookies + 6;
-    strb set_cookie_c + 16, tx_cookies + 7;
+    strb set_cookie_c + 9, 0;
 
     #set_cookies(set_cookie_c, 17, set_cookie_a, 0);
 
     // Need to update the tx_length here
 
+    #breakpoint_1(0,0,0,0);
+
     tx_tail = tail_new;
     tx_remain = tx_remain - 1;
 
-    var tx_index = tx_length;
     var pointer_increase = 0;
-    while pointer_increase < tail_new {
-        tx_index = tx_index + 4;
+    while pointer_increase < tail {
+        pointer_increase = pointer_increase + 1;
     }
 
-    strb tx_index, 1;
+    strb tx_lengths + pointer_increase, 1;
 
     #synchronise_call(0,0,0,0);
     #tx_descr_active(0,0,0,0);
+
+    #breakpoint_1(0,0,0,0);
 
     // Dequeue another buffer to service
     // var dequeue_c = @base + 83;
@@ -303,6 +223,34 @@ if argc == 2 {
     // var dequeue_a = @base + 84;
 
     #eth_driver_dequeue_used(dequeue_c, 1, dequeue_a, 24);
+
+    // Copy over the buffer, buffer len and the cookie
+    strb buffer, ldb dequeue_a;
+    strb buffer + 1, ldb dequeue_a + 1;
+    strb buffer + 2, ldb dequeue_a + 2;
+    strb buffer + 3, ldb dequeue_a + 3;
+    strb buffer + 4, ldb dequeue_a + 4;
+    strb buffer + 5, ldb dequeue_a + 5;
+    strb buffer + 6, ldb dequeue_a + 6;
+    strb buffer + 7, ldb dequeue_a + 7;
+
+    strb len, ldb dequeue_a + 8;
+    strb len + 1, ldb dequeue_a + 9;
+    strb len + 2, ldb dequeue_a + 10;
+    strb len + 3, ldb dequeue_a + 11;
+    strb len + 4, ldb dequeue_a + 12;
+    strb len + 5, ldb dequeue_a + 13;
+    strb len + 6, ldb dequeue_a + 14;
+    strb len + 7, ldb dequeue_a + 15;
+
+    strb cookie, ldb dequeue_a + 16;
+    strb cookie + 1, ldb dequeue_a + 17;
+    strb cookie + 2, ldb dequeue_a + 18;
+    strb cookie + 3, ldb dequeue_a + 19;
+    strb cookie + 4, ldb dequeue_a + 20;
+    strb cookie + 5, ldb dequeue_a + 21;
+    strb cookie + 6, ldb dequeue_a + 22;
+    strb cookie + 7, ldb dequeue_a + 23;
 
     driver_ret = ldb dequeue_c;
   }
@@ -359,38 +307,24 @@ if argc == 1 {
           var get_cookie_a = @base + 148;
           strb get_cookie_c, head;
 
-          strb get_cookie_c + 1, tx_cookies;
-          strb get_cookie_c + 2, tx_cookies + 1;
-          strb get_cookie_c + 3, tx_cookies + 2;
-          strb get_cookie_c + 4, tx_cookies + 3;
-          strb get_cookie_c + 5, tx_cookies + 4;
-          strb get_cookie_c + 6, tx_cookies + 5;
-          strb get_cookie_c + 7, tx_cookies + 6;
-          strb get_cookie_c + 8, tx_cookies + 7;
+          strb get_cookie_c + 1, 0;
 
           #get_cookies(get_cookie_c, 9, get_cookie_a, 0);
 
-          strb complete_cookie, get_cookie_c + 1;
-          strb complete_cookie + 1, get_cookie_c + 2;
-          strb complete_cookie + 2, get_cookie_c + 3;
-          strb complete_cookie + 3, get_cookie_c + 4;
-          strb complete_cookie + 4, get_cookie_c + 5;
-          strb complete_cookie + 5, get_cookie_c + 6;
-          strb complete_cookie + 6, get_cookie_c + 7;
-          strb complete_cookie + 7, get_cookie_c + 8;
+          strb complete_cookie,ldb get_cookie_c + 1;
+          strb complete_cookie + 1, ldb get_cookie_c + 2;
+          strb complete_cookie + 2, ldb get_cookie_c + 3;
+          strb complete_cookie + 3, ldb get_cookie_c + 4;
+          strb complete_cookie + 4, ldb get_cookie_c + 5;
+          strb complete_cookie + 5, ldb get_cookie_c + 6;
+          strb complete_cookie + 6, ldb get_cookie_c + 7;
+          strb complete_cookie + 7, ldb get_cookie_c + 8;
 
           // Try and release buffer, need to pass cookie to ffi call
           var buffer_release_c = @base + 150;
           var buffer_release_a = @base + 159;
 
-          strb buffer_release_c, tx_descr;
-          strb buffer_release_c + 1, tx_descr + 1;
-          strb buffer_release_c + 2, tx_descr + 2;
-          strb buffer_release_c + 3, tx_descr + 3;
-          strb buffer_release_c + 4, tx_descr + 4;
-          strb buffer_release_c + 5, tx_descr + 5;
-          strb buffer_release_c + 6, tx_descr + 6;
-          strb buffer_release_c + 7, tx_descr + 7;
+          strb buffer_release_c, 0;
 
           strb buffer_release_c + 8, head;
 
@@ -472,13 +406,7 @@ if argc == 1 {
         var get_cookie_a = @base + 323;
 
         strb get_cookie_c, rx_cookies;
-        strb get_cookie_c + 1, rx_cookies + 1;
-        strb get_cookie_c + 2, rx_cookies + 2;
-        strb get_cookie_c + 3, rx_cookies + 3;
-        strb get_cookie_c + 4, rx_cookies + 4;
-        strb get_cookie_c + 5, rx_cookies + 5;
-        strb get_cookie_c + 6, rx_cookies + 6;
-        strb get_cookie_c + 7, rx_cookies + 7;
+        strb get_cookie_c + 1, 1;
 
         strb get_cookie_c + 8, head;
 
@@ -496,14 +424,14 @@ if argc == 1 {
         var rx_enqueue_c = @base + 324;
         var rx_enqueue_a = @base + 332;
 
-        strb rx_enqueue_c, get_cookie_c;
-        strb rx_enqueue_c + 1, get_cookie_c + 1;
-        strb rx_enqueue_c + 2, get_cookie_c + 2;
-        strb rx_enqueue_c + 3, get_cookie_c + 3;
-        strb rx_enqueue_c + 4, get_cookie_c + 4;
-        strb rx_enqueue_c + 5, get_cookie_c + 5;
-        strb rx_enqueue_c + 6, get_cookie_c + 6;
-        strb rx_enqueue_c + 7, get_cookie_c + 7;
+        strb rx_enqueue_c, ldb get_cookie_c;
+        strb rx_enqueue_c + 1, ldb get_cookie_c + 1;
+        strb rx_enqueue_c + 2, ldb get_cookie_c + 2;
+        strb rx_enqueue_c + 3, ldb get_cookie_c + 3;
+        strb rx_enqueue_c + 4, ldb get_cookie_c + 4;
+        strb rx_enqueue_c + 5, ldb get_cookie_c + 5;
+        strb rx_enqueue_c + 6, ldb get_cookie_c + 6;
+        strb rx_enqueue_c + 7, ldb get_cookie_c + 7;
 
         #eth_driver_enqueue_avail(rx_enqueue_c, 8, rx_enqueue_a, 0);
 
@@ -554,14 +482,7 @@ if argc == 1 {
           strb set_cookie_c + 7, cookie + 6;
           strb set_cookie_c + 8, cookie + 7;
 
-          strb set_cookie_c + 9, rx_cookies;
-          strb set_cookie_c + 10, rx_cookies + 1;
-          strb set_cookie_c + 11, rx_cookies + 2;
-          strb set_cookie_c + 12, rx_cookies + 3;
-          strb set_cookie_c + 13, rx_cookies + 4;
-          strb set_cookie_c + 14, rx_cookies + 5;
-          strb set_cookie_c + 15, rx_cookies + 6;
-          strb set_cookie_c + 16, rx_cookies + 7;
+          strb set_cookie_c + 9, 1;
 
           #set_cookies(set_cookie_c, 17, set_cookie_a, 0);
 
@@ -569,14 +490,7 @@ if argc == 1 {
           var update_a = @base + 148;
 
           // Storing descriptor in 0-7
-          strb update_c + 0, rx_descr;
-          strb update_c + 1, rx_descr + 1;
-          strb update_c + 2, rx_descr + 2;
-          strb update_c + 3, rx_descr + 3;
-          strb update_c + 4, rx_descr + 4;
-          strb update_c + 5, rx_descr + 5;
-          strb update_c + 6, rx_descr + 6;
-          strb update_c + 7, rx_descr + 7;
+          strb update_c + 0, 1;
 
           // Storing index in 8
           strb update_c + 8, index;
@@ -592,19 +506,26 @@ if argc == 1 {
           strb update_c + 16, phys + 7;
 
           // Storing len in 17
-          strb update_c + 17, 0;
+          strb update_c + 17, len;
+          strb update_c + 18, len + 1;
+          strb update_c + 19, len + 2;
+          strb update_c + 20, len + 3;
+          strb update_c + 21, len + 4;
+          strb update_c + 22, len + 5;
+          strb update_c + 23, len + 6;
+          strb update_c + 24, len + 7;
 
           // Storing stat in 18 - 25
-          strb update_c + 18, stat;
-          strb update_c + 19, stat + 1;
-          strb update_c + 20, stat + 2;
-          strb update_c + 21, stat + 3;
-          strb update_c + 22, stat + 4;
-          strb update_c + 23, stat + 5;
-          strb update_c + 24, stat + 6;
-          strb update_c + 25, stat + 7;
+          strb update_c + 25, stat;
+          strb update_c + 26, stat + 1;
+          strb update_c + 27, stat + 2;
+          strb update_c + 28, stat + 3;
+          strb update_c + 29, stat + 4;
+          strb update_c + 30, stat + 5;
+          strb update_c + 31, stat + 6;
+          strb update_c + 32, stat + 7;
 
-          #update_descr_slot(update_c, 26, update_a, 0);
+          #update_descr_slot(update_c, 32, update_a, 0);
           rx_tail = new_tail;
           rx_remain = rx_remain - 1;
       }

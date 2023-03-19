@@ -18,7 +18,7 @@
 #include "util.h"
 #include "basis_ffi.h"
 
-static char cml_memory[2048*2048*2];
+static char cml_memory[1024*1024*2];
 // Attempt to save the address that notified needs to return to
 void *notified_return;
 unsigned int argc;
@@ -153,18 +153,15 @@ uintptr_t byte8_to_uintptr(unsigned char *b){
 }
 
 /* Functions needed by cakeml*/
-void cml_exit(int arg) {
+__attribute__((noreturn)) void cml_exit(int arg) {
     sel4cp_dbg_puts("CALLING CML_EXIT\n");
 
-    // if (current_channel == IRQ_CH) {
-    //     have_signal = true;
-    //     signal_msg = seL4_MessageInfo_new(IRQAckIRQ, 0, 0, 0);
-    //     signal = (BASE_IRQ_CAP + IRQ_CH);
-    //     sel4cp_irq_ack(current_channel);
-    // } 
-     if (current_channel == INIT) {
-        sel4cp_notify(INIT);
-    }
+    if (current_channel == IRQ_CH) {
+        have_signal = true;
+        signal_msg = seL4_MessageInfo_new(IRQAckIRQ, 0, 0, 0);
+        signal = (BASE_IRQ_CAP + IRQ_CH);
+        sel4cp_irq_ack(current_channel);
+    } 
     
     current_channel = 0;
     if (notified_return == 0) {
@@ -228,7 +225,7 @@ dump_mac(uint8_t *mac)
 
 uintptr_t getPhysAddr(uintptr_t virtual)
 {
-    sel4cp_dbg_puts("In the getPhysAddr func\n");
+    // sel4cp_dbg_puts("In the getPhysAddr func\n");
     uint64_t offset = virtual - shared_dma_vaddr;
     uintptr_t phys;
 
@@ -238,7 +235,7 @@ uintptr_t getPhysAddr(uintptr_t virtual)
     }
 
     phys = shared_dma_paddr + offset;
-    sel4cp_dbg_puts("Finishing getPhysAddr function\n");
+    // sel4cp_dbg_puts("Finishing getPhysAddr function\n");
     return phys;
 }
 
@@ -395,6 +392,7 @@ void ffienable_rx() {
 }
 
 void ffiget_irq(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("In the ffi get irq function");
     uint32_t e = eth->eir & IRQ_MASK;
     /* write to clear events */
     eth->eir = e;
@@ -477,12 +475,15 @@ void fficalling_init(unsigned char *c, long clen, unsigned char *a, long alen) {
 void ffisynchronise_call() {
     sel4cp_dbg_puts("In the ffi synchronise call function\n");
     __sync_synchronize();
+    sel4cp_dbg_puts("Finished the sync function\n");
 }
 
 void ffitx_descr_active() {
+    sel4cp_dbg_puts("In the tx_desr_active func\n");
     if (!(eth->tdar & TDAR_TDAR)) {
         eth->tdar = TDAR_TDAR;
     }
+    sel4cp_dbg_puts("Finished the tx_descr_active func\n");
 }
 
 void ffiget_rx_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -561,7 +562,7 @@ void ffiset_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
     int index = c[0];
     int ring = c[9];
     void *cookie = (void **) byte8_to_uintptr(&c[1]);
-    void**cookies;
+    void **cookies;
     
     if (ring == 0) {
         cookies = tx.cookies;
@@ -646,8 +647,8 @@ void ffiupdate_descr_slot(unsigned char *c, long clen, unsigned char *a, long al
     int len = byte8_to_int(&c[17]);
 
     // Stat in c[18]
-    int64_t stat = (int64_t) byte8_to_uintptr(&c[25]);
-
+    // int64_t stat = (int64_t) byte8_to_uintptr(&c[25]);
+    uint16_t stat = TXD_READY;
     // Array of size 26
 
     volatile struct descriptor *d = &descr[index];
@@ -667,7 +668,8 @@ void ffiupdate_descr_slot(unsigned char *c, long clen, unsigned char *a, long al
 }
 
 void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, long alen) {
-    if (clen != 26) {
+    sel4cp_dbg_puts("Entering the update descr slot raw tx function\n");
+    if (clen != 32) {
         sel4cp_dbg_puts("Clen was not of correct size -- update_descr_slot\n");
         return;
     }
@@ -690,10 +692,10 @@ void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, 
     uintptr_t phys = byte8_to_uintptr(&c[9]);
 
     // Len in c[17]
-    int len = c[17];
+    int len = byte8_to_int(&c[17]);
 
-    // Stat in c[18]
-    int64_t stat = (int64_t) byte8_to_uintptr(&c[18]);
+    // Stat in c[25]
+    int64_t stat = (int64_t) byte8_to_uintptr(&c[25]);
 
     // Array of size 26
 
@@ -710,9 +712,10 @@ void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, 
 
     // Increment phys here, and store the result 
     phys++;
-
+    len++;
     // Store the new phys where the old phys was
     uintptr_to_byte8(phys, &c[9]);
+    uintptr_to_byte8(len, &c[17]);
     sel4cp_dbg_puts("Finished the update descr slot function\n");
 }
 
@@ -760,6 +763,43 @@ void ffitry_buffer_release(unsigned char *c, long clen, unsigned char *a, long a
     }
     a[0] = 0;
 }   
+
+void ffi_raw_tx_sync_region(unsigned char *c, long clen, unsigned char *a, long alen) {
+
+    unsigned int num = c[0];
+    int ring = c[1];
+    uintptr_t phys = byte8_to_uintptr(&c[2]);
+    unsigned int len = byte8_to_int(&c[9]);
+    void *cookie = byte8_to_uintptr(&c[16]);
+
+    __sync_synchronize();
+
+    unsigned int tail = ring->tail;
+    unsigned int tail_new = tail;
+
+    unsigned int i = num;
+    while (i-- > 0) {
+        uint16_t stat = TXD_READY;
+        if (0 == i) {
+            stat |= TXD_ADDCRC | TXD_LAST;
+        }
+
+        unsigned int idx = tail_new;
+        if (++tail_new == TX_COUNT) {
+            tail_new = 0;
+            stat |= WRAP;
+        }
+        update_ring_slot(ring, idx, *phys++, *len++, stat);
+    }
+
+    ring->cookies[tail] = cookie;
+    tx_lengths[tail] = num;
+    ring->tail = tail_new;
+    /* There is a race condition here if add/remove is not synchronized. */
+    ring->remain -= num;
+
+    __sync_synchronize();
+}
 
 void fficheck_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (clen != 9) {
@@ -891,7 +931,7 @@ void ffisetup_ring_init(unsigned char *c, long clen, unsigned char *a, long alen
 }
 
 void init_pancake_mem() {
-    unsigned long sz = 2048*2048; // 1 MB unit\n",
+    unsigned long sz = 1024*1024; // 1 MB unit\n",
     unsigned long cml_heap_sz = sz;    // Default: 1 MB heap\n", (* TODO: parameterise *)
     unsigned long cml_stack_sz = sz;   // Default: 1 MB stack\n", (* TODO: parameterise *)
     cml_heap = cml_memory;
@@ -937,11 +977,160 @@ handle_eth(volatile struct enet_regs *eth)
         eth->eir = e;
     }
 }
+// static void
+// complete_tx(volatile struct enet_regs *eth)
+// {
+//     sel4cp_dbg_puts("In the complete tx function\n");
+//     unsigned int cnt_org;
+//     void *cookie;
+//     ring_ctx_t *ring = &tx;
+//     unsigned int head = ring->head;
+//     unsigned int cnt = 0;
+
+//     while (head != ring->tail) {
+//         sel4cp_dbg_puts("\tLooping in complete tx\n");
+//         if (0 == cnt) {
+//             cnt = tx_lengths[head];
+//             if ((0 == cnt) || (cnt > TX_COUNT)) {
+//                 /* We are not supposed to read 0 here. */
+//                 print("complete_tx with cnt=0 or max");
+//                 return;
+//             }
+//             cnt_org = cnt;
+//             cookie = ring->cookies[head];
+//         }
+
+//         volatile struct descriptor *d = &(ring->descr[head]);
+
+//         /* If this buffer was not sent, we can't release any buffer. */
+//         if (d->stat & TXD_READY) {
+//             /* give it another chance */
+//             if (!(eth->tdar & TDAR_TDAR)) {
+//                 eth->tdar = TDAR_TDAR;
+//             }
+//             if (d->stat & TXD_READY) {
+//                 return;
+//             }
+//         }
+
+//         /* Go to next buffer, handle roll-over. */
+//         if (++head == TX_COUNT) {
+//             head = 0;
+//         }
+
+//         if (0 == --cnt) {
+//             ring->head = head;
+//             /* race condition if add/remove is not synchronized. */
+//             ring->remain += cnt_org;
+//             /* give the buffer back */
+//             buff_desc_t *desc = (buff_desc_t *)cookie;
+
+//             enqueue_avail(&tx_ring, desc->encoded_addr, desc->len, desc->cookie);
+//         }
+//     }
+
+//     /* The only reason to arrive here is when head equals tails. If cnt is not
+//      * zero, then there is some kind of overflow or data corruption. The number
+//      * of tx descriptors holding data can't exceed the space in the ring.
+//      */
+//     if (0 != cnt) {
+//         print("head reached tail, but cnt!= 0");
+//     }
+// }
+
+// static void
+// raw_tx(volatile struct enet_regs *eth, unsigned int num, uintptr_t *phys,
+//                   unsigned int *len, void *cookie)
+// {
+//     sel4cp_dbg_puts("Entering raw tx function\n");
+//     ring_ctx_t *ring = &tx;
+
+//     /* Ensure we have room */
+//     if (ring->remain < num) {
+//         /* not enough room, try to complete some and check again */
+//         complete_tx(eth);
+//         unsigned int rem = ring->remain;
+//         if (rem < num) {
+//             print("TX queue lacks space");
+//             return;
+//         }
+//     }
+
+//     __sync_synchronize();
+
+//     unsigned int tail = ring->tail;
+//     unsigned int tail_new = tail;
+
+//     unsigned int i = num;
+//     while (i-- > 0) {
+//         uint16_t stat = TXD_READY;
+//         if (0 == i) {
+//             stat |= TXD_ADDCRC | TXD_LAST;
+//         }
+
+//         unsigned int idx = tail_new;
+//         if (++tail_new == TX_COUNT) {
+//             tail_new = 0;
+//             stat |= WRAP;
+//         }
+//         update_ring_slot(ring, idx, *phys++, *len++, stat);
+//     }
+
+//     ring->cookies[tail] = cookie;
+//     tx_lengths[tail] = num;
+//     ring->tail = tail_new;
+//     /* There is a race condition here if add/remove is not synchronized. */
+//     ring->remain -= num;
+
+//     __sync_synchronize();
+
+//     if (!(eth->tdar & TDAR_TDAR)) {
+//         eth->tdar = TDAR_TDAR;
+//     }
+
+// }
+
+// static void 
+// handle_tx(volatile struct enet_regs *eth)
+// {
+//     uintptr_t buffer = 0;
+//     unsigned int len = 0;
+//     void *cookie = NULL;
+//     int ret = driver_dequeue(tx_ring.used_ring, &buffer, &len, &cookie);
+//     // We need to put in an empty condition here. 
+//     while ((tx.remain > 1)) {
+//         if (ret != 0) {
+//             sel4cp_dbg_puts("Breaking from the handle tx loop\n");
+//             break;
+//         }
+//         sel4cp_dbg_puts("Looping in handle_tx\n");
+
+//         uintptr_t phys = getPhysAddr(buffer);
+//         raw_tx(eth, 1, &phys, &len, cookie);
+//         ret = driver_dequeue(tx_ring.used_ring, &buffer, &len, &cookie);
+//     }
+
+//     if (ret == 1) {
+//         sel4cp_dbg_puts("The driver dequeue failed\n");
+//     }
+    
+//     if (tx.remain <= 1) {
+//         sel4cp_dbg_puts("tx remian is lesseq to 1\n");
+//     }
+//     if (ret == 0) {
+//         sel4cp_dbg_puts("The driver dequeue worked?\n");
+//     } 
+//     if (tx.remain > 1) {
+//         sel4cp_dbg_puts("Their is remainig in the tx ring\n");
+//     }
+// }
+
 
 seL4_MessageInfo_t
 protected(sel4cp_channel ch, sel4cp_msginfo msginfo)
 {
     notified_return = __builtin_return_address(0);
+    notified_return += 4;
     sel4cp_dbg_puts("Entering protected function\n");
 
     switch (ch) {
@@ -952,11 +1141,11 @@ protected(sel4cp_channel ch, sel4cp_msginfo msginfo)
             return sel4cp_msginfo_new(0, 2);
         case TX_CH:
             sel4cp_dbg_puts("TX case in protected\n");
-            handle_notified(ch);
+            // handle_tx(eth);
             break;
         default:
             sel4cp_dbg_puts("Received ppc on unexpected channel ");
-            // puthex64(ch);
+            puthex64(ch);
             break;
     }
     return sel4cp_msginfo_new(0, 0);
@@ -975,18 +1164,24 @@ void notified(sel4cp_channel ch)
         init_post();
         // handle_notified(ch);
         // sel4cp_notify(INIT);
-
+        return;
     } else if (ch == TX_CH) {
         sel4cp_dbg_puts("Notified TX case\n");
+
         cml_main();
 
     } else if (ch == IRQ_CH) {
         sel4cp_dbg_puts("Notified IRQ case\n");
-        // handle_eth(eth);
-
+        handle_eth(eth);
+        have_signal = true;
+        signal_msg = seL4_MessageInfo_new(IRQAckIRQ, 0, 0, 0);
+        signal = (BASE_IRQ_CAP + IRQ_CH);
+        return;
         // cml_main();
         // handle_notified(ch);
 
+    } else if (ch == 0) {
+        sel4cp_dbg_puts("We have recieved channel 0 for some reason\n");
     } else {
         sel4cp_dbg_puts("We have recieved an invalid channel identifier\n");
     }
