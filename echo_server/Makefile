@@ -100,7 +100,7 @@ IDLE_OBJS := benchmark/idle.o
 all: directories $(IMAGE_FILE)
 
 $(BUILD_DIR)/eth.o: $(BUILD_DIR)/eth.S Makefile
-	$(CC) -c $(CFLAGS) -mcpu=$(CPU) $< -o $@
+	$(CC) -c -x assembler-with-cpp $(CFLAGS) -mcpu=$(CPU) $< -o $@
 
 $(BUILD_DIR)/eth.S: eth.pnk Makefile
 	$(CAKE_COMPILER) --target=arm8 --pancake < $< > $@

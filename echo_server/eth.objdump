@@ -1,0 +1,1056 @@
+
+eth.o:     file format elf64-littleaarch64
+
+
+Disassembly of section .text:
+
+0000000000000000 <cml_main>:
+       0:	90000000 	adrp	x0, 0 <cml_main>
+       4:	91000000 	add	x0, x0, #0x0
+       8:	90000001 	adrp	x1, 0 <cml_main>
+       c:	91000021 	add	x1, x1, #0x0
+      10:	f9400021 	ldr	x1, [x1]
+      14:	90000002 	adrp	x2, 0 <cml_main>
+      18:	91000042 	add	x2, x2, #0x0
+      1c:	f9000022 	str	x2, [x1]
+      20:	90000002 	adrp	x2, 8 <cml_main+0x8>
+      24:	91000042 	add	x2, x2, #0x0
+      28:	f9400042 	ldr	x2, [x2]
+      2c:	90000003 	adrp	x3, 10 <cml_main+0x10>
+      30:	91000063 	add	x3, x3, #0x0
+      34:	f9400063 	ldr	x3, [x3]
+      38:	1400000e 	b	70 <cml_NOTFOUND_0>
+      3c:	d503201f 	nop
+
+0000000000000040 <cake_ffibreakpoint_1>:
+      40:	14000000 	b	0 <ffibreakpoint_1>
+      44:	d503201f 	nop
+      48:	d503201f 	nop
+      4c:	d503201f 	nop
+
+0000000000000050 <cake_clear>:
+      50:	14000000 	b	0 <cml_exit>
+      54:	d503201f 	nop
+      58:	d503201f 	nop
+      5c:	d503201f 	nop
+
+0000000000000060 <cake_exit>:
+      60:	14000000 	b	0 <cml_exit>
+      64:	d503201f 	nop
+      68:	d503201f 	nop
+      6c:	d503201f 	nop
+
+0000000000000070 <cml_NOTFOUND_0>:
+      70:	aa03007e 	.word	0xaa03007e
+      74:	cb0103de 	.word	0xcb0103de
+      78:	d344ffde 	.word	0xd344ffde
+      7c:	d37df3de 	.word	0xd37df3de
+      80:	8b0103de 	.word	0x8b0103de
+      84:	d280ff05 	.word	0xd280ff05
+      88:	8b050021 	.word	0x8b050021
+      8c:	cb050063 	.word	0xcb050063
+      90:	eb01005f 	.word	0xeb01005f
+      94:	540000a3 	.word	0x540000a3
+      98:	eb02007f 	.word	0xeb02007f
+      9c:	54000042 	.word	0x54000042
+      a0:	aa1e03c2 	.word	0xaa1e03c2
+      a4:	14000002 	.word	0x14000002
+      a8:	aa1e03c2 	.word	0xaa1e03c2
+      ac:	d280ff1e 	.word	0xd280ff1e
+      b0:	cb1e0021 	.word	0xcb1e0021
+      b4:	8b1e0063 	.word	0x8b1e0063
+      b8:	aa02005e 	.word	0xaa02005e
+      bc:	cb0103de 	.word	0xcb0103de
+      c0:	b27dd3e5 	.word	0xb27dd3e5
+      c4:	eb1e00bf 	.word	0xeb1e00bf
+      c8:	54000062 	.word	0x54000062
+      cc:	aa010022 	.word	0xaa010022
+      d0:	8b050042 	.word	0x8b050042
+      d4:	cb010042 	.word	0xcb010042
+      d8:	d344fc42 	.word	0xd344fc42
+      dc:	d37cec42 	.word	0xd37cec42
+      e0:	8b010042 	.word	0x8b010042
+      e4:	aa020045 	.word	0xaa020045
+      e8:	cb0100a5 	.word	0xcb0100a5
+      ec:	d341fca5 	.word	0xd341fca5
+      f0:	aa01003c 	.word	0xaa01003c
+      f4:	8b050021 	.word	0x8b050021
+      f8:	aa030079 	.word	0xaa030079
+      fc:	aa02005b 	.word	0xaa02005b
+     100:	f9400382 	.word	0xf9400382
+     104:	d343fc42 	.word	0xd343fc42
+     108:	aa1c039e 	.word	0xaa1c039e
+     10c:	910023de 	.word	0x910023de
+     110:	f94003c3 	.word	0xf94003c3
+     114:	910023de 	.word	0x910023de
+     118:	f94003c6 	.word	0xf94003c6
+     11c:	910023de 	.word	0x910023de
+     120:	f94003c7 	.word	0xf94003c7
+     124:	910023de 	.word	0x910023de
+     128:	f94003c0 	.word	0xf94003c0
+     12c:	d280011e 	.word	0xd280011e
+     130:	cb1e0339 	.word	0xcb1e0339
+     134:	d280001e 	.word	0xd280001e
+     138:	f900033e 	.word	0xf900033e
+     13c:	d280001e 	.word	0xd280001e
+     140:	f900037e 	.word	0xf900037e
+     144:	9100237b 	.word	0x9100237b
+     148:	d280001e 	.word	0xd280001e
+     14c:	f900037e 	.word	0xf900037e
+     150:	9100237b 	.word	0x9100237b
+     154:	d280001e 	.word	0xd280001e
+     158:	f900037e 	.word	0xf900037e
+     15c:	9100237b 	.word	0x9100237b
+     160:	d280001e 	.word	0xd280001e
+     164:	f900037e 	.word	0xf900037e
+     168:	9100237b 	.word	0x9100237b
+     16c:	d280001e 	.word	0xd280001e
+     170:	f900037e 	.word	0xf900037e
+     174:	9100237b 	.word	0x9100237b
+     178:	d280001e 	.word	0xd280001e
+     17c:	f900037e 	.word	0xf900037e
+     180:	9100237b 	.word	0x9100237b
+     184:	d280001e 	.word	0xd280001e
+     188:	f900037e 	.word	0xf900037e
+     18c:	9100237b 	.word	0x9100237b
+     190:	d280001e 	.word	0xd280001e
+     194:	f900037e 	.word	0xf900037e
+     198:	9100237b 	.word	0x9100237b
+     19c:	d280001e 	.word	0xd280001e
+     1a0:	f900037e 	.word	0xf900037e
+     1a4:	9100237b 	.word	0x9100237b
+     1a8:	d280001e 	.word	0xd280001e
+     1ac:	f900037e 	.word	0xf900037e
+     1b0:	9100237b 	.word	0x9100237b
+     1b4:	d280001e 	.word	0xd280001e
+     1b8:	f900037e 	.word	0xf900037e
+     1bc:	9100237b 	.word	0x9100237b
+     1c0:	d280001e 	.word	0xd280001e
+     1c4:	f900037e 	.word	0xf900037e
+     1c8:	9100237b 	.word	0x9100237b
+     1cc:	d280001e 	.word	0xd280001e
+     1d0:	f900037e 	.word	0xf900037e
+     1d4:	9100237b 	.word	0x9100237b
+     1d8:	d280001e 	.word	0xd280001e
+     1dc:	f900037e 	.word	0xf900037e
+     1e0:	9100237b 	.word	0x9100237b
+     1e4:	d280001e 	.word	0xd280001e
+     1e8:	f900037e 	.word	0xf900037e
+     1ec:	9100237b 	.word	0x9100237b
+     1f0:	d280001e 	.word	0xd280001e
+     1f4:	f900037e 	.word	0xf900037e
+     1f8:	9100237b 	.word	0x9100237b
+     1fc:	d280001e 	.word	0xd280001e
+     200:	f900037e 	.word	0xf900037e
+     204:	9100237b 	.word	0x9100237b
+     208:	d280001e 	.word	0xd280001e
+     20c:	f900037e 	.word	0xf900037e
+     210:	9100237b 	.word	0x9100237b
+     214:	d280001e 	.word	0xd280001e
+     218:	f900037e 	.word	0xf900037e
+     21c:	9100237b 	.word	0x9100237b
+     220:	d280001e 	.word	0xd280001e
+     224:	f900037e 	.word	0xf900037e
+     228:	9100237b 	.word	0x9100237b
+     22c:	d280001e 	.word	0xd280001e
+     230:	f900037e 	.word	0xf900037e
+     234:	9100237b 	.word	0x9100237b
+     238:	d280001e 	.word	0xd280001e
+     23c:	f900037e 	.word	0xf900037e
+     240:	9100237b 	.word	0x9100237b
+     244:	d280001e 	.word	0xd280001e
+     248:	f900037e 	.word	0xf900037e
+     24c:	9100237b 	.word	0x9100237b
+     250:	d280001e 	.word	0xd280001e
+     254:	f900037e 	.word	0xf900037e
+     258:	9100237b 	.word	0x9100237b
+     25c:	d280001e 	.word	0xd280001e
+     260:	f900037e 	.word	0xf900037e
+     264:	9100237b 	.word	0x9100237b
+     268:	d280001e 	.word	0xd280001e
+     26c:	f900037e 	.word	0xf900037e
+     270:	9100237b 	.word	0x9100237b
+     274:	d280001e 	.word	0xd280001e
+     278:	f900037e 	.word	0xf900037e
+     27c:	9100237b 	.word	0x9100237b
+     280:	d280001e 	.word	0xd280001e
+     284:	f900037e 	.word	0xf900037e
+     288:	9100237b 	.word	0x9100237b
+     28c:	d280001e 	.word	0xd280001e
+     290:	f900037e 	.word	0xf900037e
+     294:	9100237b 	.word	0x9100237b
+     298:	d280001e 	.word	0xd280001e
+     29c:	f900037e 	.word	0xf900037e
+     2a0:	9100237b 	.word	0x9100237b
+     2a4:	d280001e 	.word	0xd280001e
+     2a8:	f900037e 	.word	0xf900037e
+     2ac:	9100237b 	.word	0x9100237b
+     2b0:	d280001e 	.word	0xd280001e
+     2b4:	f900037e 	.word	0xf900037e
+     2b8:	9100237b 	.word	0x9100237b
+     2bc:	f9000366 	.word	0xf9000366
+     2c0:	9100237b 	.word	0x9100237b
+     2c4:	f9000363 	.word	0xf9000363
+     2c8:	9100237b 	.word	0x9100237b
+     2cc:	f9000360 	.word	0xf9000360
+     2d0:	9100237b 	.word	0x9100237b
+     2d4:	f9000367 	.word	0xf9000367
+     2d8:	9100237b 	.word	0x9100237b
+     2dc:	d280001e 	.word	0xd280001e
+     2e0:	f900037e 	.word	0xf900037e
+     2e4:	9100237b 	.word	0x9100237b
+     2e8:	f9000362 	.word	0xf9000362
+     2ec:	9100237b 	.word	0x9100237b
+     2f0:	d280001e 	.word	0xd280001e
+     2f4:	f900037e 	.word	0xf900037e
+     2f8:	9100237b 	.word	0x9100237b
+     2fc:	f900037c 	.word	0xf900037c
+     300:	9100237b 	.word	0x9100237b
+     304:	d280001e 	.word	0xd280001e
+     308:	f900037e 	.word	0xf900037e
+     30c:	9100237b 	.word	0x9100237b
+     310:	d280001e 	.word	0xd280001e
+     314:	f900037e 	.word	0xf900037e
+     318:	9100237b 	.word	0x9100237b
+     31c:	d280001e 	.word	0xd280001e
+     320:	f900037e 	.word	0xf900037e
+     324:	9100237b 	.word	0x9100237b
+     328:	f9000361 	.word	0xf9000361
+     32c:	9100237b 	.word	0x9100237b
+     330:	f9000361 	.word	0xf9000361
+     334:	9100237b 	.word	0x9100237b
+     338:	f9000365 	.word	0xf9000365
+     33c:	9100237b 	.word	0x9100237b
+     340:	f9000361 	.word	0xf9000361
+     344:	9100237b 	.word	0x9100237b
+     348:	f900037c 	.word	0xf900037c
+     34c:	9100237b 	.word	0x9100237b
+     350:	1000005e 	.word	0x1000005e
+     354:	1400010d 	.word	0x1400010d
+
+0000000000000358 <cml_NOTFOUND_1>:
+     358:	d2800000 	mov	x0, #0x0                   	// #0
+     35c:	17ffff41 	b	60 <cake_exit>
+
+0000000000000360 <cml_NOTFOUND_2>:
+     360:	d2800040 	mov	x0, #0x2                   	// #2
+     364:	17ffff3f 	b	60 <cake_exit>
+
+0000000000000368 <cml_NOTFOUND_3>:
+     368:	f81d0360 	stur	x0, [x27, #-48]
+     36c:	f81f837e 	stur	x30, [x27, #-8]
+     370:	d2800000 	mov	x0, #0x0                   	// #0
+     374:	aa000001 	orr	x1, x0, x0
+     378:	f85e0362 	ldur	x2, [x27, #-32]
+     37c:	aa000003 	orr	x3, x0, x0
+     380:	f85c0365 	ldur	x5, [x27, #-64]
+     384:	aa000006 	orr	x6, x0, x0
+     388:	aa000008 	orr	x8, x0, x0
+     38c:	f24000bf 	tst	x5, #0x1
+     390:	54000500 	b.eq	430 <cml_NOTFOUND_3+0xc8>  // b.none
+     394:	aa0500be 	orr	x30, x5, x5
+     398:	aa1c0380 	orr	x0, x28, x28
+     39c:	d34cffde 	lsr	x30, x30, #12
+     3a0:	d37df3de 	lsl	x30, x30, #3
+     3a4:	8b0003de 	add	x30, x30, x0
+     3a8:	f94003c0 	ldr	x0, [x30]
+     3ac:	f240041f 	tst	x0, #0x3
+     3b0:	54000360 	b.eq	41c <cml_NOTFOUND_3+0xb4>  // b.none
+     3b4:	d360fc00 	lsr	x0, x0, #32
+     3b8:	91000400 	add	x0, x0, #0x1
+     3bc:	aa000006 	orr	x6, x0, x0
+     3c0:	aa1e03c1 	orr	x1, x30, x30
+     3c4:	aa00001e 	orr	x30, x0, x0
+     3c8:	f10003df 	cmp	x30, #0x0
+     3cc:	540000e0 	b.eq	3e8 <cml_NOTFOUND_3+0x80>  // b.none
+     3d0:	f9400020 	ldr	x0, [x1]
+     3d4:	91002021 	add	x1, x1, #0x8
+     3d8:	d10007de 	sub	x30, x30, #0x1
+     3dc:	f9000040 	str	x0, [x2]
+     3e0:	91002042 	add	x2, x2, #0x8
+     3e4:	17fffff9 	b	3c8 <cml_NOTFOUND_3+0x60>
+     3e8:	aa0600de 	orr	x30, x6, x6
+     3ec:	d37df3de 	lsl	x30, x30, #3
+     3f0:	cb1e0021 	sub	x1, x1, x30
+     3f4:	aa03007e 	orr	x30, x3, x3
+     3f8:	d37ef7de 	lsl	x30, x30, #2
+     3fc:	f900003e 	str	x30, [x1]
+     400:	aa030060 	orr	x0, x3, x3
+     404:	d34920a5 	lsl	x5, x5, #55
+     408:	d377fca5 	lsr	x5, x5, #55
+     40c:	d374cc00 	lsl	x0, x0, #12
+     410:	aa0000a5 	orr	x5, x5, x0
+     414:	8b060063 	add	x3, x3, x6
+     418:	14000006 	b	430 <cml_NOTFOUND_3+0xc8>
+     41c:	d342fc00 	lsr	x0, x0, #2
+     420:	d374cc00 	lsl	x0, x0, #12
+     424:	d34920a5 	lsl	x5, x5, #55
+     428:	d377fca5 	lsr	x5, x5, #55
+     42c:	aa0000a5 	orr	x5, x5, x0
+     430:	f81c0365 	stur	x5, [x27, #-64]
+     434:	aa0500a7 	orr	x7, x5, x5
+     438:	d34cfce7 	lsr	x7, x7, #12
+     43c:	d37df0e7 	lsl	x7, x7, #3
+     440:	f85e0369 	ldur	x9, [x27, #-32]
+     444:	8b0900e7 	add	x7, x7, x9
+     448:	f81b8367 	stur	x7, [x27, #-72]
+     44c:	d2800007 	mov	x7, #0x0                   	// #0
+     450:	aa080109 	orr	x9, x8, x8
+     454:	8b190129 	add	x9, x9, x25
+     458:	f9400129 	ldr	x9, [x9]
+     45c:	aa0700e8 	orr	x8, x7, x7
+     460:	ea09013f 	tst	x9, x9
+     464:	540009c0 	b.eq	59c <cml_NOTFOUND_3+0x234>  // b.none
+     468:	aa09013e 	orr	x30, x9, x9
+     46c:	d1000529 	sub	x9, x9, #0x1
+     470:	91002108 	add	x8, x8, #0x8
+     474:	ea1e03df 	tst	x30, x30
+     478:	540008a0 	b.eq	58c <cml_NOTFOUND_3+0x224>  // b.none
+     47c:	f85a8367 	ldur	x7, [x27, #-88]
+     480:	8b0900e7 	add	x7, x7, x9
+     484:	d37df0e7 	lsl	x7, x7, #3
+     488:	f94000e7 	ldr	x7, [x7]
+     48c:	f10008ff 	cmp	x7, #0x2
+     490:	54000703 	b.cc	570 <cml_NOTFOUND_3+0x208>  // b.lo, b.ul, b.last
+     494:	f24000ff 	tst	x7, #0x1
+     498:	54000660 	b.eq	564 <cml_NOTFOUND_3+0x1fc>  // b.none
+     49c:	aa080105 	orr	x5, x8, x8
+     4a0:	8b1900a5 	add	x5, x5, x25
+     4a4:	f94000a5 	ldr	x5, [x5]
+     4a8:	d341fce7 	lsr	x7, x7, #1
+     4ac:	f24000bf 	tst	x5, #0x1
+     4b0:	54000500 	b.eq	550 <cml_NOTFOUND_3+0x1e8>  // b.none
+     4b4:	aa0500be 	orr	x30, x5, x5
+     4b8:	aa1c0380 	orr	x0, x28, x28
+     4bc:	d34cffde 	lsr	x30, x30, #12
+     4c0:	d37df3de 	lsl	x30, x30, #3
+     4c4:	8b0003de 	add	x30, x30, x0
+     4c8:	f94003c0 	ldr	x0, [x30]
+     4cc:	f240041f 	tst	x0, #0x3
+     4d0:	54000360 	b.eq	53c <cml_NOTFOUND_3+0x1d4>  // b.none
+     4d4:	d360fc00 	lsr	x0, x0, #32
+     4d8:	91000400 	add	x0, x0, #0x1
+     4dc:	aa000006 	orr	x6, x0, x0
+     4e0:	aa1e03c1 	orr	x1, x30, x30
+     4e4:	aa00001e 	orr	x30, x0, x0
+     4e8:	f10003df 	cmp	x30, #0x0
+     4ec:	540000e0 	b.eq	508 <cml_NOTFOUND_3+0x1a0>  // b.none
+     4f0:	f9400020 	ldr	x0, [x1]
+     4f4:	91002021 	add	x1, x1, #0x8
+     4f8:	d10007de 	sub	x30, x30, #0x1
+     4fc:	f9000040 	str	x0, [x2]
+     500:	91002042 	add	x2, x2, #0x8
+     504:	17fffff9 	b	4e8 <cml_NOTFOUND_3+0x180>
+     508:	aa0600de 	orr	x30, x6, x6
+     50c:	d37df3de 	lsl	x30, x30, #3
+     510:	cb1e0021 	sub	x1, x1, x30
+     514:	aa03007e 	orr	x30, x3, x3
+     518:	d37ef7de 	lsl	x30, x30, #2
+     51c:	f900003e 	str	x30, [x1]
+     520:	aa030060 	orr	x0, x3, x3
+     524:	d34920a5 	lsl	x5, x5, #55
+     528:	d377fca5 	lsr	x5, x5, #55
+     52c:	d374cc00 	lsl	x0, x0, #12
+     530:	aa0000a5 	orr	x5, x5, x0
+     534:	8b060063 	add	x3, x3, x6
+     538:	14000006 	b	550 <cml_NOTFOUND_3+0x1e8>
+     53c:	d342fc00 	lsr	x0, x0, #2
+     540:	d374cc00 	lsl	x0, x0, #12
+     544:	d34920a5 	lsl	x5, x5, #55
+     548:	d377fca5 	lsr	x5, x5, #55
+     54c:	aa0000a5 	orr	x5, x5, x0
+     550:	8b080339 	add	x25, x25, x8
+     554:	f9000325 	str	x5, [x25]
+     558:	cb080339 	sub	x25, x25, x8
+     55c:	91002108 	add	x8, x8, #0x8
+     560:	14000003 	b	56c <cml_NOTFOUND_3+0x204>
+     564:	d341fce7 	lsr	x7, x7, #1
+     568:	91002108 	add	x8, x8, #0x8
+     56c:	17ffffc8 	b	48c <cml_NOTFOUND_3+0x124>
+     570:	f85a837e 	ldur	x30, [x27, #-88]
+     574:	8b0903de 	add	x30, x30, x9
+     578:	d37df3de 	lsl	x30, x30, #3
+     57c:	f94003de 	ldr	x30, [x30]
+     580:	91000529 	add	x9, x9, #0x1
+     584:	d37fffde 	lsr	x30, x30, #63
+     588:	17ffffbb 	b	474 <cml_NOTFOUND_3+0x10c>
+     58c:	aa080109 	orr	x9, x8, x8
+     590:	8b190129 	add	x9, x9, x25
+     594:	f9400129 	ldr	x9, [x9]
+     598:	17ffffb2 	b	460 <cml_NOTFOUND_3+0xf8>
+     59c:	f85e0368 	ldur	x8, [x27, #-32]
+     5a0:	eb08005f 	cmp	x2, x8
+     5a4:	54000780 	b.eq	694 <cml_NOTFOUND_3+0x32c>  // b.none
+     5a8:	f9400107 	ldr	x7, [x8]
+     5ac:	f27e00ff 	tst	x7, #0x4
+     5b0:	540000c0 	b.eq	5c8 <cml_NOTFOUND_3+0x260>  // b.none
+     5b4:	d360fce7 	lsr	x7, x7, #32
+     5b8:	910004e7 	add	x7, x7, #0x1
+     5bc:	d37df0e7 	lsl	x7, x7, #3
+     5c0:	8b070108 	add	x8, x8, x7
+     5c4:	14000033 	b	690 <cml_NOTFOUND_3+0x328>
+     5c8:	d360fce7 	lsr	x7, x7, #32
+     5cc:	91002108 	add	x8, x8, #0x8
+     5d0:	f10000ff 	cmp	x7, #0x0
+     5d4:	540005e0 	b.eq	690 <cml_NOTFOUND_3+0x328>  // b.none
+     5d8:	f9400105 	ldr	x5, [x8]
+     5dc:	d10004e7 	sub	x7, x7, #0x1
+     5e0:	f24000bf 	tst	x5, #0x1
+     5e4:	54000500 	b.eq	684 <cml_NOTFOUND_3+0x31c>  // b.none
+     5e8:	aa0500be 	orr	x30, x5, x5
+     5ec:	aa1c0380 	orr	x0, x28, x28
+     5f0:	d34cffde 	lsr	x30, x30, #12
+     5f4:	d37df3de 	lsl	x30, x30, #3
+     5f8:	8b0003de 	add	x30, x30, x0
+     5fc:	f94003c0 	ldr	x0, [x30]
+     600:	f240041f 	tst	x0, #0x3
+     604:	54000360 	b.eq	670 <cml_NOTFOUND_3+0x308>  // b.none
+     608:	d360fc00 	lsr	x0, x0, #32
+     60c:	91000400 	add	x0, x0, #0x1
+     610:	aa000006 	orr	x6, x0, x0
+     614:	aa1e03c1 	orr	x1, x30, x30
+     618:	aa00001e 	orr	x30, x0, x0
+     61c:	f10003df 	cmp	x30, #0x0
+     620:	540000e0 	b.eq	63c <cml_NOTFOUND_3+0x2d4>  // b.none
+     624:	f9400020 	ldr	x0, [x1]
+     628:	91002021 	add	x1, x1, #0x8
+     62c:	d10007de 	sub	x30, x30, #0x1
+     630:	f9000040 	str	x0, [x2]
+     634:	91002042 	add	x2, x2, #0x8
+     638:	17fffff9 	b	61c <cml_NOTFOUND_3+0x2b4>
+     63c:	aa0600de 	orr	x30, x6, x6
+     640:	d37df3de 	lsl	x30, x30, #3
+     644:	cb1e0021 	sub	x1, x1, x30
+     648:	aa03007e 	orr	x30, x3, x3
+     64c:	d37ef7de 	lsl	x30, x30, #2
+     650:	f900003e 	str	x30, [x1]
+     654:	aa030060 	orr	x0, x3, x3
+     658:	d34920a5 	lsl	x5, x5, #55
+     65c:	d377fca5 	lsr	x5, x5, #55
+     660:	d374cc00 	lsl	x0, x0, #12
+     664:	aa0000a5 	orr	x5, x5, x0
+     668:	8b060063 	add	x3, x3, x6
+     66c:	14000006 	b	684 <cml_NOTFOUND_3+0x31c>
+     670:	d342fc00 	lsr	x0, x0, #2
+     674:	d374cc00 	lsl	x0, x0, #12
+     678:	d34920a5 	lsl	x5, x5, #55
+     67c:	d377fca5 	lsr	x5, x5, #55
+     680:	aa0000a5 	orr	x5, x5, x0
+     684:	f9000105 	str	x5, [x8]
+     688:	91002108 	add	x8, x8, #0x8
+     68c:	17ffffd1 	b	5d0 <cml_NOTFOUND_3+0x268>
+     690:	17ffffc4 	b	5a0 <cml_NOTFOUND_3+0x238>
+     694:	aa1c039e 	orr	x30, x28, x28
+     698:	f85e0360 	ldur	x0, [x27, #-32]
+     69c:	f85e8361 	ldur	x1, [x27, #-24]
+     6a0:	8b000021 	add	x1, x1, x0
+     6a4:	aa00001c 	orr	x28, x0, x0
+     6a8:	f81e037e 	stur	x30, [x27, #-32]
+     6ac:	f85f837e 	ldur	x30, [x27, #-8]
+     6b0:	f81f8368 	stur	x8, [x27, #-8]
+     6b4:	f81f0361 	stur	x1, [x27, #-16]
+     6b8:	f81d8361 	stur	x1, [x27, #-40]
+     6bc:	f85d0360 	ldur	x0, [x27, #-48]
+     6c0:	cb080021 	sub	x1, x1, x8
+     6c4:	eb00003f 	cmp	x1, x0
+     6c8:	54000062 	b.cs	6d4 <cml_NOTFOUND_3+0x36c>  // b.hs, b.nlast
+     6cc:	d2800020 	mov	x0, #0x1                   	// #1
+     6d0:	17fffe64 	b	60 <cake_exit>
+     6d4:	d61f03c0 	br	x30
+
+00000000000006d8 <cml_NOTFOUND_4>:
+     6d8:	f85c8378 	ldur	x24, [x27, #-56]
+     6dc:	d37df318 	lsl	x24, x24, #3
+     6e0:	aa1b0379 	orr	x25, x27, x27
+     6e4:	8b180339 	add	x25, x25, x24
+     6e8:	f9400b38 	ldr	x24, [x25, #16]
+     6ec:	f81c8378 	stur	x24, [x27, #-56]
+     6f0:	f9400738 	ldr	x24, [x25, #8]
+     6f4:	91006339 	add	x25, x25, #0x18
+     6f8:	d61f0300 	br	x24
+
+00000000000006fc <cml_NOTFOUND_5>:
+     6fc:	f85a837d 	ldur	x29, [x27, #-88]
+     700:	8b0003bd 	add	x29, x29, x0
+     704:	d37df3bd 	lsl	x29, x29, #3
+     708:	f94003a0 	ldr	x0, [x29]
+     70c:	910023bd 	add	x29, x29, #0x8
+     710:	f100001f 	cmp	x0, #0x0
+     714:	540001ea 	b.ge	750 <cml_NOTFOUND_5+0x54>  // b.tcont
+     718:	f100041f 	cmp	x0, #0x1
+     71c:	54000140 	b.eq	744 <cml_NOTFOUND_5+0x48>  // b.none
+     720:	f94003b8 	ldr	x24, [x29]
+     724:	910023bd 	add	x29, x29, #0x8
+     728:	f240001f 	tst	x0, #0x1
+     72c:	54000040 	b.eq	734 <cml_NOTFOUND_5+0x38>  // b.none
+     730:	8b020318 	add	x24, x24, x2
+     734:	d341fc00 	lsr	x0, x0, #1
+     738:	f9000038 	str	x24, [x1]
+     73c:	91002021 	add	x1, x1, #0x8
+     740:	17fffff6 	b	718 <cml_NOTFOUND_5+0x1c>
+     744:	f94003a0 	ldr	x0, [x29]
+     748:	910023bd 	add	x29, x29, #0x8
+     74c:	17fffff1 	b	710 <cml_NOTFOUND_5+0x14>
+     750:	f100041f 	cmp	x0, #0x1
+     754:	54000140 	b.eq	77c <cml_NOTFOUND_5+0x80>  // b.none
+     758:	f94003b8 	ldr	x24, [x29]
+     75c:	910023bd 	add	x29, x29, #0x8
+     760:	f240001f 	tst	x0, #0x1
+     764:	54000040 	b.eq	76c <cml_NOTFOUND_5+0x70>  // b.none
+     768:	8b020318 	add	x24, x24, x2
+     76c:	d341fc00 	lsr	x0, x0, #1
+     770:	f9000038 	str	x24, [x1]
+     774:	91002021 	add	x1, x1, #0x8
+     778:	17fffff6 	b	750 <cml_NOTFOUND_5+0x54>
+     77c:	aa000018 	orr	x24, x0, x0
+     780:	aa00001d 	orr	x29, x0, x0
+     784:	d61f03c0 	br	x30
+
+0000000000000788 <cml_NOTFOUND_6>:
+     788:	d1004339 	sub	x25, x25, #0x10
+     78c:	eb1b033f 	cmp	x25, x27
+     790:	54ffde83 	b.cc	360 <cml_NOTFOUND_2>  // b.lo, b.ul, b.last
+     794:	d2800000 	mov	x0, #0x0                   	// #0
+     798:	f900073e 	str	x30, [x25, #8]
+     79c:	aa000001 	orr	x1, x0, x0
+     7a0:	aa000002 	orr	x2, x0, x0
+     7a4:	aa000003 	orr	x3, x0, x0
+     7a8:	1000005e 	adr	x30, 7b0 <cml_NOTFOUND_6+0x28>
+     7ac:	17fffe25 	b	40 <cake_ffibreakpoint_1>
+     7b0:	f940073e 	ldr	x30, [x25, #8]
+     7b4:	d2800000 	mov	x0, #0x0                   	// #0
+     7b8:	91004339 	add	x25, x25, #0x10
+     7bc:	d61f03c0 	br	x30
+
+00000000000007c0 <cake_codebuffer_begin>:
+     7c0:	d503201f 	nop
+     7c4:	d503201f 	nop
+     7c8:	d503201f 	nop
+     7cc:	d503201f 	nop
+     7d0:	d503201f 	nop
+     7d4:	d503201f 	nop
+     7d8:	d503201f 	nop
+     7dc:	d503201f 	nop
+     7e0:	d503201f 	nop
+     7e4:	d503201f 	nop
+     7e8:	d503201f 	nop
+     7ec:	d503201f 	nop
+     7f0:	d503201f 	nop
+     7f4:	d503201f 	nop
+     7f8:	d503201f 	nop
+     7fc:	d503201f 	nop
+     800:	d503201f 	nop
+     804:	d503201f 	nop
+     808:	d503201f 	nop
+     80c:	d503201f 	nop
+     810:	d503201f 	nop
+     814:	d503201f 	nop
+     818:	d503201f 	nop
+     81c:	d503201f 	nop
+     820:	d503201f 	nop
+     824:	d503201f 	nop
+     828:	d503201f 	nop
+     82c:	d503201f 	nop
+     830:	d503201f 	nop
+     834:	d503201f 	nop
+     838:	d503201f 	nop
+     83c:	d503201f 	nop
+     840:	d503201f 	nop
+     844:	d503201f 	nop
+     848:	d503201f 	nop
+     84c:	d503201f 	nop
+     850:	d503201f 	nop
+     854:	d503201f 	nop
+     858:	d503201f 	nop
+     85c:	d503201f 	nop
+     860:	d503201f 	nop
+     864:	d503201f 	nop
+     868:	d503201f 	nop
+     86c:	d503201f 	nop
+     870:	d503201f 	nop
+     874:	d503201f 	nop
+     878:	d503201f 	nop
+     87c:	d503201f 	nop
+     880:	d503201f 	nop
+     884:	d503201f 	nop
+     888:	d503201f 	nop
+     88c:	d503201f 	nop
+     890:	d503201f 	nop
+     894:	d503201f 	nop
+     898:	d503201f 	nop
+     89c:	d503201f 	nop
+     8a0:	d503201f 	nop
+     8a4:	d503201f 	nop
+     8a8:	d503201f 	nop
+     8ac:	d503201f 	nop
+     8b0:	d503201f 	nop
+     8b4:	d503201f 	nop
+     8b8:	d503201f 	nop
+     8bc:	d503201f 	nop
+     8c0:	d503201f 	nop
+     8c4:	d503201f 	nop
+     8c8:	d503201f 	nop
+     8cc:	d503201f 	nop
+     8d0:	d503201f 	nop
+     8d4:	d503201f 	nop
+     8d8:	d503201f 	nop
+     8dc:	d503201f 	nop
+     8e0:	d503201f 	nop
+     8e4:	d503201f 	nop
+     8e8:	d503201f 	nop
+     8ec:	d503201f 	nop
+     8f0:	d503201f 	nop
+     8f4:	d503201f 	nop
+     8f8:	d503201f 	nop
+     8fc:	d503201f 	nop
+     900:	d503201f 	nop
+     904:	d503201f 	nop
+     908:	d503201f 	nop
+     90c:	d503201f 	nop
+     910:	d503201f 	nop
+     914:	d503201f 	nop
+     918:	d503201f 	nop
+     91c:	d503201f 	nop
+     920:	d503201f 	nop
+     924:	d503201f 	nop
+     928:	d503201f 	nop
+     92c:	d503201f 	nop
+     930:	d503201f 	nop
+     934:	d503201f 	nop
+     938:	d503201f 	nop
+     93c:	d503201f 	nop
+     940:	d503201f 	nop
+     944:	d503201f 	nop
+     948:	d503201f 	nop
+     94c:	d503201f 	nop
+     950:	d503201f 	nop
+     954:	d503201f 	nop
+     958:	d503201f 	nop
+     95c:	d503201f 	nop
+     960:	d503201f 	nop
+     964:	d503201f 	nop
+     968:	d503201f 	nop
+     96c:	d503201f 	nop
+     970:	d503201f 	nop
+     974:	d503201f 	nop
+     978:	d503201f 	nop
+     97c:	d503201f 	nop
+     980:	d503201f 	nop
+     984:	d503201f 	nop
+     988:	d503201f 	nop
+     98c:	d503201f 	nop
+     990:	d503201f 	nop
+     994:	d503201f 	nop
+     998:	d503201f 	nop
+     99c:	d503201f 	nop
+     9a0:	d503201f 	nop
+     9a4:	d503201f 	nop
+     9a8:	d503201f 	nop
+     9ac:	d503201f 	nop
+     9b0:	d503201f 	nop
+     9b4:	d503201f 	nop
+     9b8:	d503201f 	nop
+     9bc:	d503201f 	nop
+     9c0:	d503201f 	nop
+     9c4:	d503201f 	nop
+     9c8:	d503201f 	nop
+     9cc:	d503201f 	nop
+     9d0:	d503201f 	nop
+     9d4:	d503201f 	nop
+     9d8:	d503201f 	nop
+     9dc:	d503201f 	nop
+     9e0:	d503201f 	nop
+     9e4:	d503201f 	nop
+     9e8:	d503201f 	nop
+     9ec:	d503201f 	nop
+     9f0:	d503201f 	nop
+     9f4:	d503201f 	nop
+     9f8:	d503201f 	nop
+     9fc:	d503201f 	nop
+     a00:	d503201f 	nop
+     a04:	d503201f 	nop
+     a08:	d503201f 	nop
+     a0c:	d503201f 	nop
+     a10:	d503201f 	nop
+     a14:	d503201f 	nop
+     a18:	d503201f 	nop
+     a1c:	d503201f 	nop
+     a20:	d503201f 	nop
+     a24:	d503201f 	nop
+     a28:	d503201f 	nop
+     a2c:	d503201f 	nop
+     a30:	d503201f 	nop
+     a34:	d503201f 	nop
+     a38:	d503201f 	nop
+     a3c:	d503201f 	nop
+     a40:	d503201f 	nop
+     a44:	d503201f 	nop
+     a48:	d503201f 	nop
+     a4c:	d503201f 	nop
+     a50:	d503201f 	nop
+     a54:	d503201f 	nop
+     a58:	d503201f 	nop
+     a5c:	d503201f 	nop
+     a60:	d503201f 	nop
+     a64:	d503201f 	nop
+     a68:	d503201f 	nop
+     a6c:	d503201f 	nop
+     a70:	d503201f 	nop
+     a74:	d503201f 	nop
+     a78:	d503201f 	nop
+     a7c:	d503201f 	nop
+     a80:	d503201f 	nop
+     a84:	d503201f 	nop
+     a88:	d503201f 	nop
+     a8c:	d503201f 	nop
+     a90:	d503201f 	nop
+     a94:	d503201f 	nop
+     a98:	d503201f 	nop
+     a9c:	d503201f 	nop
+     aa0:	d503201f 	nop
+     aa4:	d503201f 	nop
+     aa8:	d503201f 	nop
+     aac:	d503201f 	nop
+     ab0:	d503201f 	nop
+     ab4:	d503201f 	nop
+     ab8:	d503201f 	nop
+     abc:	d503201f 	nop
+     ac0:	d503201f 	nop
+     ac4:	d503201f 	nop
+     ac8:	d503201f 	nop
+     acc:	d503201f 	nop
+     ad0:	d503201f 	nop
+     ad4:	d503201f 	nop
+     ad8:	d503201f 	nop
+     adc:	d503201f 	nop
+     ae0:	d503201f 	nop
+     ae4:	d503201f 	nop
+     ae8:	d503201f 	nop
+     aec:	d503201f 	nop
+     af0:	d503201f 	nop
+     af4:	d503201f 	nop
+     af8:	d503201f 	nop
+     afc:	d503201f 	nop
+     b00:	d503201f 	nop
+     b04:	d503201f 	nop
+     b08:	d503201f 	nop
+     b0c:	d503201f 	nop
+     b10:	d503201f 	nop
+     b14:	d503201f 	nop
+     b18:	d503201f 	nop
+     b1c:	d503201f 	nop
+     b20:	d503201f 	nop
+     b24:	d503201f 	nop
+     b28:	d503201f 	nop
+     b2c:	d503201f 	nop
+     b30:	d503201f 	nop
+     b34:	d503201f 	nop
+     b38:	d503201f 	nop
+     b3c:	d503201f 	nop
+     b40:	d503201f 	nop
+     b44:	d503201f 	nop
+     b48:	d503201f 	nop
+     b4c:	d503201f 	nop
+     b50:	d503201f 	nop
+     b54:	d503201f 	nop
+     b58:	d503201f 	nop
+     b5c:	d503201f 	nop
+     b60:	d503201f 	nop
+     b64:	d503201f 	nop
+     b68:	d503201f 	nop
+     b6c:	d503201f 	nop
+     b70:	d503201f 	nop
+     b74:	d503201f 	nop
+     b78:	d503201f 	nop
+     b7c:	d503201f 	nop
+     b80:	d503201f 	nop
+     b84:	d503201f 	nop
+     b88:	d503201f 	nop
+     b8c:	d503201f 	nop
+     b90:	d503201f 	nop
+     b94:	d503201f 	nop
+     b98:	d503201f 	nop
+     b9c:	d503201f 	nop
+     ba0:	d503201f 	nop
+     ba4:	d503201f 	nop
+     ba8:	d503201f 	nop
+     bac:	d503201f 	nop
+     bb0:	d503201f 	nop
+     bb4:	d503201f 	nop
+     bb8:	d503201f 	nop
+     bbc:	d503201f 	nop
+     bc0:	d503201f 	nop
+     bc4:	d503201f 	nop
+     bc8:	d503201f 	nop
+     bcc:	d503201f 	nop
+     bd0:	d503201f 	nop
+     bd4:	d503201f 	nop
+     bd8:	d503201f 	nop
+     bdc:	d503201f 	nop
+     be0:	d503201f 	nop
+     be4:	d503201f 	nop
+     be8:	d503201f 	nop
+     bec:	d503201f 	nop
+     bf0:	d503201f 	nop
+     bf4:	d503201f 	nop
+     bf8:	d503201f 	nop
+     bfc:	d503201f 	nop
+     c00:	d503201f 	nop
+     c04:	d503201f 	nop
+     c08:	d503201f 	nop
+     c0c:	d503201f 	nop
+     c10:	d503201f 	nop
+     c14:	d503201f 	nop
+     c18:	d503201f 	nop
+     c1c:	d503201f 	nop
+     c20:	d503201f 	nop
+     c24:	d503201f 	nop
+     c28:	d503201f 	nop
+     c2c:	d503201f 	nop
+     c30:	d503201f 	nop
+     c34:	d503201f 	nop
+     c38:	d503201f 	nop
+     c3c:	d503201f 	nop
+     c40:	d503201f 	nop
+     c44:	d503201f 	nop
+     c48:	d503201f 	nop
+     c4c:	d503201f 	nop
+     c50:	d503201f 	nop
+     c54:	d503201f 	nop
+     c58:	d503201f 	nop
+     c5c:	d503201f 	nop
+     c60:	d503201f 	nop
+     c64:	d503201f 	nop
+     c68:	d503201f 	nop
+     c6c:	d503201f 	nop
+     c70:	d503201f 	nop
+     c74:	d503201f 	nop
+     c78:	d503201f 	nop
+     c7c:	d503201f 	nop
+     c80:	d503201f 	nop
+     c84:	d503201f 	nop
+     c88:	d503201f 	nop
+     c8c:	d503201f 	nop
+     c90:	d503201f 	nop
+     c94:	d503201f 	nop
+     c98:	d503201f 	nop
+     c9c:	d503201f 	nop
+     ca0:	d503201f 	nop
+     ca4:	d503201f 	nop
+     ca8:	d503201f 	nop
+     cac:	d503201f 	nop
+     cb0:	d503201f 	nop
+     cb4:	d503201f 	nop
+     cb8:	d503201f 	nop
+     cbc:	d503201f 	nop
+     cc0:	d503201f 	nop
+     cc4:	d503201f 	nop
+     cc8:	d503201f 	nop
+     ccc:	d503201f 	nop
+     cd0:	d503201f 	nop
+     cd4:	d503201f 	nop
+     cd8:	d503201f 	nop
+     cdc:	d503201f 	nop
+     ce0:	d503201f 	nop
+     ce4:	d503201f 	nop
+     ce8:	d503201f 	nop
+     cec:	d503201f 	nop
+     cf0:	d503201f 	nop
+     cf4:	d503201f 	nop
+     cf8:	d503201f 	nop
+     cfc:	d503201f 	nop
+     d00:	d503201f 	nop
+     d04:	d503201f 	nop
+     d08:	d503201f 	nop
+     d0c:	d503201f 	nop
+     d10:	d503201f 	nop
+     d14:	d503201f 	nop
+     d18:	d503201f 	nop
+     d1c:	d503201f 	nop
+     d20:	d503201f 	nop
+     d24:	d503201f 	nop
+     d28:	d503201f 	nop
+     d2c:	d503201f 	nop
+     d30:	d503201f 	nop
+     d34:	d503201f 	nop
+     d38:	d503201f 	nop
+     d3c:	d503201f 	nop
+     d40:	d503201f 	nop
+     d44:	d503201f 	nop
+     d48:	d503201f 	nop
+     d4c:	d503201f 	nop
+     d50:	d503201f 	nop
+     d54:	d503201f 	nop
+     d58:	d503201f 	nop
+     d5c:	d503201f 	nop
+     d60:	d503201f 	nop
+     d64:	d503201f 	nop
+     d68:	d503201f 	nop
+     d6c:	d503201f 	nop
+     d70:	d503201f 	nop
+     d74:	d503201f 	nop
+     d78:	d503201f 	nop
+     d7c:	d503201f 	nop
+     d80:	d503201f 	nop
+     d84:	d503201f 	nop
+     d88:	d503201f 	nop
+     d8c:	d503201f 	nop
+     d90:	d503201f 	nop
+     d94:	d503201f 	nop
+     d98:	d503201f 	nop
+     d9c:	d503201f 	nop
+     da0:	d503201f 	nop
+     da4:	d503201f 	nop
+     da8:	d503201f 	nop
+     dac:	d503201f 	nop
+     db0:	d503201f 	nop
+     db4:	d503201f 	nop
+     db8:	d503201f 	nop
+     dbc:	d503201f 	nop
+     dc0:	d503201f 	nop
+     dc4:	d503201f 	nop
+     dc8:	d503201f 	nop
+     dcc:	d503201f 	nop
+     dd0:	d503201f 	nop
+     dd4:	d503201f 	nop
+     dd8:	d503201f 	nop
+     ddc:	d503201f 	nop
+     de0:	d503201f 	nop
+     de4:	d503201f 	nop
+     de8:	d503201f 	nop
+     dec:	d503201f 	nop
+     df0:	d503201f 	nop
+     df4:	d503201f 	nop
+     df8:	d503201f 	nop
+     dfc:	d503201f 	nop
+     e00:	d503201f 	nop
+     e04:	d503201f 	nop
+     e08:	d503201f 	nop
+     e0c:	d503201f 	nop
+     e10:	d503201f 	nop
+     e14:	d503201f 	nop
+     e18:	d503201f 	nop
+     e1c:	d503201f 	nop
+     e20:	d503201f 	nop
+     e24:	d503201f 	nop
+     e28:	d503201f 	nop
+     e2c:	d503201f 	nop
+     e30:	d503201f 	nop
+     e34:	d503201f 	nop
+     e38:	d503201f 	nop
+     e3c:	d503201f 	nop
+     e40:	d503201f 	nop
+     e44:	d503201f 	nop
+     e48:	d503201f 	nop
+     e4c:	d503201f 	nop
+     e50:	d503201f 	nop
+     e54:	d503201f 	nop
+     e58:	d503201f 	nop
+     e5c:	d503201f 	nop
+     e60:	d503201f 	nop
+     e64:	d503201f 	nop
+     e68:	d503201f 	nop
+     e6c:	d503201f 	nop
+     e70:	d503201f 	nop
+     e74:	d503201f 	nop
+     e78:	d503201f 	nop
+     e7c:	d503201f 	nop
+     e80:	d503201f 	nop
+     e84:	d503201f 	nop
+     e88:	d503201f 	nop
+     e8c:	d503201f 	nop
+     e90:	d503201f 	nop
+     e94:	d503201f 	nop
+     e98:	d503201f 	nop
+     e9c:	d503201f 	nop
+     ea0:	d503201f 	nop
+     ea4:	d503201f 	nop
+     ea8:	d503201f 	nop
+     eac:	d503201f 	nop
+     eb0:	d503201f 	nop
+     eb4:	d503201f 	nop
+     eb8:	d503201f 	nop
+     ebc:	d503201f 	nop
+     ec0:	d503201f 	nop
+     ec4:	d503201f 	nop
+     ec8:	d503201f 	nop
+     ecc:	d503201f 	nop
+     ed0:	d503201f 	nop
+     ed4:	d503201f 	nop
+     ed8:	d503201f 	nop
+     edc:	d503201f 	nop
+     ee0:	d503201f 	nop
+     ee4:	d503201f 	nop
+     ee8:	d503201f 	nop
+     eec:	d503201f 	nop
+     ef0:	d503201f 	nop
+     ef4:	d503201f 	nop
+     ef8:	d503201f 	nop
+     efc:	d503201f 	nop
+     f00:	d503201f 	nop
+     f04:	d503201f 	nop
+     f08:	d503201f 	nop
+     f0c:	d503201f 	nop
+     f10:	d503201f 	nop
+     f14:	d503201f 	nop
+     f18:	d503201f 	nop
+     f1c:	d503201f 	nop
+     f20:	d503201f 	nop
+     f24:	d503201f 	nop
+     f28:	d503201f 	nop
+     f2c:	d503201f 	nop
+     f30:	d503201f 	nop
+     f34:	d503201f 	nop
+     f38:	d503201f 	nop
+     f3c:	d503201f 	nop
+     f40:	d503201f 	nop
+     f44:	d503201f 	nop
+     f48:	d503201f 	nop
+     f4c:	d503201f 	nop
+     f50:	d503201f 	nop
+     f54:	d503201f 	nop
+     f58:	d503201f 	nop
+     f5c:	d503201f 	nop
+     f60:	d503201f 	nop
+     f64:	d503201f 	nop
+     f68:	d503201f 	nop
+     f6c:	d503201f 	nop
+     f70:	d503201f 	nop
+     f74:	d503201f 	nop
+     f78:	d503201f 	nop
+     f7c:	d503201f 	nop
+     f80:	d503201f 	nop
+     f84:	d503201f 	nop
+     f88:	d503201f 	nop
+     f8c:	d503201f 	nop
+     f90:	d503201f 	nop
+     f94:	d503201f 	nop
+     f98:	d503201f 	nop
+     f9c:	d503201f 	nop
+     fa0:	d503201f 	nop
+     fa4:	d503201f 	nop
+     fa8:	d503201f 	nop
+     fac:	d503201f 	nop
+     fb0:	d503201f 	nop
+     fb4:	d503201f 	nop
+     fb8:	d503201f 	nop
+     fbc:	d503201f 	nop
+     fc0:	d503201f 	nop
+     fc4:	d503201f 	nop
+     fc8:	d503201f 	nop
+     fcc:	d503201f 	nop
+     fd0:	d503201f 	nop
+     fd4:	d503201f 	nop
+     fd8:	d503201f 	nop
+     fdc:	d503201f 	nop
+     fe0:	d503201f 	nop
+     fe4:	d503201f 	nop
+     fe8:	d503201f 	nop
+     fec:	d503201f 	nop
+     ff0:	d503201f 	nop
+     ff4:	d503201f 	nop
+     ff8:	d503201f 	nop
+     ffc:	d503201f 	nop
+
+0000000000001000 <cake_codebuffer_end>:
+	...
