@@ -24,15 +24,16 @@ void *notified_return;
 unsigned int argc;
 char **argv;
 
-/* exported in cake.S */
-extern __attribute__((noreturn)) void cml_main(void);
+// /* exported in cake.S */
+extern void cml_main(void);
+
 extern void *cml_heap;
 extern void *cml_stack;
 extern void *cml_stackend;
 
-extern char cake_text_begin;
-extern char cake_codebuffer_begin;
-extern char cake_codebuffer_end;
+// extern char cake_text_begin;
+// extern char cake_codebuffer_begin;
+// extern char cake_codebuffer_end;
 
 #define IRQ_CH 1
 #define TX_CH  2
@@ -77,6 +78,7 @@ ring_ctx_t tx;
 /* Pointers to shared_ringbuffers */
 ring_handle_t rx_ring;
 ring_handle_t tx_ring;
+unsigned int tx_lengths[TX_COUNT];
 
 char current_channel;
 
@@ -153,30 +155,26 @@ uintptr_t byte8_to_uintptr(unsigned char *b){
 }
 
 /* Functions needed by cakeml*/
-__attribute__((noreturn)) void cml_exit(int arg) {
-    sel4cp_dbg_puts("CALLING CML_EXIT\n");
-
-    if (current_channel == IRQ_CH) {
-        have_signal = true;
-        signal_msg = seL4_MessageInfo_new(IRQAckIRQ, 0, 0, 0);
-        signal = (BASE_IRQ_CAP + IRQ_CH);
-        sel4cp_irq_ack(current_channel);
-    } 
+void cml_exit(int arg) {
+    //sel4cp_dbg_puts("CALLING CML_EXIT\n");
     
-    current_channel = 0;
-    if (notified_return == 0) {
-        sel4cp_dbg_puts("We have not saved notified return properly\n");    
+    if (current_channel == 1) {
+        // irq ack
+        sel4cp_irq_ack(current_channel);
     }
-    sel4cp_dbg_puts("Jumping back to sel4cp handler loop\n");
-    void (*foo)(void) = (void (*)())notified_return;
-    foo();
 
+    current_channel = 0;
+    __attribute__((noreturn)) void (*foo)(void) = (void (*)())notified_return;
+    //sel4cp_dbg_puts("cml_exit: address of foo is: ");
+    puthex64(foo);
+    //sel4cp_dbg_puts("\n");
+    foo();
 }
 
 /* Need to come up with a replacement for this clear cache function. Might be worth testing just flushing the entire l1 cache, but might cause issues with returning to this file*/
 void cml_clear() {
 //   __builtin___clear_cache(&cake_codebuffer_begin, &cake_codebuffer_end);
-    sel4cp_dbg_puts("Trying to clear cache\n");
+    //sel4cp_dbg_puts("Trying to clear cache\n");
 }
 
 /* FFI call to get the current channel that has notified us. Need to find a better
@@ -225,7 +223,7 @@ dump_mac(uint8_t *mac)
 
 uintptr_t getPhysAddr(uintptr_t virtual)
 {
-    // sel4cp_dbg_puts("In the getPhysAddr func\n");
+    // //sel4cp_dbg_puts("In the getPhysAddr func\n");
     uint64_t offset = virtual - shared_dma_vaddr;
     uintptr_t phys;
 
@@ -235,7 +233,7 @@ uintptr_t getPhysAddr(uintptr_t virtual)
     }
 
     phys = shared_dma_paddr + offset;
-    // sel4cp_dbg_puts("Finishing getPhysAddr function\n");
+    // //sel4cp_dbg_puts("Finishing getPhysAddr function\n");
     return phys;
 }
 
@@ -249,7 +247,7 @@ enable_irqs(volatile struct enet_regs *eth, uint32_t mask)
 
 uintptr_t alloc_rx_buf(size_t buf_size, void **cookie)
 {
-    sel4cp_dbg_puts("Entering the alloc rx_buff function\n");
+    // //sel4cp_dbg_puts("Entering the alloc rx_buff function\n");
     uintptr_t addr;
     unsigned int len;
 
@@ -262,13 +260,16 @@ uintptr_t alloc_rx_buf(size_t buf_size, void **cookie)
     uintptr_t phys = getPhysAddr(addr);
 
     return getPhysAddr(addr);
-
-    sel4cp_dbg_puts("Finshed alloc_rx_buff function\n");
 }
 
 static void 
 eth_setup(void)
 {
+    get_mac_addr(eth, mac);
+    sel4cp_dbg_puts("MAC: ");
+    dump_mac(mac);
+    sel4cp_dbg_puts("\n");
+
     rx.cnt = RX_COUNT;
     rx.remain = rx.cnt - 2;
     rx.tail = 0;
@@ -284,11 +285,6 @@ eth_setup(void)
     tx.phys = shared_dma_paddr + (sizeof(struct descriptor) * RX_COUNT);
     tx.cookies = (void **)tx_cookies;
     tx.descr = (volatile struct descriptor *)(hw_ring_buffer_vaddr + (sizeof(struct descriptor) * RX_COUNT));
-
-    get_mac_addr(eth, mac);
-    sel4cp_dbg_puts("MAC: ");
-    dump_mac(mac);
-    sel4cp_dbg_puts("\n");
 
     /* Perform reset */
     eth->ecr = ECR_RESET;
@@ -392,7 +388,7 @@ void ffienable_rx() {
 }
 
 void ffiget_irq(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("In the ffi get irq function");
+    //sel4cp_dbg_puts("In the ffi get irq function");
     uint32_t e = eth->eir & IRQ_MASK;
     /* write to clear events */
     eth->eir = e;
@@ -414,15 +410,15 @@ void ffieth_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, l
     unsigned int buffer_len = 0;
     void *cookie = NULL;
 
-    sel4cp_dbg_puts("In the serial driver dequeue used function\n");
+    //sel4cp_dbg_puts("In the serial driver dequeue used function\n");
     if (clen != 1) {
-        sel4cp_dbg_puts("There are no arguments supplied when args are expected\n");
+        //sel4cp_dbg_puts("There are no arguments supplied when args are expected\n");
         return;
     }
 
     bool rx_tx = c[0];
 
-    sel4cp_dbg_puts("Attempting driver dequeue\n");
+    //sel4cp_dbg_puts("Attempting driver dequeue\n");
     int ret = 0;
     if (rx_tx == 0) {
         ret = driver_dequeue(rx_ring.used_ring, &buffer, &buffer_len, &cookie);
@@ -435,16 +431,16 @@ void ffieth_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, l
     uintptr_to_byte8(buffer_len, &a[8]);
     uintptr_to_byte8(cookie, &a[16]);
     if (ret == 1) {
-        sel4cp_dbg_puts("Driver dequeue failed!\n");
+        //sel4cp_dbg_puts("Driver dequeue failed!\n");
         c[0] = 1;
     }
     c[0] = ret;
-    sel4cp_dbg_puts("Finished buffer dequeue\n");
+    //sel4cp_dbg_puts("Finished buffer dequeue\n");
 }
 
 void ffieth_driver_enqueue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
     // In this case we assume that the 'c' array will contain the address of the cookie that we need
-    sel4cp_dbg_puts("Entering the driver enqueue used function\n");
+    //sel4cp_dbg_puts("Entering the driver enqueue used function\n");
     buff_desc_t *desc = (buff_desc_t *) byte8_to_uintptr(c);
 
     enqueue_used(&tx_ring, desc->encoded_addr, desc->len, desc->cookie);
@@ -452,7 +448,7 @@ void ffieth_driver_enqueue_used(unsigned char *c, long clen, unsigned char *a, l
 
 void ffieth_driver_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
     // In this case we assume that the 'c' array will contain the address of the cookie that we need
-    sel4cp_dbg_puts("Entering the driver enqueue avail function\n");
+    //sel4cp_dbg_puts("Entering the driver enqueue avail function\n");
     buff_desc_t *desc = (buff_desc_t *) byte8_to_uintptr(c);
 
     enqueue_avail(&tx_ring, desc->encoded_addr, desc->len, desc->cookie);
@@ -469,26 +465,26 @@ void ffieth_ring_size(unsigned char *c, long clen, unsigned char *a, long alen) 
 }
 
 void fficalling_init(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("In the init function called from the init entry point\n");
+    //sel4cp_dbg_puts("In the init function called from the init entry point\n");
 }
 
 void ffisynchronise_call() {
-    sel4cp_dbg_puts("In the ffi synchronise call function\n");
+    //sel4cp_dbg_puts("In the ffi synchronise call function\n");
     __sync_synchronize();
-    sel4cp_dbg_puts("Finished the sync function\n");
+    //sel4cp_dbg_puts("Finished the sync function\n");
 }
 
 void ffitx_descr_active() {
-    sel4cp_dbg_puts("In the tx_desr_active func\n");
+    //sel4cp_dbg_puts("In the tx_desr_active func\n");
     if (!(eth->tdar & TDAR_TDAR)) {
         eth->tdar = TDAR_TDAR;
     }
-    sel4cp_dbg_puts("Finished the tx_descr_active func\n");
+    //sel4cp_dbg_puts("Finished the tx_descr_active func\n");
 }
 
 void ffiget_rx_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (alen != 8) {
-        sel4cp_dbg_puts("Alen not of expected length\n");
+        //sel4cp_dbg_puts("Alen not of expected length\n");
         return;
     }
     uintptr_to_byte8(a, shared_dma_paddr);
@@ -496,7 +492,7 @@ void ffiget_rx_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
 
 void ffiget_tx_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (alen != 8) {
-        sel4cp_dbg_puts("Alen not of expected length\n");
+        //sel4cp_dbg_puts("Alen not of expected length\n");
         return;
     }
     uintptr_to_byte8(a, shared_dma_paddr + sizeof(struct descriptor) * RX_COUNT);
@@ -504,7 +500,7 @@ void ffiget_tx_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
 
 void ffiget_rx_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (alen != 8) {
-        sel4cp_dbg_puts("Alen not of expected length\n");
+        //sel4cp_dbg_puts("Alen not of expected length\n");
         return;
     }
     uintptr_to_byte8(a, (void **)rx_cookies);
@@ -512,7 +508,7 @@ void ffiget_rx_cookies(unsigned char *c, long clen, unsigned char *a, long alen)
 
 void ffiget_tx_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (alen != 8) {
-        sel4cp_dbg_puts("Alen not of expected length\n");
+        //sel4cp_dbg_puts("Alen not of expected length\n");
         return;
     }
     uintptr_to_byte8(a, (void **)tx_cookies);
@@ -520,7 +516,7 @@ void ffiget_tx_cookies(unsigned char *c, long clen, unsigned char *a, long alen)
 
 void ffiget_rx_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (alen != 8) {
-        sel4cp_dbg_puts("Alen not of expected length\n");
+        //sel4cp_dbg_puts("Alen not of expected length\n");
         return;
     }
     uintptr_to_byte8(a, (volatile struct descriptor *)hw_ring_buffer_vaddr);
@@ -528,7 +524,7 @@ void ffiget_rx_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
 
 void ffiget_tx_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (alen != 8) {
-        sel4cp_dbg_puts("Alen not of expected length\n");
+        //sel4cp_dbg_puts("Alen not of expected length\n");
         return;
     }
     uintptr_to_byte8(a, (volatile struct descriptor *)(hw_ring_buffer_vaddr + (sizeof(struct descriptor) * RX_COUNT)));
@@ -542,7 +538,7 @@ The address that we get will be stored starting from a[0]
 */
 
 void ffiget_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("Entering the get_cookies function\n");
+    //sel4cp_dbg_puts("Entering the get_cookies function\n");
     int index = c[0];
     int ring = c[1];
     void **cookies;
@@ -558,7 +554,7 @@ void ffiget_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
 }
 
 void ffiset_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("Entering set cookies function\n");
+    //sel4cp_dbg_puts("Entering set cookies function\n");
     int index = c[0];
     int ring = c[9];
     void *cookie = (void **) byte8_to_uintptr(&c[1]);
@@ -572,7 +568,7 @@ void ffiset_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
 
     cookies[index] = cookie;
 
-    sel4cp_dbg_puts("Finsihed the set cookies function\n");
+    //sel4cp_dbg_puts("Finsihed the set cookies function\n");
 }
 
 void ffiget_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -588,10 +584,10 @@ void ffiset_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
 }
 
 void ffialloc_rx_buff(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("Entering the ffi alloc rx_buff function\n");
+    //sel4cp_dbg_puts("Entering the ffi alloc rx_buff function\n");
 
     if (alen != 8 || clen != 8) {
-        sel4cp_dbg_puts("Len was not of correct size -- alloc_rx_buf\n");
+        //sel4cp_dbg_puts("Len was not of correct size -- alloc_rx_buf\n");
         return;
     }
 
@@ -607,22 +603,22 @@ void ffialloc_rx_buff(unsigned char *c, long clen, unsigned char *a, long alen) 
     }
 
     uintptr_t phys = getPhysAddr(addr);
-    sel4cp_dbg_puts("copying physical address over to array\n");
+    //sel4cp_dbg_puts("copying physical address over to array\n");
     uintptr_to_byte8(cookie, c);
     uintptr_to_byte8(phys, a);
     a[8] = 1;
-    sel4cp_dbg_puts("Finishing the alloc rx_buff function\n");
+    //sel4cp_dbg_puts("Finishing the alloc rx_buff function\n");
 
 }
 
 void ffidummy_call(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("Dummy call\n");
+    //sel4cp_dbg_puts("Dummy call\n");
 }
 
 void ffiupdate_descr_slot(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("Entering the update descr slot function\n");
+    //sel4cp_dbg_puts("Entering the update descr slot function\n");
     if (clen != 32) {
-        sel4cp_dbg_puts("Clen was not of correct size -- update_descr_slot\n");
+        //sel4cp_dbg_puts("Clen was not of correct size -- update_descr_slot\n");
         return;
     }
     
@@ -668,9 +664,9 @@ void ffiupdate_descr_slot(unsigned char *c, long clen, unsigned char *a, long al
 }
 
 void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("Entering the update descr slot raw tx function\n");
+    //sel4cp_dbg_puts("Entering the update descr slot raw tx function\n");
     if (clen != 32) {
-        sel4cp_dbg_puts("Clen was not of correct size -- update_descr_slot\n");
+        //sel4cp_dbg_puts("Clen was not of correct size -- update_descr_slot\n");
         return;
     }
 
@@ -716,21 +712,21 @@ void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, 
     // Store the new phys where the old phys was
     uintptr_to_byte8(phys, &c[9]);
     uintptr_to_byte8(len, &c[17]);
-    sel4cp_dbg_puts("Finished the update descr slot function\n");
+    //sel4cp_dbg_puts("Finished the update descr slot function\n");
 }
 
 void ffibreakpoint_1(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("This is breakpoint 1\n");
+    //sel4cp_dbg_puts("This is breakpoint 1\n");
 }
 
 void ffibreak_loop(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("We are trying to break out of a loop\n");
+    //sel4cp_dbg_puts("We are trying to break out of a loop\n");
 }
 
 void ffitry_buffer_release(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("In the try buffer release function\n");
+    //sel4cp_dbg_puts("In the try buffer release function\n");
     if (clen != 9) {
-        sel4cp_dbg_puts("Clen not of correct len -- try_buffer_release\n");
+        //sel4cp_dbg_puts("Clen not of correct len -- try_buffer_release\n");
         a[0] = 1;
         return;
     }
@@ -764,46 +760,10 @@ void ffitry_buffer_release(unsigned char *c, long clen, unsigned char *a, long a
     a[0] = 0;
 }   
 
-void ffi_raw_tx_sync_region(unsigned char *c, long clen, unsigned char *a, long alen) {
-
-    unsigned int num = c[0];
-    int ring = c[1];
-    uintptr_t phys = byte8_to_uintptr(&c[2]);
-    unsigned int len = byte8_to_int(&c[9]);
-    void *cookie = byte8_to_uintptr(&c[16]);
-
-    __sync_synchronize();
-
-    unsigned int tail = ring->tail;
-    unsigned int tail_new = tail;
-
-    unsigned int i = num;
-    while (i-- > 0) {
-        uint16_t stat = TXD_READY;
-        if (0 == i) {
-            stat |= TXD_ADDCRC | TXD_LAST;
-        }
-
-        unsigned int idx = tail_new;
-        if (++tail_new == TX_COUNT) {
-            tail_new = 0;
-            stat |= WRAP;
-        }
-        update_ring_slot(ring, idx, *phys++, *len++, stat);
-    }
-
-    ring->cookies[tail] = cookie;
-    tx_lengths[tail] = num;
-    ring->tail = tail_new;
-    /* There is a race condition here if add/remove is not synchronized. */
-    ring->remain -= num;
-
-    __sync_synchronize();
-}
 
 void fficheck_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (clen != 9) {
-        sel4cp_dbg_puts("Clen not of correct len -- try_buffer_release\n");
+        //sel4cp_dbg_puts("Clen not of correct len -- try_buffer_release\n");
         a[0] = 1;
         return;
     }
@@ -824,9 +784,9 @@ void fficheck_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
 }
 
 void ffiget_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("Entering the ffi get phys function\n");
+    //sel4cp_dbg_puts("Entering the ffi get phys function\n");
     if (clen != 8 || alen != 8) {
-        sel4cp_dbg_puts("Len was not of correct size -- get_phys\n");
+        //sel4cp_dbg_puts("Len was not of correct size -- get_phys\n");
         return;
     }
 
@@ -834,14 +794,14 @@ void ffiget_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
     uintptr_t buffer = byte8_to_uintptr(c);
 
     if (buffer == 0) {
-        sel4cp_dbg_puts("NULL buffer for some reason\n");
+        //sel4cp_dbg_puts("NULL buffer for some reason\n");
     }
-    sel4cp_dbg_puts("Calling getPhysAddr\n");
+    //sel4cp_dbg_puts("Calling getPhysAddr\n");
     uintptr_t phys = getPhysAddr(buffer);
-    sel4cp_dbg_puts("Returned from getPhysAddr, attempting to place into return array\n");
+    //sel4cp_dbg_puts("Returned from getPhysAddr, attempting to place into return array\n");
     uintptr_to_byte8(phys, a);
 
-    sel4cp_dbg_puts("Finishing the ffi get phys function\n");
+    //sel4cp_dbg_puts("Finishing the ffi get phys function\n");
 }
 
 void ffinotify_rx(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -866,6 +826,53 @@ static void update_ring_slot(
     __sync_synchronize();
 
     d->stat = stat;
+}
+
+void ffiraw_tx_sync_region(unsigned char *c, long clen, unsigned char *a, long alen) {
+    __sync_synchronize();
+
+    unsigned int num = c[0];
+    int ring_type = c[1];
+    ring_ctx_t *ring;
+    if (ring_type == 0) {
+        ring = &tx;
+    } else {
+        ring = &rx;
+    }
+    uintptr_t phys = byte8_to_uintptr(&c[2]);
+    unsigned int len = byte8_to_int(&c[10]);
+    void *cookie = byte8_to_uintptr(&c[18]);
+
+
+    unsigned int tail = ring->tail;
+    unsigned int tail_new = tail;
+
+    unsigned int i = num;
+    while (i-- > 0) {
+        uint16_t stat = TXD_READY;
+        if (0 == i) {
+            stat |= TXD_ADDCRC | TXD_LAST;
+        }
+
+        unsigned int idx = tail_new;
+        if (++tail_new == TX_COUNT) {
+            tail_new = 0;
+            stat |= WRAP;
+        }
+        // update_ring_slot(ring, idx, phys++, len++, stat);
+    }
+
+    ring->cookies[tail] = cookie;
+    tx_lengths[tail] = num;
+    ring->tail = tail_new;
+    /* There is a race condition here if add/remove is not synchronized. */
+    ring->remain -= num;
+
+    __sync_synchronize();
+
+    // if (!(eth->tdar & TDAR_TDAR)) {
+    //     eth->tdar = TDAR_TDAR;
+    // }
 }
 
 static void fill_rx_bufs()
@@ -900,10 +907,6 @@ static void fill_rx_bufs()
     }
 }
 
-void ffiinit_post() {
-
-}
-
 void init_post()
 {
     /* Set up shared memory regions */
@@ -911,8 +914,8 @@ void init_post()
     ring_init(&tx_ring, (ring_buffer_t *)tx_avail, (ring_buffer_t *)tx_used, NULL, 0);
 
     fill_rx_bufs();
-    sel4cp_dbg_puts(sel4cp_name);
-    sel4cp_dbg_puts(": init complete -- waiting for interrupt\n");
+    //sel4cp_dbg_puts(sel4cp_name);
+    //sel4cp_dbg_puts(": init complete -- waiting for interrupt\n");
     sel4cp_notify(INIT);
 
     /* Now take away our scheduling context. Uncomment this for a passive driver. */
@@ -922,29 +925,31 @@ void init_post()
     signal = (MONITOR_EP); */
 }
 
-void ffisetup_ring_init(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("In the setup ring init function\n");
-    /* Set up shared memory regions */
-    ring_init(&rx_ring, (ring_buffer_t *)rx_avail, (ring_buffer_t *)rx_used, NULL, 0);
-    ring_init(&tx_ring, (ring_buffer_t *)tx_avail, (ring_buffer_t *)tx_used, NULL, 0);
-    sel4cp_dbg_puts("Finished the setup ring function\n");
-}
-
 void init_pancake_mem() {
+    //sel4cp_dbg_puts("In the init pancake mem function\n");
     unsigned long sz = 1024*1024; // 1 MB unit\n",
     unsigned long cml_heap_sz = sz;    // Default: 1 MB heap\n", (* TODO: parameterise *)
     unsigned long cml_stack_sz = sz;   // Default: 1 MB stack\n", (* TODO: parameterise *)
-    cml_heap = cml_memory;
+    cml_heap = &cml_memory[0];
+    sel4cp_dbg_puts("Pancake heap start: ");
+    puthex64(cml_heap);
+    sel4cp_dbg_puts("\n");
     cml_stack = cml_heap + cml_heap_sz;
+    sel4cp_dbg_puts("Pancake stack start: ");
+    puthex64(cml_stack);
+    sel4cp_dbg_puts("\n");
     cml_stackend = cml_stack + cml_stack_sz;
+    sel4cp_dbg_puts("Pancake stack end: ");
+    puthex64(cml_stackend);
+    sel4cp_dbg_puts("\n");
 }
 
 /* sel4cp Entry Points */
 
 void init(void)
 {
-    sel4cp_dbg_puts(sel4cp_name);
-    sel4cp_dbg_puts(": elf PD init function running\n");
+    //sel4cp_dbg_puts(sel4cp_name);
+    //sel4cp_dbg_puts(": elf PD init function running\n");
     init_pancake_mem();
     eth_setup();
     // For now we are going to call handle_notified with a negative integer to get pseudo-pancake 
@@ -952,6 +957,108 @@ void init(void)
 
     // handle_notified(INIT_PAN_DS);
     /* Now wait for notification from lwip that buffers are initialised */
+}
+
+static void
+handle_rx(volatile struct enet_regs *eth)
+{
+    ring_ctx_t *ring = &rx;
+    unsigned int head = ring->head;
+
+    int num = 1;
+    int was_empty = ring_empty(rx_ring.used_ring);
+
+    // we don't want to dequeue packets if we have nothing to replace it with
+    while (head != ring->tail && (ring_size(rx_ring.avail_ring) > num)) {
+        volatile struct descriptor *d = &(ring->descr[head]);
+
+        /* If the slot is still marked as empty we are done. */
+        if (d->stat & RXD_EMPTY) {
+            break;
+        }
+
+        void *cookie = ring->cookies[head];
+        /* Go to next buffer, handle roll-over. */
+        if (++head == ring->cnt) {
+            head = 0;
+        }
+        ring->head = head;
+
+        /* There is a race condition here if add/remove is not synchronized. */
+        ring->remain++;
+
+        buff_desc_t *desc = (buff_desc_t *)cookie;
+
+        enqueue_used(&rx_ring, desc->encoded_addr, d->len, desc->cookie);
+        num++;
+    }
+
+    /* Notify client (only if we have actually processed a packet and 
+    the client hasn't already been notified!) */
+    if (num > 1 && was_empty) {
+        sel4cp_notify(RX_CH);
+    } 
+}
+
+static void
+complete_tx(volatile struct enet_regs *eth)
+{
+    //sel4cp_dbg_puts("In the complete tx function\n");
+    unsigned int cnt_org;
+    void *cookie;
+    ring_ctx_t *ring = &tx;
+    unsigned int head = ring->head;
+    unsigned int cnt = 0;
+
+    while (head != ring->tail) {
+        //sel4cp_dbg_puts("\tLooping in complete tx\n");
+        if (0 == cnt) {
+            cnt = tx_lengths[head];
+            if ((0 == cnt) || (cnt > TX_COUNT)) {
+                /* We are not supposed to read 0 here. */
+                print("complete_tx with cnt=0 or max");
+                return;
+            }
+            cnt_org = cnt;
+            cookie = ring->cookies[head];
+        }
+
+        volatile struct descriptor *d = &(ring->descr[head]);
+
+        /* If this buffer was not sent, we can't release any buffer. */
+        if (d->stat & TXD_READY) {
+            /* give it another chance */
+            if (!(eth->tdar & TDAR_TDAR)) {
+                eth->tdar = TDAR_TDAR;
+            }
+            if (d->stat & TXD_READY) {
+                return;
+            }
+        }
+
+        /* Go to next buffer, handle roll-over. */
+        if (++head == TX_COUNT) {
+            head = 0;
+        }
+
+        if (0 == --cnt) {
+            ring->head = head;
+            /* race condition if add/remove is not synchronized. */
+            ring->remain += cnt_org;
+            /* give the buffer back */
+            buff_desc_t *desc = (buff_desc_t *)cookie;
+
+            enqueue_avail(&tx_ring, desc->encoded_addr, desc->len, desc->cookie);
+        }
+    }
+
+    /* The only reason to arrive here is when head equals tails. If cnt is not
+     * zero, then there is some kind of overflow or data corruption. The number
+     * of tx descriptors holding data can't exceed the space in the ring.
+     */
+    if (0 != cnt) {
+        print("head reached tail, but cnt!= 0");
+    }
 }
 
 static void 
@@ -962,17 +1069,18 @@ handle_eth(volatile struct enet_regs *eth)
     eth->eir = e;
 
     while (e & IRQ_MASK) {
-        // if (e & NETIRQ_TXF) {
-        //     complete_tx(eth);
-        // }
-        // if (e & NETIRQ_RXF) {
-        //     handle_rx(eth);
-        //     fill_rx_bufs(eth);
-        // }
-        // if (e & NETIRQ_EBERR) {
-        //     print("Error: System bus/uDMA");
-        //     while (1);
-        // }
+        if (e & NETIRQ_TXF) {
+            complete_tx(eth);
+        }
+        if (e & NETIRQ_RXF) {
+            sel4cp_dbg_puts("\t In the handle rx irq case\n");
+            handle_rx(eth);
+            fill_rx_bufs(eth);
+        }
+        if (e & NETIRQ_EBERR) {
+            print("Error: System bus/uDMA");
+            while (1);
+        }
         e = eth->eir & IRQ_MASK;
         eth->eir = e;
     }
@@ -980,7 +1088,7 @@ handle_eth(volatile struct enet_regs *eth)
 // static void
 // complete_tx(volatile struct enet_regs *eth)
 // {
-//     sel4cp_dbg_puts("In the complete tx function\n");
+//     //sel4cp_dbg_puts("In the complete tx function\n");
 //     unsigned int cnt_org;
 //     void *cookie;
 //     ring_ctx_t *ring = &tx;
@@ -988,7 +1096,7 @@ handle_eth(volatile struct enet_regs *eth)
 //     unsigned int cnt = 0;
 
 //     while (head != ring->tail) {
-//         sel4cp_dbg_puts("\tLooping in complete tx\n");
+//         //sel4cp_dbg_puts("\tLooping in complete tx\n");
 //         if (0 == cnt) {
 //             cnt = tx_lengths[head];
 //             if ((0 == cnt) || (cnt > TX_COUNT)) {
@@ -1042,7 +1150,7 @@ handle_eth(volatile struct enet_regs *eth)
 // raw_tx(volatile struct enet_regs *eth, unsigned int num, uintptr_t *phys,
 //                   unsigned int *len, void *cookie)
 // {
-//     sel4cp_dbg_puts("Entering raw tx function\n");
+//     //sel4cp_dbg_puts("Entering raw tx function\n");
 //     ring_ctx_t *ring = &tx;
 
 //     /* Ensure we have room */
@@ -1100,10 +1208,10 @@ handle_eth(volatile struct enet_regs *eth)
 //     // We need to put in an empty condition here. 
 //     while ((tx.remain > 1)) {
 //         if (ret != 0) {
-//             sel4cp_dbg_puts("Breaking from the handle tx loop\n");
+//             //sel4cp_dbg_puts("Breaking from the handle tx loop\n");
 //             break;
 //         }
-//         sel4cp_dbg_puts("Looping in handle_tx\n");
+//         //sel4cp_dbg_puts("Looping in handle_tx\n");
 
 //         uintptr_t phys = getPhysAddr(buffer);
 //         raw_tx(eth, 1, &phys, &len, cookie);
@@ -1111,27 +1219,117 @@ handle_eth(volatile struct enet_regs *eth)
 //     }
 
 //     if (ret == 1) {
-//         sel4cp_dbg_puts("The driver dequeue failed\n");
+//         //sel4cp_dbg_puts("The driver dequeue failed\n");
 //     }
     
 //     if (tx.remain <= 1) {
-//         sel4cp_dbg_puts("tx remian is lesseq to 1\n");
+//         //sel4cp_dbg_puts("tx remian is lesseq to 1\n");
 //     }
 //     if (ret == 0) {
-//         sel4cp_dbg_puts("The driver dequeue worked?\n");
+//         //sel4cp_dbg_puts("The driver dequeue worked?\n");
 //     } 
 //     if (tx.remain > 1) {
-//         sel4cp_dbg_puts("Their is remainig in the tx ring\n");
+//         //sel4cp_dbg_puts("Their is remainig in the tx ring\n");
 //     }
 // }
 
+static void
+raw_tx(volatile struct enet_regs *eth, unsigned int num, uintptr_t *phys,
+                  unsigned int *len, void *cookie)
+{
+    //sel4cp_dbg_puts("Entering raw tx function\n");
+    ring_ctx_t *ring = &tx;
+
+    /* Ensure we have room */
+    if (ring->remain < num) {
+        /* not enough room, try to complete some and check again */
+        complete_tx(eth);
+        unsigned int rem = ring->remain;
+        if (rem < num) {
+            print("TX queue lacks space");
+            return;
+        }
+    }
+
+    __sync_synchronize();
+
+    unsigned int tail = ring->tail;
+    unsigned int tail_new = tail;
+
+    unsigned int i = num;
+    while (i-- > 0) {
+        uint16_t stat = TXD_READY;
+        if (0 == i) {
+            stat |= TXD_ADDCRC | TXD_LAST;
+        }
+
+        unsigned int idx = tail_new;
+        if (++tail_new == TX_COUNT) {
+            tail_new = 0;
+            stat |= WRAP;
+        }
+        update_ring_slot(ring, idx, *phys++, *len++, stat);
+    }
+
+    ring->cookies[tail] = cookie;
+    tx_lengths[tail] = num;
+    ring->tail = tail_new;
+    /* There is a race condition here if add/remove is not synchronized. */
+    ring->remain -= num;
+
+    __sync_synchronize();
+
+    if (!(eth->tdar & TDAR_TDAR)) {
+        eth->tdar = TDAR_TDAR;
+    }
+
+
+}
+void 
+ffihandle_tx()
+{
+
+    uintptr_t buffer = 0;
+    unsigned int len = 0;
+    void *cookie = NULL;
+
+    // We need to put in an empty condition here. 
+    while ((tx.remain > 1) && !driver_dequeue(tx_ring.used_ring, &buffer, &len, &cookie)) {
+        uintptr_t phys = getPhysAddr(buffer);
+        raw_tx(eth, 1, &phys, &len, cookie);
+    }
+
+}
+
+
+static void 
+handle_tx(volatile struct enet_regs *eth)
+{
+    uintptr_t buffer = 0;
+    unsigned int len = 0;
+    void *cookie = NULL;
+    int ret = driver_dequeue(tx_ring.used_ring, &buffer, &len, &cookie);
+    // We need to put in an empty condition here. 
+    while ((tx.remain > 1)) {
+        if (ret != 0) {
+            //sel4cp_dbg_puts("Breaking from the handle tx loop\n");
+            break;
+        }
+        //sel4cp_dbg_puts("Looping in handle_tx\n");
+
+        uintptr_t phys = getPhysAddr(buffer);
+        raw_tx(eth, 1, &phys, &len, cookie);
+        ret = driver_dequeue(tx_ring.used_ring, &buffer, &len, &cookie);
+    }
+
+}
 
 seL4_MessageInfo_t
 protected(sel4cp_channel ch, sel4cp_msginfo msginfo)
 {
     notified_return = __builtin_return_address(0);
     notified_return += 4;
-    sel4cp_dbg_puts("Entering protected function\n");
+    //sel4cp_dbg_puts("Entering protected function\n");
 
     switch (ch) {
         case INIT:
@@ -1140,11 +1338,12 @@ protected(sel4cp_channel ch, sel4cp_msginfo msginfo)
             sel4cp_mr_set(1, eth->paur);
             return sel4cp_msginfo_new(0, 2);
         case TX_CH:
-            sel4cp_dbg_puts("TX case in protected\n");
-            // handle_tx(eth);
+            //sel4cp_dbg_puts("TX case in protected\n");
+            handle_tx(eth);
+            cml_main();
             break;
         default:
-            sel4cp_dbg_puts("Received ppc on unexpected channel ");
+            //sel4cp_dbg_puts("Received ppc on unexpected channel ");
             puthex64(ch);
             break;
     }
@@ -1154,43 +1353,46 @@ protected(sel4cp_channel ch, sel4cp_msginfo msginfo)
 void notified(sel4cp_channel ch)
 {
     notified_return = __builtin_return_address(0);
+
+    //sel4cp_dbg_puts("NOTIFIED: return address is: ");
+    // puthex64(notified_return);
+    //sel4cp_dbg_puts("\n");
     
     current_channel = ch;
 
     sel4cp_dbg_puts("Entering the notified function\n");
-
+    // puthex64(signal);
+    //sel4cp_dbg_puts("\n");
+    // have_signal = false;
     if (ch == INIT) {
-        sel4cp_dbg_puts("Notified INIT case\n");
+        //sel4cp_dbg_puts("Notified INIT case\n");
         init_post();
         // handle_notified(ch);
         // sel4cp_notify(INIT);
         return;
     } else if (ch == TX_CH) {
         sel4cp_dbg_puts("Notified TX case\n");
-
+        // handle_tx(eth);
         cml_main();
+        sel4cp_dbg_puts("returning from cml_main\n");
+        return;
 
     } else if (ch == IRQ_CH) {
-        sel4cp_dbg_puts("Notified IRQ case\n");
+        sel4cp_dbg_puts("Entering the IRQ case\n");
         handle_eth(eth);
+
         have_signal = true;
         signal_msg = seL4_MessageInfo_new(IRQAckIRQ, 0, 0, 0);
         signal = (BASE_IRQ_CAP + IRQ_CH);
-        return;
-        // cml_main();
-        // handle_notified(ch);
+        sel4cp_dbg_puts("Finished the IRQ case\n");
 
-    } else if (ch == 0) {
-        sel4cp_dbg_puts("We have recieved channel 0 for some reason\n");
+        return;
+
     } else {
-        sel4cp_dbg_puts("We have recieved an invalid channel identifier\n");
+        sel4cp_dbg_puts("We have recieved an invalid channel identifier: ");
+        // puthex64(ch);
+        sel4cp_dbg_puts("\n");
     }
     // current_channel = ch;
     // Need to also do some signal ack here or in exit
-}
-
-void handle_notified(int ch) {
-    current_channel = ch;
-    sel4cp_dbg_puts("Jumping to pancake main function\n");
-    cml_main();
 }
