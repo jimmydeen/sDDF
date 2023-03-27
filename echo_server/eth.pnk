@@ -1,10 +1,9 @@
 var get_rx_c = @base + 16;
 var get_rx_a = @base + 20;
-#get_rx_vals(get_rx_c, 0, get_rx_a, 4);
-
 var get_tx_c = @base + 16;
 var get_tx_a = @base + 20;
 
+#get_rx_vals(get_rx_c, 0, get_rx_a, 4);
 #get_tx_vals(get_tx_c, 0, get_tx_a, 4);
 
 var rx_cnt = ldb get_rx_a;
@@ -83,6 +82,12 @@ if argc == 2 {
 
     // Handle the raw_tx function here
 
+    if rx_remain < 1 {
+      // Complete TX function here
+      // Replace this with pancake code after testing rest of the tx function
+      #complete_tx(0,0,0,0);
+    }      
+
     // base + 150
     var ffi_raw_tx_c = @base + 150; 
     var ffi_raw_tx_a = @base + 200;
@@ -90,14 +95,14 @@ if argc == 2 {
     strb ffi_raw_tx_c, 1;
     strb ffi_raw_tx_c + 1, 0;
 
-    strb ffi_raw_tx_c + 2, ldb buffer;
-    strb ffi_raw_tx_c + 3, ldb buffer + 1;
-    strb ffi_raw_tx_c + 4, ldb buffer + 2;
-    strb ffi_raw_tx_c + 5, ldb buffer + 3;
-    strb ffi_raw_tx_c + 6, ldb buffer + 4;
-    strb ffi_raw_tx_c + 7, ldb buffer + 5;
-    strb ffi_raw_tx_c + 8, ldb buffer + 6;
-    strb ffi_raw_tx_c + 9, ldb buffer + 7;
+    strb ffi_raw_tx_c + 2, ldb phys;
+    strb ffi_raw_tx_c + 3, ldb phys + 1;
+    strb ffi_raw_tx_c + 4, ldb phys + 2;
+    strb ffi_raw_tx_c + 5, ldb phys + 3;
+    strb ffi_raw_tx_c + 6, ldb phys + 4;
+    strb ffi_raw_tx_c + 7, ldb phys + 5;
+    strb ffi_raw_tx_c + 8, ldb phys + 6;
+    strb ffi_raw_tx_c + 9, ldb phys + 7;
 
     strb ffi_raw_tx_c + 10, ldb len;
     strb ffi_raw_tx_c + 11, ldb len + 1;
@@ -117,9 +122,44 @@ if argc == 2 {
     strb ffi_raw_tx_c + 24, ldb cookie + 6;
     strb ffi_raw_tx_c + 25, ldb cookie + 7;
 
+    // need to store the tx and rx ring values
+    var set_rx_c = @base + 500;
+    var set_rx_a = @base + 504;
+    var set_tx_c = @base + 508;
+    var set_tx_a = @base + 512;
+
+    strb set_rx_c, rx_cnt;
+    strb set_rx_c + 1, rx_remain;
+    strb set_rx_c + 2, rx_tail;
+    strb set_rx_c + 3, rx_head;
+
+    #store_rx_vals(set_rx_c, 4, set_rx_a, 0);
+
+    strb set_tx_c, tx_cnt;
+    strb set_tx_c + 1, tx_remain;
+    strb set_tx_c + 2, tx_tail;
+    strb set_tx_c + 3, tx_head;
+
+    #store_tx_vals(set_tx_c, 4, set_tx_a, 0);
+
     #raw_tx_sync_region(ffi_raw_tx_c, 26, ffi_raw_tx_a, 0);
 
-      #breakpoint_1(0,0,0,0);
+    // Need to get the updated tx and rx ring values
+
+    #get_rx_vals(get_rx_c, 0, get_rx_a, 4);
+    #get_tx_vals(get_tx_c, 0, get_tx_a, 4);
+
+    var rx_cnt = ldb get_rx_a;
+    var rx_remain = ldb get_rx_a + 1;
+    var rx_tail = ldb get_rx_a + 2;
+    var rx_head = ldb get_rx_a + 3;
+
+    var tx_cnt = ldb get_tx_a;
+    var tx_remain = ldb get_tx_a + 1;
+    var tx_tail = ldb get_tx_a + 2;
+    var tx_head = ldb get_tx_a + 3;
+
+    #breakpoint_1(0,0,0,0);
 
     // Dequeue another buffer to service
     // var dequeue_c = @base + 83;

@@ -426,6 +426,16 @@ void ffieth_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, l
         ret = driver_dequeue(tx_ring.used_ring, &buffer, &buffer_len, &cookie);
     }
 
+    uintptr_t phys = getPhysAddr(buffer);
+    sel4cp_dbg_puts("This is what phys should be: ");
+    puthex64(phys);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is what len should be: ");
+    puthex64(buffer_len);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is what cookie should be: ");
+    puthex64((uintptr_t)cookie);
+    sel4cp_dbg_puts("\n");
     // Place the values that we have gotten from the dequeue function into the a array
     uintptr_to_byte8(buffer, a);
     uintptr_to_byte8(buffer_len, &a[8]);
@@ -716,7 +726,7 @@ void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, 
 }
 
 void ffibreakpoint_1(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("This is breakpoint 1\n");
+    sel4cp_dbg_puts("This is breakpoint 1\n");
 }
 
 void ffibreak_loop(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -829,7 +839,7 @@ static void update_ring_slot(
 }
 
 void ffiraw_tx_sync_region(unsigned char *c, long clen, unsigned char *a, long alen) {
-    __sync_synchronize();
+
 
     unsigned int num = c[0];
     int ring_type = c[1];
@@ -839,11 +849,23 @@ void ffiraw_tx_sync_region(unsigned char *c, long clen, unsigned char *a, long a
     } else {
         ring = &rx;
     }
-    uintptr_t phys = byte8_to_uintptr(&c[2]);
-    unsigned int len = byte8_to_int(&c[10]);
-    void *cookie = byte8_to_uintptr(&c[18]);
+    uintptr_t temp_phys = byte8_to_uintptr(&c[2]);
+    uintptr_t *phys = &temp_phys;
+    unsigned int temp_len =  byte8_to_int(&c[10]);
+    unsigned int *len = &temp_len;
+    void *cookie = (void *) byte8_to_uintptr(&c[18]);
 
+    sel4cp_dbg_puts("This is what phys is after pancake: ");
+    puthex64(temp_phys);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is what len is after pancake: ");
+    puthex64(temp_len);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is what cookie is after pancake: ");
+    puthex64((uintptr_t) cookie);
+    sel4cp_dbg_puts("\n");
 
+    __sync_synchronize();
     unsigned int tail = ring->tail;
     unsigned int tail_new = tail;
 
@@ -859,7 +881,7 @@ void ffiraw_tx_sync_region(unsigned char *c, long clen, unsigned char *a, long a
             tail_new = 0;
             stat |= WRAP;
         }
-        // update_ring_slot(ring, idx, phys++, len++, stat);
+        update_ring_slot(ring, idx, *phys++, *len++, stat);
     }
 
     ring->cookies[tail] = cookie;
@@ -870,9 +892,9 @@ void ffiraw_tx_sync_region(unsigned char *c, long clen, unsigned char *a, long a
 
     __sync_synchronize();
 
-    // if (!(eth->tdar & TDAR_TDAR)) {
-    //     eth->tdar = TDAR_TDAR;
-    // }
+    if (!(eth->tdar & TDAR_TDAR)) {
+        eth->tdar = TDAR_TDAR;
+    }
 }
 
 static void fill_rx_bufs()
@@ -1085,66 +1107,66 @@ handle_eth(volatile struct enet_regs *eth)
         eth->eir = e;
     }
 }
-// static void
-// complete_tx(volatile struct enet_regs *eth)
-// {
-//     //sel4cp_dbg_puts("In the complete tx function\n");
-//     unsigned int cnt_org;
-//     void *cookie;
-//     ring_ctx_t *ring = &tx;
-//     unsigned int head = ring->head;
-//     unsigned int cnt = 0;
 
-//     while (head != ring->tail) {
-//         //sel4cp_dbg_puts("\tLooping in complete tx\n");
-//         if (0 == cnt) {
-//             cnt = tx_lengths[head];
-//             if ((0 == cnt) || (cnt > TX_COUNT)) {
-//                 /* We are not supposed to read 0 here. */
-//                 print("complete_tx with cnt=0 or max");
-//                 return;
-//             }
-//             cnt_org = cnt;
-//             cookie = ring->cookies[head];
-//         }
+void fficomplete_tx()
+{
+    //sel4cp_dbg_puts("In the complete tx function\n");
+    unsigned int cnt_org;
+    void *cookie;
+    ring_ctx_t *ring = &tx;
+    unsigned int head = ring->head;
+    unsigned int cnt = 0;
 
-//         volatile struct descriptor *d = &(ring->descr[head]);
+    while (head != ring->tail) {
+        //sel4cp_dbg_puts("\tLooping in complete tx\n");
+        if (0 == cnt) {
+            cnt = tx_lengths[head];
+            if ((0 == cnt) || (cnt > TX_COUNT)) {
+                /* We are not supposed to read 0 here. */
+                print("complete_tx with cnt=0 or max");
+                return;
+            }
+            cnt_org = cnt;
+            cookie = ring->cookies[head];
+        }
 
-//         /* If this buffer was not sent, we can't release any buffer. */
-//         if (d->stat & TXD_READY) {
-//             /* give it another chance */
-//             if (!(eth->tdar & TDAR_TDAR)) {
-//                 eth->tdar = TDAR_TDAR;
-//             }
-//             if (d->stat & TXD_READY) {
-//                 return;
-//             }
-//         }
+        volatile struct descriptor *d = &(ring->descr[head]);
 
-//         /* Go to next buffer, handle roll-over. */
-//         if (++head == TX_COUNT) {
-//             head = 0;
-//         }
+        /* If this buffer was not sent, we can't release any buffer. */
+        if (d->stat & TXD_READY) {
+            /* give it another chance */
+            if (!(eth->tdar & TDAR_TDAR)) {
+                eth->tdar = TDAR_TDAR;
+            }
+            if (d->stat & TXD_READY) {
+                return;
+            }
+        }
 
-//         if (0 == --cnt) {
-//             ring->head = head;
-//             /* race condition if add/remove is not synchronized. */
-//             ring->remain += cnt_org;
-//             /* give the buffer back */
-//             buff_desc_t *desc = (buff_desc_t *)cookie;
+        /* Go to next buffer, handle roll-over. */
+        if (++head == TX_COUNT) {
+            head = 0;
+        }
 
-//             enqueue_avail(&tx_ring, desc->encoded_addr, desc->len, desc->cookie);
-//         }
-//     }
+        if (0 == --cnt) {
+            ring->head = head;
+            /* race condition if add/remove is not synchronized. */
+            ring->remain += cnt_org;
+            /* give the buffer back */
+            buff_desc_t *desc = (buff_desc_t *)cookie;
 
-//     /* The only reason to arrive here is when head equals tails. If cnt is not
-//      * zero, then there is some kind of overflow or data corruption. The number
-//      * of tx descriptors holding data can't exceed the space in the ring.
-//      */
-//     if (0 != cnt) {
-//         print("head reached tail, but cnt!= 0");
-//     }
-// }
+            enqueue_avail(&tx_ring, desc->encoded_addr, desc->len, desc->cookie);
+        }
+    }
+
+    /* The only reason to arrive here is when head equals tails. If cnt is not
+     * zero, then there is some kind of overflow or data corruption. The number
+     * of tx descriptors holding data can't exceed the space in the ring.
+     */
+    if (0 != cnt) {
+        print("head reached tail, but cnt!= 0");
+    }
+}
 
 // static void
 // raw_tx(volatile struct enet_regs *eth, unsigned int num, uintptr_t *phys,
