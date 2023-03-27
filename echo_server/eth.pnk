@@ -122,26 +122,6 @@ if argc == 2 {
     strb ffi_raw_tx_c + 24, ldb cookie + 6;
     strb ffi_raw_tx_c + 25, ldb cookie + 7;
 
-    // need to store the tx and rx ring values
-    var set_rx_c = @base + 500;
-    var set_rx_a = @base + 504;
-    var set_tx_c = @base + 508;
-    var set_tx_a = @base + 512;
-
-    strb set_rx_c, rx_cnt;
-    strb set_rx_c + 1, rx_remain;
-    strb set_rx_c + 2, rx_tail;
-    strb set_rx_c + 3, rx_head;
-
-    #store_rx_vals(set_rx_c, 4, set_rx_a, 0);
-
-    strb set_tx_c, tx_cnt;
-    strb set_tx_c + 1, tx_remain;
-    strb set_tx_c + 2, tx_tail;
-    strb set_tx_c + 3, tx_head;
-
-    #store_tx_vals(set_tx_c, 4, set_tx_a, 0);
-
     #raw_tx_sync_region(ffi_raw_tx_c, 26, ffi_raw_tx_a, 0);
 
     // Need to get the updated tx and rx ring values
@@ -199,7 +179,7 @@ if argc == 2 {
 
     driver_ret = ldb dequeue_c;
   }
-
+  return 0;
 }
 
 // Handle eth case - use heap addresses above + 200

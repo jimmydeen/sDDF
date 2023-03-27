@@ -370,17 +370,65 @@ void ffiget_tx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
 }
 
 void ffistore_rx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("This is rx.cnt before: ");
+    puthex64(rx.cnt);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.remain before: ");
+    puthex64(rx.remain);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.tail before: ");
+    puthex64(rx.tail);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.head before: ");
+    puthex64(rx.head);
+    sel4cp_dbg_puts("\n");
     rx.cnt = c[0];
     rx.remain = c[1];
     rx.tail = c[2];
     rx.head = c[3];
+    sel4cp_dbg_puts("This is rx.cnt after: ");
+    puthex64(rx.cnt);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.remain after: ");
+    puthex64(rx.remain);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.tail after: ");
+    puthex64(rx.tail);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.head after: ");
+    puthex64(rx.head);
+    sel4cp_dbg_puts("\n");
 }
 
 void ffistore_tx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("This is tx.cnt before: ");
+    puthex64(rx.cnt);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is tx.remain before: ");
+    puthex64(rx.remain);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is tx.tail before: ");
+    puthex64(rx.tail);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is tx.head before: ");
+    puthex64(rx.head);
+    sel4cp_dbg_puts("\n");
     tx.cnt = c[0];
     tx.remain = c[1];
     tx.tail = c[2];
     tx.head = c[3];
+    sel4cp_dbg_puts("This is tx.cnt after: ");
+    puthex64(rx.cnt);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is tx.remain after: ");
+    puthex64(rx.remain);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is tx.tail after: ");
+    puthex64(rx.tail);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is tx.head after: ");
+    puthex64(rx.head);
+    sel4cp_dbg_puts("\n");
 }
 
 void ffienable_rx() {
@@ -412,7 +460,7 @@ void ffieth_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, l
 
     //sel4cp_dbg_puts("In the serial driver dequeue used function\n");
     if (clen != 1) {
-        //sel4cp_dbg_puts("There are no arguments supplied when args are expected\n");
+        sel4cp_dbg_puts("There are no arguments supplied when args are expected\n");
         return;
     }
 
@@ -441,11 +489,11 @@ void ffieth_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, l
     uintptr_to_byte8(buffer_len, &a[8]);
     uintptr_to_byte8(cookie, &a[16]);
     if (ret == 1) {
-        //sel4cp_dbg_puts("Driver dequeue failed!\n");
+        sel4cp_dbg_puts("Driver dequeue failed!\n");
         c[0] = 1;
     }
     c[0] = ret;
-    //sel4cp_dbg_puts("Finished buffer dequeue\n");
+    sel4cp_dbg_puts("Finished buffer dequeue\n");
 }
 
 void ffieth_driver_enqueue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -841,31 +889,24 @@ static void update_ring_slot(
 void ffiraw_tx_sync_region(unsigned char *c, long clen, unsigned char *a, long alen) {
 
 
-    unsigned int num = c[0];
-    int ring_type = c[1];
+    unsigned int num = 1;
+    int ring_type = 0;
+
     ring_ctx_t *ring;
     if (ring_type == 0) {
         ring = &tx;
     } else {
         ring = &rx;
     }
+
     uintptr_t temp_phys = byte8_to_uintptr(&c[2]);
     uintptr_t *phys = &temp_phys;
     unsigned int temp_len =  byte8_to_int(&c[10]);
     unsigned int *len = &temp_len;
     void *cookie = (void *) byte8_to_uintptr(&c[18]);
 
-    sel4cp_dbg_puts("This is what phys is after pancake: ");
-    puthex64(temp_phys);
-    sel4cp_dbg_puts("\n");
-    sel4cp_dbg_puts("This is what len is after pancake: ");
-    puthex64(temp_len);
-    sel4cp_dbg_puts("\n");
-    sel4cp_dbg_puts("This is what cookie is after pancake: ");
-    puthex64((uintptr_t) cookie);
-    sel4cp_dbg_puts("\n");
-
     __sync_synchronize();
+
     unsigned int tail = ring->tail;
     unsigned int tail_new = tail;
 
@@ -1110,7 +1151,7 @@ handle_eth(volatile struct enet_regs *eth)
 
 void fficomplete_tx()
 {
-    //sel4cp_dbg_puts("In the complete tx function\n");
+    sel4cp_dbg_puts("In the ffi complete tx function\n");
     unsigned int cnt_org;
     void *cookie;
     ring_ctx_t *ring = &tx;
@@ -1310,7 +1351,6 @@ raw_tx(volatile struct enet_regs *eth, unsigned int num, uintptr_t *phys,
 void 
 ffihandle_tx()
 {
-
     uintptr_t buffer = 0;
     unsigned int len = 0;
     void *cookie = NULL;
