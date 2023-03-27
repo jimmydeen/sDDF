@@ -71,73 +71,145 @@ if argc == 2 {
   while tx_remain > 1 {
     #dummy_call(0,0,0,0);
     if driver_ret <> 0 {
-        #break_loop(0,0,0,0);
+      #break_loop(0,0,0,0);
       break;
     }
-
-    // Temp use phys_a
 
     var phys = @base + 108;
     #get_phys(buffer, 8, phys, 8);
 
     // Handle the raw_tx function here
 
-    if rx_remain < 1 {
-      // Complete TX function here
-      // Replace this with pancake code after testing rest of the tx function
-      #complete_tx(0,0,0,0);
-    }      
+    if tx_remain < 1 {
+      #breakpoint_1(0,0,0,0);
+      return 1;
+    }
 
-    // base + 150
-    var ffi_raw_tx_c = @base + 150; 
-    var ffi_raw_tx_a = @base + 200;
-    
-    strb ffi_raw_tx_c, 1;
-    strb ffi_raw_tx_c + 1, 0;
+    #synchronise_call(0,0,0,0);
+    var tail = rx_tail;
+    var tail_new = tail;
+    var i = 1;
+    while i > 0 {
+      var stat_c = @base;
+      #in_loop(0,0,0,0);
+      i = i - 1;
+      var stat = 1 << 15;
+      strb stat_c + 1, (stat) & 255;
+      strb stat_c, (stat >> 8) & 255;
+      #print_stat(stat_c, 1,0,0);
+      if i == 0 {
+        #in_conditional(0,0,0,0);
+        stat = stat | (1 << 10) | (1 << 11);
+        strb stat_c, stat;
+        #print_stat(stat_c, 1,0,0);
+      }
 
-    strb ffi_raw_tx_c + 2, ldb phys;
-    strb ffi_raw_tx_c + 3, ldb phys + 1;
-    strb ffi_raw_tx_c + 4, ldb phys + 2;
-    strb ffi_raw_tx_c + 5, ldb phys + 3;
-    strb ffi_raw_tx_c + 6, ldb phys + 4;
-    strb ffi_raw_tx_c + 7, ldb phys + 5;
-    strb ffi_raw_tx_c + 8, ldb phys + 6;
-    strb ffi_raw_tx_c + 9, ldb phys + 7;
+      var index = tail_new;
+      var temp_tail = tail_new + 1;
+      if temp_tail == 256 {
+        tail_new = 0;
+        stat = stat | (1 << 13);
+        strb stat_c, stat;
+        #print_stat(stat_c, 1,0,0);
+      } 
 
-    strb ffi_raw_tx_c + 10, ldb len;
-    strb ffi_raw_tx_c + 11, ldb len + 1;
-    strb ffi_raw_tx_c + 12, ldb len + 2;
-    strb ffi_raw_tx_c + 13, ldb len + 3;
-    strb ffi_raw_tx_c + 14, ldb len + 4;
-    strb ffi_raw_tx_c + 15, ldb len + 5;
-    strb ffi_raw_tx_c + 16, ldb len + 6;
-    strb ffi_raw_tx_c + 17, ldb len + 7;
+      // update the ring slot
+      var update_c = @base + 150;
+      var update_a = @base + 148;
 
-    strb ffi_raw_tx_c + 18, ldb cookie;
-    strb ffi_raw_tx_c + 19, ldb cookie + 1;
-    strb ffi_raw_tx_c + 20, ldb cookie + 2;
-    strb ffi_raw_tx_c + 21, ldb cookie + 3;
-    strb ffi_raw_tx_c + 22, ldb cookie + 4;
-    strb ffi_raw_tx_c + 23, ldb cookie + 5;
-    strb ffi_raw_tx_c + 24, ldb cookie + 6;
-    strb ffi_raw_tx_c + 25, ldb cookie + 7;
+      // Storing descriptor in 0-7
+      strb update_c + 0, 0;
+      // Storing index in 8
+      strb update_c + 8, index;
 
-    #raw_tx_sync_region(ffi_raw_tx_c, 26, ffi_raw_tx_a, 0);
 
-    // Need to get the updated tx and rx ring values
+      // Storing phys in 9-16
+      strb update_c + 9, ldb phys;
+      strb update_c + 10, ldb phys + 1;
+      strb update_c + 11, ldb phys + 2;
+      strb update_c + 12, ldb phys + 3;
+      strb update_c + 13, ldb phys + 4;
+      strb update_c + 14, ldb phys + 5;
+      strb update_c + 15, ldb phys + 6;
+      strb update_c + 16, ldb phys + 7;
 
-    #get_rx_vals(get_rx_c, 0, get_rx_a, 4);
-    #get_tx_vals(get_tx_c, 0, get_tx_a, 4);
 
-    var rx_cnt = ldb get_rx_a;
-    var rx_remain = ldb get_rx_a + 1;
-    var rx_tail = ldb get_rx_a + 2;
-    var rx_head = ldb get_rx_a + 3;
+      // Storing len in 17
+      strb update_c + 17, ldb len;
+      strb update_c + 18, ldb len + 1;
+      strb update_c + 19, ldb len + 2;
+      strb update_c + 20, ldb len + 3;
+      strb update_c + 21, ldb len + 4;
+      strb update_c + 22, ldb len + 5;
+      strb update_c + 23, ldb len + 6;
+      strb update_c + 24, ldb len + 7;
 
-    var tx_cnt = ldb get_tx_a;
-    var tx_remain = ldb get_tx_a + 1;
-    var tx_tail = ldb get_tx_a + 2;
-    var tx_head = ldb get_tx_a + 3;
+
+      // Storing stat in 18 - 25
+      strb update_c + 26, (stat) & 255;
+      strb update_c + 25, (stat >> 8) & 255;
+
+
+      #update_descr_slot_raw_tx(update_c, 32, update_a, 0);
+      // We want to increment len here
+
+      // Saving phys from 9-16
+      strb phys, ldb update_c + 9;
+      strb phys + 1, ldb update_c + 10;
+      strb phys + 2, ldb update_c + 11;
+      strb phys + 3, ldb update_c + 12;
+      strb phys + 4, ldb update_c + 13;
+      strb phys + 5, ldb update_c + 14;
+      strb phys + 6, ldb update_c + 15;
+      strb phys + 7, ldb update_c + 16;
+
+      // Saving len from 17
+      strb len, ldb update_c + 17;
+      strb len + 1, ldb update_c + 18;
+      strb len + 2, ldb update_c + 19;
+      strb len + 3, ldb update_c + 20;
+      strb len + 4, ldb update_c + 21;
+      strb len + 5, ldb update_c + 22;
+      strb len + 6, ldb update_c + 23;
+      strb len + 7, ldb update_c + 24;
+      
+    }
+
+    // Set the cookie 
+    var set_cookie_c = @base + 109;
+    var set_cookie_a = @base + 126;
+    strb set_cookie_c, tail;
+
+    // Setting bytes of cookie address
+    strb set_cookie_c + 1, ldb cookie;
+    strb set_cookie_c + 2, ldb cookie + 1;
+    strb set_cookie_c + 3, ldb cookie + 2;
+    strb set_cookie_c + 4, ldb cookie + 3;
+    strb set_cookie_c + 5, ldb cookie + 4;
+    strb set_cookie_c + 6, ldb cookie + 5;
+    strb set_cookie_c + 7, ldb cookie + 6;
+    strb set_cookie_c + 8, ldb cookie + 7;
+
+    strb set_cookie_c + 9, 0;
+
+    #set_cookies(set_cookie_c, 17, set_cookie_a, 0);
+
+    // Need to update the tx_length here
+
+    #breakpoint_1(0,0,0,0);
+
+    tx_tail = tail_new;
+    tx_remain = tx_remain - 1;
+
+    var pointer_increase = 0;
+    while pointer_increase < tail {
+        pointer_increase = pointer_increase + 1;
+    }
+
+    strb tx_lengths + pointer_increase, 1;
+
+    #synchronise_call(0,0,0,0);
+    #tx_descr_active(0,0,0,0);
 
     #breakpoint_1(0,0,0,0);
 
@@ -179,6 +251,8 @@ if argc == 2 {
 
     driver_ret = ldb dequeue_c;
   }
+
+  #returning(0,0,0,0);
   return 0;
 }
 

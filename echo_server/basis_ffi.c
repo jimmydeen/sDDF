@@ -369,6 +369,9 @@ void ffiget_tx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
     a[3] = (unsigned char) tx.head;
 }
 
+/* Figure out why this stuff breaks, might be an issue with the calling order.
+Also check where these values are actually modified in pancake, and if we need this */
+
 void ffistore_rx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
     sel4cp_dbg_puts("This is rx.cnt before: ");
     puthex64(rx.cnt);
@@ -474,16 +477,16 @@ void ffieth_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, l
         ret = driver_dequeue(tx_ring.used_ring, &buffer, &buffer_len, &cookie);
     }
 
-    uintptr_t phys = getPhysAddr(buffer);
-    sel4cp_dbg_puts("This is what phys should be: ");
-    puthex64(phys);
-    sel4cp_dbg_puts("\n");
-    sel4cp_dbg_puts("This is what len should be: ");
-    puthex64(buffer_len);
-    sel4cp_dbg_puts("\n");
-    sel4cp_dbg_puts("This is what cookie should be: ");
-    puthex64((uintptr_t)cookie);
-    sel4cp_dbg_puts("\n");
+    // uintptr_t phys = getPhysAddr(buffer);
+    // sel4cp_dbg_puts("This is what phys should be: ");
+    // puthex64(phys);
+    // sel4cp_dbg_puts("\n");
+    // sel4cp_dbg_puts("This is what len should be: ");
+    // puthex64(buffer_len);
+    // sel4cp_dbg_puts("\n");
+    // sel4cp_dbg_puts("This is what cookie should be: ");
+    // puthex64((uintptr_t)cookie);
+    // sel4cp_dbg_puts("\n");
     // Place the values that we have gotten from the dequeue function into the a array
     uintptr_to_byte8(buffer, a);
     uintptr_to_byte8(buffer_len, &a[8]);
@@ -612,21 +615,26 @@ void ffiget_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
 }
 
 void ffiset_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("Entering set cookies function\n");
+    sel4cp_dbg_puts("Entering set cookies function\n");
     int index = c[0];
     int ring = c[9];
-    void *cookie = (void **) byte8_to_uintptr(&c[1]);
+    void *cookie = (void *) byte8_to_uintptr(&c[1]);
     void **cookies;
     
+    // sel4cp_dbg_puts("Value of cookie in set cookies: ");
+    // puthex64(cookie);
+    // sel4cp_dbg_puts("\n");
+
     if (ring == 0) {
         cookies = tx.cookies;
     } else {
         cookies = rx.cookies;
     }
 
+    
     cookies[index] = cookie;
 
-    //sel4cp_dbg_puts("Finsihed the set cookies function\n");
+    sel4cp_dbg_puts("Finsihed the set cookies function\n");
 }
 
 void ffiget_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -722,7 +730,7 @@ void ffiupdate_descr_slot(unsigned char *c, long clen, unsigned char *a, long al
 }
 
 void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("Entering the update descr slot raw tx function\n");
+    sel4cp_dbg_puts("Entering the update descr slot raw tx function\n");
     if (clen != 32) {
         //sel4cp_dbg_puts("Clen was not of correct size -- update_descr_slot\n");
         return;
@@ -734,6 +742,7 @@ void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, 
     struct descriptor *descr;
 
     if (ring == 0) {
+        sel4cp_dbg_puts("Got the tx descr\n");
         descr = (struct descriptor *) tx.descr;
     } else {
         descr = (struct descriptor *) rx.descr;
@@ -749,11 +758,29 @@ void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, 
     int len = byte8_to_int(&c[17]);
 
     // Stat in c[25]
-    int64_t stat = (int64_t) byte8_to_uintptr(&c[25]);
+    uint16_t stat = byte2_to_int(&c[25]);
 
-    // Array of size 26
+    // sel4cp_dbg_puts("Value of uds phys: ");
+    // puthex64(phys);
+    // sel4cp_dbg_puts("\n");
 
-    volatile struct descriptor *d = &descr[index];
+    // sel4cp_dbg_puts("Value of uds len: ");
+    // puthex64(len);
+    // sel4cp_dbg_puts("\n");
+
+    sel4cp_dbg_puts("Value of uds stat: ");
+    puthex64(stat);
+    sel4cp_dbg_puts("\n");
+
+
+    uint16_t temp_stat = TXD_READY | TXD_ADDCRC | TXD_LAST;
+    sel4cp_dbg_puts("Value of uds temp_stat: ");
+    puthex64(temp_stat);
+    sel4cp_dbg_puts("\n");
+
+    // Array of size 26 
+
+    volatile struct descriptor *d = &(descr[index]);
     d->addr = phys;
     d->len = len;
 
@@ -770,7 +797,7 @@ void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, 
     // Store the new phys where the old phys was
     uintptr_to_byte8(phys, &c[9]);
     uintptr_to_byte8(len, &c[17]);
-    //sel4cp_dbg_puts("Finished the update descr slot function\n");
+    sel4cp_dbg_puts("Finished the update descr slot function\n");
 }
 
 void ffibreakpoint_1(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -778,7 +805,26 @@ void ffibreakpoint_1(unsigned char *c, long clen, unsigned char *a, long alen) {
 }
 
 void ffibreak_loop(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("We are trying to break out of a loop\n");
+    sel4cp_dbg_puts("We are trying to break out of a loop\n");
+}
+
+void ffireturning(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("Returing from pancake\n");
+}
+
+void ffiin_loop(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("We are looping\n");
+}
+
+void ffiin_conditional(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("We are in a conditional statement\n");
+}
+
+void ffiprint_stat(unsigned char *c, long clen, unsigned char *a, long alen) {
+    uint16_t stat = byte2_to_int(c);
+    sel4cp_dbg_puts("This is the value of stat: ");
+    puthex64(stat);
+    sel4cp_dbg_puts("\n");
 }
 
 void ffitry_buffer_release(unsigned char *c, long clen, unsigned char *a, long alen) {
