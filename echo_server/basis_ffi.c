@@ -72,8 +72,8 @@ ring_ctx_t tx;
 #define PACKET_BUFFER_SIZE  2048
 #define MAX_PACKET_SIZE     1536
 
-#define RX_COUNT 256
-#define TX_COUNT 256
+#define RX_COUNT 255
+#define TX_COUNT 255
 
 /* Pointers to shared_ringbuffers */
 ring_handle_t rx_ring;
@@ -356,17 +356,65 @@ eth_setup(void)
 }
 
 void ffiget_rx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("This is rx.cnt before: ");
+    puthex64(rx.cnt);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.remain before: ");
+    puthex64(rx.remain);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.tail before: ");
+    puthex64(rx.tail);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.head before: ");
+    puthex64(rx.head);
+    sel4cp_dbg_puts("\n");
     a[0] = (unsigned char) rx.cnt;
     a[1] = (unsigned char) rx.remain;
     a[2] = (unsigned char) rx.tail;
     a[3] = (unsigned char) rx.head;
+    sel4cp_dbg_puts("This is rx.cnt after: ");
+    puthex64(a[0]);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.remain after: ");
+    puthex64(a[1]);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.tail after: ");
+    puthex64(a[2]);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.head after: ");
+    puthex64(a[3]);
+    sel4cp_dbg_puts("\n");
 }
 
 void ffiget_tx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("This is tx.cnt before: ");
+    puthex64(tx.cnt);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is tx.remain before: ");
+    puthex64(tx.remain);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is tx.tail before: ");
+    puthex64(tx.tail);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is tx.head before: ");
+    puthex64(tx.head);
+    sel4cp_dbg_puts("\n");
     a[0] = (unsigned char) tx.cnt;
     a[1] = (unsigned char) tx.remain;
     a[2] = (unsigned char) tx.tail;
     a[3] = (unsigned char) tx.head;
+    sel4cp_dbg_puts("This is tx.cnt after: ");
+    puthex64(a[0]);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is tx.remain after: ");
+    puthex64(a[1]);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is tx.tail after: ");
+    puthex64(a[2]);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is tx.head after: ");
+    puthex64(a[3]);
+    sel4cp_dbg_puts("\n");
 }
 
 /* Figure out why this stuff breaks, might be an issue with the calling order.
@@ -617,6 +665,9 @@ void ffiget_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
 void ffiset_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
     sel4cp_dbg_puts("Entering set cookies function\n");
     int index = c[0];
+    sel4cp_dbg_puts("The index of cookie to be set is: ");
+    puthex64(index);
+    sel4cp_dbg_puts("\n");
     int ring = c[9];
     void *cookie = (void *) byte8_to_uintptr(&c[1]);
     void **cookies;
@@ -735,19 +786,6 @@ void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, 
         //sel4cp_dbg_puts("Clen was not of correct size -- update_descr_slot\n");
         return;
     }
-
-    int ring = c[0];
-
-    // Descriptor array address in c[0]
-    struct descriptor *descr;
-
-    if (ring == 0) {
-        sel4cp_dbg_puts("Got the tx descr\n");
-        descr = (struct descriptor *) tx.descr;
-    } else {
-        descr = (struct descriptor *) rx.descr;
-    }
-
     // Index in c[8]
     int index = c[8];
 
@@ -760,6 +798,14 @@ void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, 
     // Stat in c[25]
     uint16_t stat = byte2_to_int(&c[25]);
 
+    int ring = 0;
+
+    // Descriptor array address in c[0]
+    struct descriptor *d = (struct descriptor *) &(tx.descr[index]);
+
+
+
+
     // sel4cp_dbg_puts("Value of uds phys: ");
     // puthex64(phys);
     // sel4cp_dbg_puts("\n");
@@ -768,19 +814,14 @@ void ffiupdate_descr_slot_raw_tx(unsigned char *c, long clen, unsigned char *a, 
     // puthex64(len);
     // sel4cp_dbg_puts("\n");
 
-    sel4cp_dbg_puts("Value of uds stat: ");
-    puthex64(stat);
-    sel4cp_dbg_puts("\n");
+    // sel4cp_dbg_puts("Value of uds stat: ");
+    // puthex64(stat);
+    // sel4cp_dbg_puts("\n");
 
 
-    uint16_t temp_stat = TXD_READY | TXD_ADDCRC | TXD_LAST;
-    sel4cp_dbg_puts("Value of uds temp_stat: ");
-    puthex64(temp_stat);
-    sel4cp_dbg_puts("\n");
 
     // Array of size 26 
 
-    volatile struct descriptor *d = &(descr[index]);
     d->addr = phys;
     d->len = len;
 
@@ -960,6 +1001,7 @@ void ffiraw_tx_sync_region(unsigned char *c, long clen, unsigned char *a, long a
     while (i-- > 0) {
         uint16_t stat = TXD_READY;
         if (0 == i) {
+            sel4cp_dbg_puts("In the conditional statement\n");
             stat |= TXD_ADDCRC | TXD_LAST;
         }
 
@@ -978,6 +1020,43 @@ void ffiraw_tx_sync_region(unsigned char *c, long clen, unsigned char *a, long a
     ring->remain -= num;
 
     __sync_synchronize();
+
+    if (!(eth->tdar & TDAR_TDAR)) {
+        eth->tdar = TDAR_TDAR;
+    }
+}
+
+void ffiupdate_ring_var(unsigned char *c, long clen, unsigned char *a, long alen) {
+    
+    unsigned int num = 1;
+    int ring_type = c[0];
+
+    ring_ctx_t *ring;
+    if (ring_type == 0) {
+        ring = &tx;
+    } else {
+        ring = &rx;
+    }
+
+    int tail = c[1];
+    int tail_new = c[2];
+    void *cookie = (void *) byte8_to_uintptr(&c[3]);
+
+    ring->cookies[tail] = cookie;
+    tx_lengths[tail] = num;
+    ring->tail = tail_new;
+    /* There is a race condition here if add/remove is not synchronized. */
+    ring->remain -= num;
+    __sync_synchronize();
+
+    sel4cp_dbg_puts("Value of tx tail in update ring var: ");
+    puthex64(ring->tail);
+    sel4cp_dbg_puts("\n");
+
+    sel4cp_dbg_puts("Value of tx remain in update ring var: ");
+    puthex64(ring->remain);
+    sel4cp_dbg_puts("\n");
+
 
     if (!(eth->tdar & TDAR_TDAR)) {
         eth->tdar = TDAR_TDAR;
@@ -1408,7 +1487,6 @@ ffihandle_tx()
     }
 
 }
-
 
 static void 
 handle_tx(volatile struct enet_regs *eth)

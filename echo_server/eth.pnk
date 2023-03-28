@@ -21,7 +21,7 @@ var arga_arr = @base + 81;
 #get_channel(argc_ar, 0, arga_arr, 1);
 var argc = ldb arga_arr;
 
-// @base + 600 -> @base + 1634 -- reserved for tx_lengths array
+// @base + 600 -> @base + 855 -- reserved for tx_lengths array
 var tx_lengths = @base + 500;
 
 // Handle TX case
@@ -100,16 +100,20 @@ if argc == 2 {
       if i == 0 {
         #in_conditional(0,0,0,0);
         stat = stat | (1 << 10) | (1 << 11);
-        strb stat_c, stat;
+        strb stat_c + 1, (stat) & 255;
+        strb stat_c, (stat >> 8) & 255;
         #print_stat(stat_c, 1,0,0);
       }
 
       var index = tail_new;
       var temp_tail = tail_new + 1;
-      if temp_tail == 256 {
+      if temp_tail == 255 {
         tail_new = 0;
         stat = stat | (1 << 13);
-        strb stat_c, stat;
+        strb stat_c + 1, (stat) & 255;
+        strb stat_c, (stat >> 8) & 255;
+        #breakpoint_1(0,0,0,0);
+        #in_conditional(0,0,0,0);
         #print_stat(stat_c, 1,0,0);
       } 
 
@@ -151,7 +155,6 @@ if argc == 2 {
 
 
       #update_descr_slot_raw_tx(update_c, 32, update_a, 0);
-      // We want to increment len here
 
       // Saving phys from 9-16
       strb phys, ldb update_c + 9;
@@ -176,40 +179,35 @@ if argc == 2 {
     }
 
     // Set the cookie 
-    var set_cookie_c = @base + 109;
-    var set_cookie_a = @base + 126;
-    strb set_cookie_c, tail;
+    var ring_var_c = @base + 109;
+    var ring_var_a = @base + 126;
+    strb ring_var_c, tail;
+    strb ring_var_c + 1, tail_new;
 
     // Setting bytes of cookie address
-    strb set_cookie_c + 1, ldb cookie;
-    strb set_cookie_c + 2, ldb cookie + 1;
-    strb set_cookie_c + 3, ldb cookie + 2;
-    strb set_cookie_c + 4, ldb cookie + 3;
-    strb set_cookie_c + 5, ldb cookie + 4;
-    strb set_cookie_c + 6, ldb cookie + 5;
-    strb set_cookie_c + 7, ldb cookie + 6;
-    strb set_cookie_c + 8, ldb cookie + 7;
+    strb ring_var_c + 2, ldb cookie;
+    strb ring_var_c + 3, ldb cookie + 1;
+    strb ring_var_c + 4, ldb cookie + 2;
+    strb ring_var_c + 5, ldb cookie + 3;
+    strb ring_var_c + 6, ldb cookie + 4;
+    strb ring_var_c + 7, ldb cookie + 5;
+    strb ring_var_c + 8, ldb cookie + 6;
+    strb ring_var_c + 9, ldb cookie + 7;
 
-    strb set_cookie_c + 9, 0;
+    #update_ring_var(ring_var_c, 0, ring_var_a, 0);
 
-    #set_cookies(set_cookie_c, 17, set_cookie_a, 0);
+    #get_rx_vals(get_rx_c, 0, get_rx_a, 4);
+    #get_tx_vals(get_tx_c, 0, get_tx_a, 4);
 
-    // Need to update the tx_length here
+    rx_cnt = ldb get_rx_a;
+    rx_remain = ldb get_rx_a + 1;
+    rx_tail = ldb get_rx_a + 2;
+    rx_head = ldb get_rx_a + 3;
 
-    #breakpoint_1(0,0,0,0);
-
-    tx_tail = tail_new;
-    tx_remain = tx_remain - 1;
-
-    var pointer_increase = 0;
-    while pointer_increase < tail {
-        pointer_increase = pointer_increase + 1;
-    }
-
-    strb tx_lengths + pointer_increase, 1;
-
-    #synchronise_call(0,0,0,0);
-    #tx_descr_active(0,0,0,0);
+    tx_cnt = ldb get_tx_a;
+    tx_remain = ldb get_tx_a + 1;
+    tx_tail = ldb get_tx_a + 2;
+    tx_head = ldb get_tx_a + 3;
 
     #breakpoint_1(0,0,0,0);
 
@@ -562,6 +560,7 @@ if argc == 1 {
 
 var set_rx_c = @base + 500;
 var set_rx_a = @base + 504;
+
 var set_tx_c = @base + 508;
 var set_tx_a = @base + 512;
 
