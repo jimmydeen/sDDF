@@ -86,9 +86,10 @@ if argc == 2 {
     }
 
     #synchronise_call(0,0,0,0);
-    var tail = rx_tail;
+    var tail = tx_tail;
     var tail_new = tail;
     var i = 1;
+    
     while i > 0 {
       var stat_c = @base;
       #in_loop(0,0,0,0);
@@ -107,6 +108,7 @@ if argc == 2 {
 
       var index = tail_new;
       var temp_tail = tail_new + 1;
+
       if temp_tail == 255 {
         tail_new = 0;
         stat = stat | (1 << 13);
@@ -115,7 +117,10 @@ if argc == 2 {
         #breakpoint_1(0,0,0,0);
         #in_conditional(0,0,0,0);
         #print_stat(stat_c, 1,0,0);
-      } 
+      } else {
+        #in_else(0,0,0,0);
+        tail_new = tail_new + 1;
+      }
 
       // update the ring slot
       var update_c = @base + 150;
@@ -196,18 +201,6 @@ if argc == 2 {
 
     #update_ring_var(ring_var_c, 0, ring_var_a, 0);
 
-    #get_rx_vals(get_rx_c, 0, get_rx_a, 4);
-    #get_tx_vals(get_tx_c, 0, get_tx_a, 4);
-
-    rx_cnt = ldb get_rx_a;
-    rx_remain = ldb get_rx_a + 1;
-    rx_tail = ldb get_rx_a + 2;
-    rx_head = ldb get_rx_a + 3;
-
-    tx_cnt = ldb get_tx_a;
-    tx_remain = ldb get_tx_a + 1;
-    tx_tail = ldb get_tx_a + 2;
-    tx_head = ldb get_tx_a + 3;
 
     #breakpoint_1(0,0,0,0);
 
