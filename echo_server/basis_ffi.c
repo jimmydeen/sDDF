@@ -18,7 +18,7 @@
 #include "util.h"
 #include "basis_ffi.h"
 
-static char cml_memory[1024*1024*2];
+static char cml_memory[2048*1024*2];
 // Attempt to save the address that notified needs to return to
 void *notified_return;
 unsigned int argc;
@@ -356,34 +356,34 @@ eth_setup(void)
 }
 
 void ffiget_rx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
-    // sel4cp_dbg_puts("This is rx.cnt before: ");
-    // puthex64(rx.cnt);
-    // sel4cp_dbg_puts("\n");
-    // sel4cp_dbg_puts("This is rx.remain before: ");
-    // puthex64(rx.remain);
-    // sel4cp_dbg_puts("\n");
-    // sel4cp_dbg_puts("This is rx.tail before: ");
-    // puthex64(rx.tail);
-    // sel4cp_dbg_puts("\n");
-    // sel4cp_dbg_puts("This is rx.head before: ");
-    // puthex64(rx.head);
-    // sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.cnt before: ");
+    puthex64(rx.cnt);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.remain before: ");
+    puthex64(rx.remain);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.tail before: ");
+    puthex64(rx.tail);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.head before: ");
+    puthex64(rx.head);
+    sel4cp_dbg_puts("\n");
     a[0] = (unsigned char) rx.cnt;
     a[1] = (unsigned char) rx.remain;
     a[2] = (unsigned char) rx.tail;
     a[3] = (unsigned char) rx.head;
-    // sel4cp_dbg_puts("This is rx.cnt after: ");
-    // puthex64(a[0]);
-    // sel4cp_dbg_puts("\n");
-    // sel4cp_dbg_puts("This is rx.remain after: ");
-    // puthex64(a[1]);
-    // sel4cp_dbg_puts("\n");
-    // sel4cp_dbg_puts("This is rx.tail after: ");
-    // puthex64(a[2]);
-    // sel4cp_dbg_puts("\n");
-    // sel4cp_dbg_puts("This is rx.head after: ");
-    // puthex64(a[3]);
-    // sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.cnt after: ");
+    puthex64(a[0]);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.remain after: ");
+    puthex64(a[1]);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.tail after: ");
+    puthex64(a[2]);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.head after: ");
+    puthex64(a[3]);
+    sel4cp_dbg_puts("\n");
 }
 
 void ffiget_tx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -421,34 +421,35 @@ void ffiget_tx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
 Also check where these values are actually modified in pancake, and if we need this */
 
 void ffistore_rx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
-    // sel4cp_dbg_puts("This is rx.cnt before: ");
-    // puthex64(rx.cnt);
-    // sel4cp_dbg_puts("\n");
-    // sel4cp_dbg_puts("This is rx.remain before: ");
-    // puthex64(rx.remain);
-    // sel4cp_dbg_puts("\n");
-    // sel4cp_dbg_puts("This is rx.tail before: ");
-    // puthex64(rx.tail);
-    // sel4cp_dbg_puts("\n");
-    // sel4cp_dbg_puts("This is rx.head before: ");
-    // puthex64(rx.head);
-    // sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("---- Store rx vals ----\n");
+    sel4cp_dbg_puts("This is rx.cnt before: ");
+    puthex64(rx.cnt);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.remain before: ");
+    puthex64(rx.remain);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.tail before: ");
+    puthex64(rx.tail);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.head before: ");
+    puthex64(rx.head);
+    sel4cp_dbg_puts("\n");
     rx.cnt = c[0];
     rx.remain = c[1];
     rx.tail = c[2];
     rx.head = c[3];
-    // sel4cp_dbg_puts("This is rx.cnt after: ");
-    // puthex64(rx.cnt);
-    // sel4cp_dbg_puts("\n");
-    // sel4cp_dbg_puts("This is rx.remain after: ");
-    // puthex64(rx.remain);
-    // sel4cp_dbg_puts("\n");
-    // sel4cp_dbg_puts("This is rx.tail after: ");
-    // puthex64(rx.tail);
-    // sel4cp_dbg_puts("\n");
-    // sel4cp_dbg_puts("This is rx.head after: ");
-    // puthex64(rx.head);
-    // sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.cnt after: ");
+    puthex64(rx.cnt);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.remain after: ");
+    puthex64(rx.remain);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.tail after: ");
+    puthex64(rx.tail);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is rx.head after: ");
+    puthex64(rx.head);
+    sel4cp_dbg_puts("\n");
 }
 
 void ffistore_tx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -491,9 +492,29 @@ void ffiget_irq(unsigned char *c, long clen, unsigned char *a, long alen) {
     uint32_t e = eth->eir & IRQ_MASK;
     /* write to clear events */
     eth->eir = e;
-
+    sel4cp_dbg_puts("This is the value of e in get_irq: ");
+    puthex64(e);
+    sel4cp_dbg_puts("\n");
     int_to_byte4(e, a);
 
+    if (e & IRQ_MASK) {
+        sel4cp_dbg_puts("We should continue\n");
+    } else {
+        sel4cp_dbg_puts("We should be breaking\n");
+    }
+
+}
+
+void ffiprint_eth_firstcase () {
+    sel4cp_dbg_puts("---------- WE ARE IN THE FIRST ETH CASE ----------\n");
+}
+
+void ffiprint_eth_secondcase() {
+    sel4cp_dbg_puts("---------- WE ARE IN THE SECOND ETH CASE ----------\n");
+}
+
+void ffiprint_eth_thirdcase() {
+    sel4cp_dbg_puts("---------- WE ARE IN THE THIRD ETH CASE ----------\n");
 }
 
 /* Wrappers around the libsharedringbuffer functions for the pancake FFI */
@@ -550,27 +571,58 @@ void ffieth_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, l
 void ffieth_driver_enqueue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
     // In this case we assume that the 'c' array will contain the address of the cookie that we need
     //sel4cp_dbg_puts("Entering the driver enqueue used function\n");
+    sel4cp_dbg_puts("Entering the driver enqueue used function\n");
     buff_desc_t *desc = (buff_desc_t *) byte8_to_uintptr(c);
+    int d_len = byte2_to_int(&c[8]);
 
-    enqueue_used(&tx_ring, desc->encoded_addr, desc->len, desc->cookie);
+    sel4cp_dbg_puts("This is the value of desc endcoded_addr: ");
+    puthex64(desc->encoded_addr);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is the value of d_len: ");
+    puthex64(d_len);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is the value of desc cookie: ");
+    puthex64(desc->cookie);
+    sel4cp_dbg_puts("\n");
+
+    enqueue_used(&rx_ring, desc->encoded_addr, d_len, desc->cookie);
 }
 
 void ffieth_driver_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
     // In this case we assume that the 'c' array will contain the address of the cookie that we need
-    //sel4cp_dbg_puts("Entering the driver enqueue avail function\n");
+    sel4cp_dbg_puts("Entering the driver enqueue avail function\n");
     buff_desc_t *desc = (buff_desc_t *) byte8_to_uintptr(c);
+    int d_len = byte2_to_int(&c[8]);
 
-    enqueue_avail(&tx_ring, desc->encoded_addr, desc->len, desc->cookie);
+    sel4cp_dbg_puts("This is the value of desc endcoded_addr: ");
+    puthex64(desc->encoded_addr);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is the value of d_len: ");
+    puthex64(d_len);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is the value of desc cookie: ");
+    puthex64(desc->cookie);
+    sel4cp_dbg_puts("\n");
+
+    enqueue_avail(&rx_ring, desc->encoded_addr, d_len, desc->cookie);
 }
 
 void ffieth_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("In the eth ring empty function\n");
     char ret = (char) ring_empty(rx_ring.used_ring);
     a[0] = ret;
 }
 
 void ffieth_ring_size(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("In the eth ring size function\n");
     int ret = ring_size(rx_ring.avail_ring);
-    int_to_byte4(ret, a);
+    // int_to_byte4(ret, a);
+
+    sel4cp_dbg_puts("This is the size of the rx avail ring: ");
+    puthex64(ret);
+    sel4cp_dbg_puts("\n");
+
+    a[0] = ret;
 }
 
 void fficalling_init(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -647,7 +699,7 @@ The address that we get will be stored starting from a[0]
 */
 
 void ffiget_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("Entering the get_cookies function\n");
+    sel4cp_dbg_puts("Entering the get_cookies function\n");
     int index = c[0];
     int ring = c[1];
     void **cookies;
@@ -659,7 +711,7 @@ void ffiget_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
 
     void *cookie = cookies[index];
 
-    uintptr_to_byte8(cookie, &c[1]);
+    uintptr_to_byte8(cookie, c);
 }
 
 void ffiset_cookies(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -869,6 +921,43 @@ void ffiin_else() {
     sel4cp_dbg_puts("We are in the else\n");
 }
 
+void ffifinished_second_case() {
+    sel4cp_dbg_puts("------------ FINISHED SECOND ETH CASE ------------\n");
+}
+
+void ffiprint_e(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("This is the value of e: ");
+    uint32_t e = byte4_to_int(c);
+    puthex64(e);
+    sel4cp_dbg_puts("\n");
+    uint32_t irq_mask = byte4_to_int(&c[4]);
+    sel4cp_dbg_puts("This is the value of IRQ MASK: ");
+    puthex64(irq_mask);
+
+    sel4cp_dbg_puts("\n");
+    if (e & irq_mask) {
+        sel4cp_dbg_puts("Theres an issue with pancake logical and\n");
+    } else if (e & IRQ_MASK) {
+        sel4cp_dbg_puts("There's an issue with the irq mask in pancake\n");
+    } else {
+        sel4cp_dbg_puts("There is an issues with e\n");
+    }
+}
+
+void ffiprint_irq_mask(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("This is the value of IRQ MASK: ");
+    uint32_t e = byte4_to_int(c);
+    puthex64(e);
+    sel4cp_dbg_puts("\n");
+}
+
+void ffiprint_e_res(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("This is the result of logical and with e: ");
+    uint32_t res = byte4_to_int(c);
+    puthex64(res);
+    sel4cp_dbg_puts("\n");
+}
+
 void ffiprint_stat(unsigned char *c, long clen, unsigned char *a, long alen) {
     uint16_t stat = byte2_to_int(c);
     sel4cp_dbg_puts("This is the value of stat: ");
@@ -915,16 +1004,24 @@ void ffitry_buffer_release(unsigned char *c, long clen, unsigned char *a, long a
 
 
 void fficheck_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
-    if (clen != 9) {
-        //sel4cp_dbg_puts("Clen not of correct len -- try_buffer_release\n");
-        a[0] = 1;
-        return;
-    }
+    sel4cp_dbg_puts("In the ffi check empty function\n");
+    int ring = c[0];
+
     // Descriptor array address in c[0]
-    struct descriptor *descr = (struct descriptor *) byte8_to_uintptr(c);
+    struct descriptor *descr;
+
+    if (ring == 0) {
+        descr = (struct descriptor *) tx.descr;
+    } else {
+        descr = (struct descriptor *) rx.descr;
+    }
 
     // Index in c[8]
-    int index = c[8];
+    int index = c[1];
+
+    sel4cp_dbg_puts("The value of index in check_empty: ");
+    puthex64(index);
+    sel4cp_dbg_puts("\n");
 
     volatile struct descriptor *d = &descr[index];
 
@@ -934,6 +1031,29 @@ void fficheck_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
         a[0] = 0;
     }
 
+}
+
+void ffiget_descr_len(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("In the get descr len function\n");
+    int ring = c[0];
+
+    // Descriptor array address in c[0]
+    struct descriptor *descr;
+
+    if (ring == 0) {
+        descr = (struct descriptor *) tx.descr;
+    } else {
+        descr = (struct descriptor *) rx.descr;
+    }
+
+    // Index in c[8]
+    int index = c[1];
+
+    volatile struct descriptor *d = &descr[index];
+    sel4cp_dbg_puts("This is the value of descr len in get descr len: ");
+    puthex64(d->len);
+    sel4cp_dbg_puts("\n");
+    int_to_byte2(d->len, c);
 }
 
 void ffiget_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -958,6 +1078,7 @@ void ffiget_phys(unsigned char *c, long clen, unsigned char *a, long alen) {
 }
 
 void ffinotify_rx(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("Notifying rx\n");
     sel4cp_notify(RX_CH);
 }
 
@@ -1103,6 +1224,43 @@ static void fill_rx_bufs()
     }
 }
 
+void ffifill_rx_bufs()
+{
+    sel4cp_dbg_puts("Entering ffi fill rx bufs\n");
+
+    ring_ctx_t *ring = &rx;
+    __sync_synchronize();
+    while (ring->remain > 0) {
+        // sel4cp_dbg_puts("Loopoing in fill rx bufs, value of remain is: ");
+        // puthex64(ring->remain);
+        // sel4cp_dbg_puts("\n");
+        /* request a buffer */
+        void *cookie = NULL;
+        uintptr_t phys = alloc_rx_buf(MAX_PACKET_SIZE, &cookie);
+        if (!phys) {
+            break;
+        }
+        uint16_t stat = RXD_EMPTY;
+        int idx = ring->tail;
+        int new_tail = idx + 1;
+        if (new_tail == ring->cnt) {
+            new_tail = 0;
+            stat |= WRAP;
+        }
+        ring->cookies[idx] = cookie;
+        update_ring_slot(ring, idx, phys, 0, stat);
+        ring->tail = new_tail;
+        /* There is a race condition if add/remove is not synchronized. */
+        ring->remain--;
+    }
+    __sync_synchronize();
+
+    if (ring->tail != ring->head) {
+        /* Make sure rx is enabled */
+        eth->rdar = RDAR_RDAR;
+    }
+}
+
 void init_post()
 {
     /* Set up shared memory regions */
@@ -1123,7 +1281,7 @@ void init_post()
 
 void init_pancake_mem() {
     //sel4cp_dbg_puts("In the init pancake mem function\n");
-    unsigned long sz = 1024*1024; // 1 MB unit\n",
+    unsigned long sz = 2048*1024; // 1 MB unit\n",
     unsigned long cml_heap_sz = sz;    // Default: 1 MB heap\n", (* TODO: parameterise *)
     unsigned long cml_stack_sz = sz;   // Default: 1 MB stack\n", (* TODO: parameterise *)
     cml_heap = &cml_memory[0];
@@ -1340,6 +1498,7 @@ void fficomplete_tx()
     if (0 != cnt) {
         print("head reached tail, but cnt!= 0");
     }
+    sel4cp_dbg_puts("Finished the ffi complete tx function\n");
 }
 
 // static void
@@ -1576,13 +1735,14 @@ void notified(sel4cp_channel ch)
 
     } else if (ch == IRQ_CH) {
         sel4cp_dbg_puts("Entering the IRQ case\n");
-        handle_eth(eth);
+        // handle_eth(eth);
+        cml_main();
 
         have_signal = true;
         signal_msg = seL4_MessageInfo_new(IRQAckIRQ, 0, 0, 0);
         signal = (BASE_IRQ_CAP + IRQ_CH);
-        sel4cp_dbg_puts("Finished the IRQ case\n");
 
+        sel4cp_dbg_puts("Finished the IRQ case\n");
         return;
 
     } else {

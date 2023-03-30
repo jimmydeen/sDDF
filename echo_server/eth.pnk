@@ -16,6 +16,14 @@ var tx_remain = ldb get_tx_a + 1;
 var tx_tail = ldb get_tx_a + 2;
 var tx_head = ldb get_tx_a + 3;
 
+var set_rx_c = @base + 500;
+var set_rx_a = @base + 504;
+
+var set_tx_c = @base + 508;
+var set_tx_a = @base + 512;
+
+var scope_test = 1;
+
 var argc_arr = @base + 80;
 var arga_arr = @base + 81;
 #get_channel(argc_ar, 0, arga_arr, 1);
@@ -260,103 +268,45 @@ if argc == 1 {
 
   var e = irq_num_1 | irq_num_2 | irq_num_3 | irq_num_4;
 
-  var irq_mask = (1 << 25) | (1 << 27) | (1 << 22);
+  var NETIRQ_RXF = (1 << 25);
+  var NETIRQ_TXF = (1 << 27);
+  var NETIRQ_EBERR = (1 << 22);
 
-  while e & irq_mask == 1 {
-    if e & (1 << 27) {
-      // Complete TX here
-      var cnt_org = 0;
-      var complete_cookie = @base + 130;
-      var head = tx_head;
-      var cnt = 0;
+  var irq_mask = NETIRQ_RXF | NETIRQ_TXF | NETIRQ_EBERR;
 
-      while head <> rx_tail {
-        if cnt == 0 {
-          // Calculate offset into tx_lengths array
-          var tx_index = tx_lengths;
-          var tx_index_cnt = 0;
-          while tx_index_cnt <= head {
-            tx_index_cnt = tx_index_cnt + 4;
-          }
+  var print_e_c = @base + 900;
+  strb print_e_c, (e >> 24) & 255;
+  strb print_e_c + 1, (e >> 16) & 255;
+  strb print_e_c + 2, (e >> 8) & 255;
+  strb print_e_c + 3, e & 255;
 
-          var cnt = ldb tx_index;
+  strb print_e_c + 4, (irq_mask >> 24) & 255;
+  strb print_e_c + 5, (irq_mask >> 16) & 255;
+  strb print_e_c + 6, (irq_mask >> 8) & 255;
+  strb print_e_c + 7, irq_mask & 255;
 
-          // Error cases
-          if cnt == 0 {
-            return 1;
-          }
+  #print_e(print_e_c, 0,0,0);
 
-          if cnt > 256 {
-            return 1;
-          }
+  var e_result = e & irq_mask;
 
-          cnt_org = cnt;
+  strb print_e_c, (e_result >> 24) & 255;
+  strb print_e_c + 1, (e_result >> 16) & 255;
+  strb print_e_c + 2, (e_result >> 8) & 255;
+  strb print_e_c + 3, e_result & 255;
+  
+  #print_e_res(print_e_c, 0,0,0);
 
-          // Get the cookie
-          var get_cookie_c = @base + 138;
-          var get_cookie_a = @base + 148;
-          strb get_cookie_c, head;
+  while (e & irq_mask) <> 0 {
+    #in_loop(0,0,0,0);
+    if (e & (1 << 27)) <> 0 {
+      #print_eth_firstcase(0,0,0,0);
 
-          strb get_cookie_c + 1, 0;
-
-          #get_cookies(get_cookie_c, 9, get_cookie_a, 0);
-
-          strb complete_cookie,ldb get_cookie_c + 1;
-          strb complete_cookie + 1, ldb get_cookie_c + 2;
-          strb complete_cookie + 2, ldb get_cookie_c + 3;
-          strb complete_cookie + 3, ldb get_cookie_c + 4;
-          strb complete_cookie + 4, ldb get_cookie_c + 5;
-          strb complete_cookie + 5, ldb get_cookie_c + 6;
-          strb complete_cookie + 6, ldb get_cookie_c + 7;
-          strb complete_cookie + 7, ldb get_cookie_c + 8;
-
-          // Try and release buffer, need to pass cookie to ffi call
-          var buffer_release_c = @base + 150;
-          var buffer_release_a = @base + 159;
-
-          strb buffer_release_c, 0;
-
-          strb buffer_release_c + 8, head;
-
-          #try_buffer_release(buffer_release_c, 9, buffer_release_a, 1);
-          var try_ret = ldb buffer_release_a;
-          
-          // Can't release buffer
-          if try_ret <> 0 {
-            return 1;
-          }
-
-          // Handling rollover
-          head = head + 1;
-          if head == 256 {
-            head = 0;
-          }
-          
-          if cnt == 0 {
-            cnt = cnt - 1;
-            rx_head = head;
-            rx_remain = rx_remain + 1;
-            var driver_enqueue_c = @base + 150;
-            var driver_enqueue_a = @base + 158;
-
-            // Place cookie into c array and enqueue the buffer it holds back into the control region
-            strb driver_enqueue_c, complete_cookie;
-            strb driver_enqueue_c + 1, complete_cookie + 1;
-            strb driver_enqueue_c + 2, complete_cookie + 2;
-            strb driver_enqueue_c + 3, complete_cookie + 3;
-            strb driver_enqueue_c + 4, complete_cookie + 4;
-            strb driver_enqueue_c + 5, complete_cookie + 5;
-            strb driver_enqueue_c + 6, complete_cookie + 6;
-            strb driver_enqueue_c + 7, complete_cookie + 7;
-
-            #eth_driver_enqueue_avail(driver_enqueue_c, 8, driver_enqueue_a, 0);
-          }
-        }
-      }
+      #complete_tx(0,0,0,0);
     }
 
     // Use addresses starting from 300
-    if e & (1 << 25) {
+    if (e & (1 << 25)) <> 0 {
+      #print_eth_secondcase(0,0,0,0);
       // Handle RX
       var head = rx_head;
       var num = 1;
@@ -375,13 +325,18 @@ if argc == 1 {
       var ring_size = ldb ring_size_a;
 
       while head <> rx_tail {
-        if ring_size >= num {
+        #in_loop(0,0,0,0);
+        if ring_size <= num {
+          #break_loop(0,0,0,0);
           break;
         }
 
         // Check if the slot is marked as empty
         var check_empty_c = @base + 304;
         var check_empty_a = @base + 313;
+
+        strb check_empty_c, 0;
+        strb check_empty_c + 1, head;
 
         #check_empty(check_empty_c, 9, check_empty_a, 1);
 
@@ -391,16 +346,25 @@ if argc == 1 {
           break;
         } 
 
+        // Reuse the check empty argument arrays to get the len of the descriptor
+
+        #get_descr_len(check_empty_c, 9, check_empty_a, 1);
+
+        var descr_len = @base + 800;
+
+        strb descr_len, ldb check_empty_c;
+        strb descr_len + 1, ldb check_empty_c + 1;
+
         // Get the cookie at index head
         var get_cookie_c = @base + 314;
         var get_cookie_a = @base + 323;
 
-        strb get_cookie_c, rx_cookies;
+        strb get_cookie_c, head;
         strb get_cookie_c + 1, 1;
 
-        strb get_cookie_c + 8, head;
-
         #get_cookies(get_cookie_c, 9, get_cookie_a, 0);
+        
+        // The cookie will be stored in get_cookie_c
 
         head = head + 1;
 
@@ -410,6 +374,16 @@ if argc == 1 {
         
         rx_head = head; 
         rx_remain = rx_remain + 1;
+
+        set_rx_c = @base + 500;
+        set_rx_a = @base + 504;
+
+        strb set_rx_c, rx_cnt;
+        strb set_rx_c + 1, rx_remain;
+        strb set_rx_c + 2, rx_tail;
+        strb set_rx_c + 3, rx_head;
+
+        #store_rx_vals(set_rx_c, 4, set_rx_a, 0);
 
         var rx_enqueue_c = @base + 324;
         var rx_enqueue_a = @base + 332;
@@ -423,7 +397,10 @@ if argc == 1 {
         strb rx_enqueue_c + 6, ldb get_cookie_c + 6;
         strb rx_enqueue_c + 7, ldb get_cookie_c + 7;
 
-        #eth_driver_enqueue_avail(rx_enqueue_c, 8, rx_enqueue_a, 0);
+        strb rx_enqueue_c + 8, ldb descr_len;
+        strb rx_enqueue_c + 9, ldb descr_len + 1;
+
+        #eth_driver_enqueue_used(rx_enqueue_c, 8, rx_enqueue_a, 0);
 
         num = num + 1;
 
@@ -438,103 +415,40 @@ if argc == 1 {
         }
       }
 
+      set_rx_c = @base + 500;
+      set_rx_a = @base + 504;
+
+      strb set_rx_c, rx_cnt;
+      strb set_rx_c + 1, rx_remain;
+      strb set_rx_c + 2, rx_tail;
+      strb set_rx_c + 3, rx_head;
+
+      #store_rx_vals(set_rx_c, 4, set_rx_a, 0);
+
+      #breakpoint_1(0,0,0,0);
+
       // Fill RX buf 
-      #synchronise_call(c_arr, 0, a_arr, 0);
-      while rx_remain > 0 {
-          // Requesting a buffer
-          var cookie = @base + 85;
-          var phys = @base + 93;
-          #alloc_rx_buff(cookie, 8, phys, 8);
-          if phys <> 1 {
-            break;
-          }
+      #fill_rx_bufs(0,0,0,0);
 
-          // This might not work if the machine word is 32 bits
-          var stat = 1 << 58;
-          var idx = rx_tail;
-          var new_tail = idx + 1;
-          if new_tail == rx_cnt {
-            new_tail = 0;
-            stat = stat | (1 << 13);
-          }
+      // Need to get the latest rx values
 
-          var set_cookie_c = @base + 101;
-          var set_cookie_a = @base + 120;
-          strb set_cookie_c, idx;
+      #get_rx_vals(get_rx_c, 0, get_rx_a, 4);
 
-          // Setting bytes of cookie address
-          strb set_cookie_c + 1, cookie;
-          strb set_cookie_c + 2, cookie + 1;
-          strb set_cookie_c + 3, cookie + 2;
-          strb set_cookie_c + 4, cookie + 3;
-          strb set_cookie_c + 5, cookie + 4;
-          strb set_cookie_c + 6, cookie + 5;
-          strb set_cookie_c + 7, cookie + 6;
-          strb set_cookie_c + 8, cookie + 7;
+      rx_cnt = ldb get_rx_a;
+      rx_remain = ldb get_rx_a + 1;
+      rx_tail = ldb get_rx_a + 2;
+      rx_head = ldb get_rx_a + 3;
 
-          strb set_cookie_c + 9, 1;
-
-          #set_cookies(set_cookie_c, 17, set_cookie_a, 0);
-
-          var update_c = @base + 120;
-          var update_a = @base + 148;
-
-          // Storing descriptor in 0-7
-          strb update_c + 0, 1;
-
-          // Storing index in 8
-          strb update_c + 8, index;
-
-          // Storing phys in 9-16
-          strb update_c + 9, phys;
-          strb update_c + 10, phys + 1;
-          strb update_c + 11, phys + 2;
-          strb update_c + 12, phys + 3;
-          strb update_c + 13, phys + 4;
-          strb update_c + 14, phys + 5;
-          strb update_c + 15, phys + 6;
-          strb update_c + 16, phys + 7;
-
-          // Storing len in 17
-          strb update_c + 17, len;
-          strb update_c + 18, len + 1;
-          strb update_c + 19, len + 2;
-          strb update_c + 20, len + 3;
-          strb update_c + 21, len + 4;
-          strb update_c + 22, len + 5;
-          strb update_c + 23, len + 6;
-          strb update_c + 24, len + 7;
-
-          // Storing stat in 18 - 25
-          strb update_c + 25, stat;
-          strb update_c + 26, stat + 1;
-          strb update_c + 27, stat + 2;
-          strb update_c + 28, stat + 3;
-          strb update_c + 29, stat + 4;
-          strb update_c + 30, stat + 5;
-          strb update_c + 31, stat + 6;
-          strb update_c + 32, stat + 7;
-
-          #update_descr_slot(update_c, 32, update_a, 0);
-          rx_tail = new_tail;
-          rx_remain = rx_remain - 1;
-      }
-
-      // Not sure if ffi protocol checks if we passed through valid addresses
-      #synchronise_call(0, 0, 0, 0);
-
-      if (rx_tail <> rx_head) {
-        #enable_rx(0,0,0,0);
-      }
+      #finished_second_case(0,0,0,0);
     }
 
-    if e & (1 << 22) {
+    if (e & (1 << 22)) <> 0 {
+      #print_eth_thirdcase(0,0,0,0);
       // Error here, infinitely loop
       while 1 == 1 {
         i = 1;
       }
     }
-
     // Get next IRQ here
     #get_irq(irq_c, 0, irq_a, 4);
 
@@ -544,32 +458,17 @@ if argc == 1 {
     irq_num_4 = (ldb irq_a + 3);
 
     e = irq_num_1 | irq_num_2 | irq_num_3 | irq_num_4;
-
   }
 
 }
 
 // Store tx and rx values
 
-var set_rx_c = @base + 500;
-var set_rx_a = @base + 504;
 
-var set_tx_c = @base + 508;
-var set_tx_a = @base + 512;
+var set_px_c = @base;
+strb set_px_c, scope_test;
 
-strb set_rx_c, rx_cnt;
-strb set_rx_c + 1, rx_remain;
-strb set_rx_c + 2, rx_tail;
-strb set_rx_c + 3, rx_head;
 
-#store_rx_vals(set_rx_c, 4, set_rx_a, 0);
-
-strb set_tx_c, tx_cnt;
-strb set_tx_c + 1, tx_remain;
-strb set_tx_c + 2, tx_tail;
-strb set_tx_c + 3, tx_head;
-
-#store_tx_vals(set_tx_c, 4, set_tx_a, 0);
 
 
 return 0;
