@@ -201,7 +201,9 @@ if argc == 2 {
       strb len + 5, ldb update_c + 22;
       strb len + 6, ldb update_c + 23;
       strb len + 7, ldb update_c + 24;
+
       
+      // End raw TX Function
     }
 
     // Set the cookie 
@@ -361,25 +363,10 @@ if argc == 1 {
     if (e & (1 << 25)) <> 0 {
       #print_eth_secondcase(0,0,0,0);
       // Handle RX
-      // Get the latest rx values
 
-      #get_rx_vals(get_rx_c, 0, get_rx_a, 4);
-
-      #get_tx_vals(get_tx_c, 0, get_tx_a, 4);
-
-
-      tx_cnt = ldb get_tx_a;
-      tx_remain = ldb get_tx_a + 1;
-      tx_tail = ldb get_tx_a + 2;
-      tx_head = ldb get_tx_a + 3;
-
-      rx_cnt =  get_rx_a;
-      rx_remain =  get_rx_a + 1;
-      rx_tail =  get_rx_a + 2;
-      rx_head =  get_rx_a + 3;
-
-
-      var head = rx_head;
+      var get_head_a = @base + 1;
+      #get_rx_head(0, 0, get_head_a, 1);
+      head = ldb get_head_a;
       var num = 1;
       
       // Check if the ring is empty
@@ -438,26 +425,24 @@ if argc == 1 {
         // The cookie will be stored in get_cookie_c
 
         head = head + 1;
+        
+        var get_rx_cnt = @base + 2;
+        #get_rx_count(0,0,get_rx_cnt, 1);
+
+        rx_cnt = ldb get_rx_cnt;
 
         if head == rx_cnt {
           head = 0;
         }
-        
-        rx_head = head; 
-        rx_remain = rx_remain + 1;
 
-        set_rx_c = @base + 400;
-        set_rx_a = @base + 408; 
+        // var set_head_c = @base;
+        // strb set_head_c, head;
+        // #set_rx_head(set_head_c, 1, 0, 0);
 
-        strb set_rx_c, rx_cnt;
-        strb set_rx_c + 1, rx_remain;
-        strb set_rx_c + 2, rx_tail;
-        strb set_rx_c + 3, rx_head;
-
-        #store_rx_vals(set_rx_c, 4, set_rx_a, 0);
+        // #increment_rx_remain(0,0,0,0);
 
         var rx_enqueue_c = @base + 324;
-        var rx_enqueue_a = @base + 332;
+        var rx_enqueue_a = @base + 333;
 
         strb rx_enqueue_c, ldb get_cookie_c;
         strb rx_enqueue_c + 1, ldb get_cookie_c + 1;
@@ -470,23 +455,9 @@ if argc == 1 {
 
         strb rx_enqueue_c + 8, ldb descr_len;
         strb rx_enqueue_c + 9, ldb descr_len + 1;
+        strb rx_enqueue_c + 10, head;
 
         #eth_driver_enqueue_used(rx_enqueue_c, 8, rx_enqueue_a, 0);
-
-        #get_rx_vals(get_rx_c, 0, get_rx_a, 4);
-
-        #get_tx_vals(get_tx_c, 0, get_tx_a, 4);
-
-
-        tx_cnt = ldb get_tx_a;
-        tx_remain = ldb get_tx_a + 1;
-        tx_tail = ldb get_tx_a + 2;
-        tx_head = ldb get_tx_a + 3;
-
-        rx_cnt = ldb get_rx_a;
-        rx_remain = ldb get_rx_a + 1;
-        rx_tail = ldb get_rx_a + 2;
-        rx_head = ldb get_rx_a + 3;
 
         num = num + 1;
 
@@ -497,56 +468,9 @@ if argc == 1 {
       // Notify the client only if we have actually processed a packet. Not sure how this will work with pancake
       if num > 1 {
         if was_empty == 1 {
-          set_rx_c = @base + 400;
-          set_rx_a = @base + 408;
-
-          set_tx_c = @base + 416;
-          set_tx_a = @base + 424;
-          
-          // Set tx and rx
-          strb set_rx_c, rx_cnt;
-          strb set_rx_c + 1, rx_remain;
-          strb set_rx_c + 2, rx_tail;
-          strb set_rx_c + 3, rx_head;
-
-          #store_rx_vals(set_rx_c, 4, set_rx_a, 0);
-
-          strb set_tx_c, tx_cnt;
-          strb set_tx_c + 1, tx_remain;
-          strb set_tx_c + 2, tx_tail;
-          strb set_tx_c + 3, tx_head;
-
-          #store_tx_vals(set_tx_c, 4, set_tx_c, 0);
-
           #notify_rx(0,0,0,0);
-
-
-          #get_rx_vals(get_rx_c, 0, get_rx_a, 4);
-
-          #get_tx_vals(get_tx_c, 0, get_tx_a, 4);
-
-
-          tx_cnt = ldb get_tx_a;
-          tx_remain = ldb get_tx_a + 1;
-          tx_tail = ldb get_tx_a + 2;
-          tx_head = ldb get_tx_a + 3;
-
-          rx_cnt = ldb get_rx_a;
-          rx_remain = ldb get_rx_a + 1;
-          rx_tail = ldb get_rx_a + 2;
-          rx_head = ldb get_rx_a + 3;
         }
       }
-
-      set_rx_c = @base + 400;
-      set_rx_a = @base + 408;
-
-      strb set_rx_c, rx_cnt;
-      strb set_rx_c + 1, rx_remain;
-      strb set_rx_c + 2, rx_tail;
-      strb set_rx_c + 3, rx_head;
-
-      #store_rx_vals(set_rx_c, 4, set_rx_a, 0);
 
       #breakpoint_1(0,0,0,0);
 
@@ -554,13 +478,6 @@ if argc == 1 {
       #fill_rx_bufs(0,0,0,0);
 
       // Need to get the latest rx values
-
-      #get_rx_vals(get_rx_c, 0, get_rx_a, 4);
-
-      rx_cnt = ldb get_rx_a;
-      rx_remain = ldb get_rx_a + 1;
-      rx_tail = ldb get_rx_a + 2;
-      rx_head = ldb get_rx_a + 3;
 
       #finished_second_case(0,0,0,0);
     }
@@ -584,14 +501,5 @@ if argc == 1 {
   }
 
 }
-
-// Store tx and rx values
-
-
-var set_px_c = @base;
-strb set_px_c, scope_test;
-
-
-
 
 return 0;

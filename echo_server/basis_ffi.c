@@ -498,6 +498,20 @@ void ffistore_tx_vals(unsigned char *c, long clen, unsigned char *a, long alen) 
     // __sync_synchronize();
 }
 
+void ffiget_rx_head(unsigned char *c, long clen, unsigned char *a, long alen) {
+    a[0] = (unsigned char) rx.head;
+}
+void ffiset_rx_head(unsigned char *c, long clen, unsigned char *a, long alen) {
+    rx.head = c[0];
+}
+void ffiincrement_rx_remain() {
+    rx.remain += 1;
+}
+
+void ffiget_rx_count(unsigned char *c, long clen, unsigned char *a, long alen) {
+    a[0] = (unsigned char ) rx.cnt;
+}
+
 void ffienable_rx() {
     eth->rdar = RDAR_RDAR;
 }
@@ -599,7 +613,12 @@ void ffieth_driver_enqueue_used(unsigned char *c, long clen, unsigned char *a, l
     sel4cp_dbg_puts("This is the value of desc cookie: ");
     puthex64(desc->cookie);
     sel4cp_dbg_puts("\n");
+    ring_ctx_t *ring = &rx;
 
+    ring->head = c[10];
+
+    /* There is a race condition here if add/remove is not synchronized. */
+    ring->remain++;
     enqueue_used(&rx_ring, desc->encoded_addr, d_len, desc->cookie);
 }
 
@@ -1369,6 +1388,47 @@ handle_rx(volatile struct enet_regs *eth)
     } 
 }
 
+void
+ffihandle_rx()
+{
+    ring_ctx_t *ring = &rx;
+    unsigned int head = ring->head;
+
+    int num = 1;
+    int was_empty = ring_empty(rx_ring.used_ring);
+
+    // we don't want to dequeue packets if we have nothing to replace it with
+    while (head != ring->tail && (ring_size(rx_ring.avail_ring) > num)) {
+        volatile struct descriptor *d = &(ring->descr[head]);
+
+        /* If the slot is still marked as empty we are done. */
+        if (d->stat & RXD_EMPTY) {
+            break;
+        }
+
+        void *cookie = ring->cookies[head];
+        /* Go to next buffer, handle roll-over. */
+        if (++head == ring->cnt) {
+            head = 0;
+        }
+        ring->head = head;
+
+        /* There is a race condition here if add/remove is not synchronized. */
+        ring->remain++;
+
+        buff_desc_t *desc = (buff_desc_t *)cookie;
+
+        enqueue_used(&rx_ring, desc->encoded_addr, d->len, desc->cookie);
+        num++;
+    }
+
+    /* Notify client (only if we have actually processed a packet and 
+    the client hasn't already been notified!) */
+    if (num > 1 && was_empty) {
+        sel4cp_notify(RX_CH);
+    } 
+}
+
 static void
 complete_tx(volatile struct enet_regs *eth)
 {
@@ -1759,7 +1819,6 @@ void notified(sel4cp_channel ch)
 
         sel4cp_dbg_puts("Finished the IRQ case\n");
         return;
-
     } else {
         sel4cp_dbg_puts("We have recieved an invalid channel identifier: ");
         // puthex64(ch);
