@@ -72,8 +72,8 @@ ring_ctx_t tx;
 #define PACKET_BUFFER_SIZE  2048
 #define MAX_PACKET_SIZE     1536
 
-#define RX_COUNT 255
-#define TX_COUNT 255
+#define RX_COUNT 254
+#define TX_COUNT 254
 
 /* Pointers to shared_ringbuffers */
 ring_handle_t rx_ring;
@@ -356,37 +356,43 @@ eth_setup(void)
 }
 
 void ffiget_rx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("This is rx.cnt before: ");
-    puthex64(rx.cnt);
-    sel4cp_dbg_puts("\n");
-    sel4cp_dbg_puts("This is rx.remain before: ");
-    puthex64(rx.remain);
-    sel4cp_dbg_puts("\n");
-    sel4cp_dbg_puts("This is rx.tail before: ");
-    puthex64(rx.tail);
-    sel4cp_dbg_puts("\n");
-    sel4cp_dbg_puts("This is rx.head before: ");
-    puthex64(rx.head);
-    sel4cp_dbg_puts("\n");
+    // __sync_synchronize();
+    // sel4cp_dbg_puts("In the get rx function\n");
+    // sel4cp_dbg_puts("This is rx.cnt before: ");
+    // puthex64(rx.cnt);
+    // sel4cp_dbg_puts("\n");
+    // sel4cp_dbg_puts("This is rx.remain before: ");
+    // puthex64(rx.remain);
+    // sel4cp_dbg_puts("\n");
+    // sel4cp_dbg_puts("This is rx.tail before: ");
+    // puthex64(rx.tail);
+    // sel4cp_dbg_puts("\n");
+    // sel4cp_dbg_puts("This is rx.head before: ");
+    // puthex64(rx.head);
+    // sel4cp_dbg_puts("\n");
     a[0] = (unsigned char) rx.cnt;
     a[1] = (unsigned char) rx.remain;
     a[2] = (unsigned char) rx.tail;
     a[3] = (unsigned char) rx.head;
-    sel4cp_dbg_puts("This is rx.cnt after: ");
-    puthex64(a[0]);
-    sel4cp_dbg_puts("\n");
-    sel4cp_dbg_puts("This is rx.remain after: ");
-    puthex64(a[1]);
-    sel4cp_dbg_puts("\n");
-    sel4cp_dbg_puts("This is rx.tail after: ");
-    puthex64(a[2]);
-    sel4cp_dbg_puts("\n");
-    sel4cp_dbg_puts("This is rx.head after: ");
-    puthex64(a[3]);
-    sel4cp_dbg_puts("\n");
+    // sel4cp_dbg_puts("This is rx.cnt after: ");
+    // puthex64(a[0]);
+    // sel4cp_dbg_puts("\n");
+    // sel4cp_dbg_puts("This is rx.remain after: ");
+    // puthex64(a[1]);
+    // sel4cp_dbg_puts("\n");
+    // sel4cp_dbg_puts("This is rx.tail after: ");
+    // puthex64(a[2]);
+    // sel4cp_dbg_puts("\n");
+    // sel4cp_dbg_puts("This is rx.head after: ");
+    // puthex64(a[3]);
+    // sel4cp_dbg_puts("\n");
+    // __sync_synchronize();
+
 }
 
 void ffiget_tx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
+    // __sync_synchronize();
+    // sel4cp_dbg_puts("In the get tx function\n");
     // sel4cp_dbg_puts("This is tx.cnt before: ");
     // puthex64(tx.cnt);
     // sel4cp_dbg_puts("\n");
@@ -415,72 +421,81 @@ void ffiget_tx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
     // sel4cp_dbg_puts("This is tx.head after: ");
     // puthex64(a[3]);
     // sel4cp_dbg_puts("\n");
+    // __sync_synchronize();
+
 }
 
 /* Figure out why this stuff breaks, might be an issue with the calling order.
 Also check where these values are actually modified in pancake, and if we need this */
 
 void ffistore_rx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("---- Store rx vals ----\n");
-    sel4cp_dbg_puts("This is rx.cnt before: ");
-    puthex64(rx.cnt);
-    sel4cp_dbg_puts("\n");
-    sel4cp_dbg_puts("This is rx.remain before: ");
-    puthex64(rx.remain);
-    sel4cp_dbg_puts("\n");
-    sel4cp_dbg_puts("This is rx.tail before: ");
-    puthex64(rx.tail);
-    sel4cp_dbg_puts("\n");
-    sel4cp_dbg_puts("This is rx.head before: ");
-    puthex64(rx.head);
-    sel4cp_dbg_puts("\n");
+    // __sync_synchronize();
+
+    // sel4cp_dbg_puts("---- Store rx vals ----\n");
+    // sel4cp_dbg_puts("This is rx.cnt before: ");
+    // puthex64(rx.cnt);
+    // sel4cp_dbg_puts("\n");
+    // sel4cp_dbg_puts("This is rx.remain before: ");
+    // puthex64(rx.remain);
+    // sel4cp_dbg_puts("\n");
+    // sel4cp_dbg_puts("This is rx.tail before: ");
+    // puthex64(rx.tail);
+    // sel4cp_dbg_puts("\n");
+    // sel4cp_dbg_puts("This is rx.head before: ");
+    // puthex64(rx.head);
+    // sel4cp_dbg_puts("\n");
     rx.cnt = c[0];
     rx.remain = c[1];
     rx.tail = c[2];
     rx.head = c[3];
-    sel4cp_dbg_puts("This is rx.cnt after: ");
-    puthex64(rx.cnt);
-    sel4cp_dbg_puts("\n");
-    sel4cp_dbg_puts("This is rx.remain after: ");
-    puthex64(rx.remain);
-    sel4cp_dbg_puts("\n");
-    sel4cp_dbg_puts("This is rx.tail after: ");
-    puthex64(rx.tail);
-    sel4cp_dbg_puts("\n");
-    sel4cp_dbg_puts("This is rx.head after: ");
-    puthex64(rx.head);
-    sel4cp_dbg_puts("\n");
+    // sel4cp_dbg_puts("This is rx.cnt after: ");
+    // puthex64(c[0]);
+    // sel4cp_dbg_puts("\n");
+    // sel4cp_dbg_puts("This is rx.remain after: ");
+    // puthex64(c[1]);
+    // sel4cp_dbg_puts("\n");
+    // sel4cp_dbg_puts("This is rx.tail after: ");
+    // puthex64(c[2]);
+    // sel4cp_dbg_puts("\n");
+    // sel4cp_dbg_puts("This is rx.head after: ");
+    // puthex64(c[3]);
+    // sel4cp_dbg_puts("\n");
+    // __sync_synchronize();
+
 }
 
 void ffistore_tx_vals(unsigned char *c, long clen, unsigned char *a, long alen) {
+    // __sync_synchronize();
+
     // sel4cp_dbg_puts("This is tx.cnt before: ");
-    // puthex64(rx.cnt);
+    // puthex64(c[0]);
     // sel4cp_dbg_puts("\n");
     // sel4cp_dbg_puts("This is tx.remain before: ");
-    // puthex64(rx.remain);
+    // puthex64(c[1]);
     // sel4cp_dbg_puts("\n");
     // sel4cp_dbg_puts("This is tx.tail before: ");
-    // puthex64(rx.tail);
+    // puthex64(c[2]);
     // sel4cp_dbg_puts("\n");
     // sel4cp_dbg_puts("This is tx.head before: ");
-    // puthex64(rx.head);
+    // puthex64(c[3]);
     // sel4cp_dbg_puts("\n");
     tx.cnt = c[0];
     tx.remain = c[1];
     tx.tail = c[2];
     tx.head = c[3];
     // sel4cp_dbg_puts("This is tx.cnt after: ");
-    // puthex64(rx.cnt);
+    // puthex64(tx.cnt);
     // sel4cp_dbg_puts("\n");
     // sel4cp_dbg_puts("This is tx.remain after: ");
-    // puthex64(rx.remain);
+    // puthex64(tx.remain);
     // sel4cp_dbg_puts("\n");
     // sel4cp_dbg_puts("This is tx.tail after: ");
-    // puthex64(rx.tail);
+    // puthex64(tx.tail);
     // sel4cp_dbg_puts("\n");
     // sel4cp_dbg_puts("This is tx.head after: ");
-    // puthex64(rx.head);
+    // puthex64(tx.head);
     // sel4cp_dbg_puts("\n");
+    // __sync_synchronize();
 }
 
 void ffienable_rx() {

@@ -1,7 +1,7 @@
-var get_rx_c = @base + 16;
-var get_rx_a = @base + 20;
-var get_tx_c = @base + 16;
-var get_tx_a = @base + 20;
+var get_rx_c = @base + 8;
+var get_rx_a = @base + 16;
+var get_tx_c = @base + 24;
+var get_tx_a = @base + 32;
 
 #get_rx_vals(get_rx_c, 0, get_rx_a, 4);
 #get_tx_vals(get_tx_c, 0, get_tx_a, 4);
@@ -16,13 +16,26 @@ var tx_remain = ldb get_tx_a + 1;
 var tx_tail = ldb get_tx_a + 2;
 var tx_head = ldb get_tx_a + 3;
 
-var set_rx_c = @base + 500;
-var set_rx_a = @base + 504;
+var set_rx_c = @base + 400;
+var set_rx_a = @base + 408;
 
-var set_tx_c = @base + 508;
-var set_tx_a = @base + 512;
+var set_tx_c = @base + 416;
+var set_tx_a = @base + 424;
 
-var scope_test = 1;
+// Set tx and rx
+strb set_rx_c, rx_cnt;
+strb set_rx_c + 1, rx_remain;
+strb set_rx_c + 2, rx_tail;
+strb set_rx_c + 3, rx_head;
+
+#store_rx_vals(set_rx_c, 4, set_rx_a, 0);
+
+strb set_tx_c, tx_cnt;
+strb set_tx_c + 1, tx_remain;
+strb set_tx_c + 2, tx_tail;
+strb set_tx_c + 3, tx_head;
+
+#store_tx_vals(set_tx_c, 4, set_tx_c, 0);
 
 var argc_arr = @base + 80;
 var arga_arr = @base + 81;
@@ -300,14 +313,72 @@ if argc == 1 {
     #in_loop(0,0,0,0);
     if (e & (1 << 27)) <> 0 {
       #print_eth_firstcase(0,0,0,0);
+      set_rx_c = @base + 400;
+      set_rx_a = @base + 408;
+
+      set_tx_c = @base + 416;
+      set_tx_a = @base + 424;
+
+      // Set tx and rx
+      strb set_rx_c, rx_cnt;
+      strb set_rx_c + 1, rx_remain;
+      strb set_rx_c + 2, rx_tail;
+      strb set_rx_c + 3, rx_head;
+
+      #store_rx_vals(set_rx_c, 4, set_rx_a, 0);
+
+      strb set_tx_c, tx_cnt;
+      strb set_tx_c + 1, tx_remain;
+      strb set_tx_c + 2, tx_tail;
+      strb set_tx_c + 3, tx_head;
+
+      #store_tx_vals(set_tx_c, 4, set_tx_c, 0);
 
       #complete_tx(0,0,0,0);
+
+      // Get tx and rx
+      get_rx_c = @base + 16;
+      get_rx_a = @base + 20;
+      get_tx_c = @base + 16;
+      get_tx_a = @base + 20;
+
+      #get_rx_vals(get_rx_c, 0, get_rx_a, 4);
+      #get_tx_vals(get_tx_c, 0, get_tx_a, 4);
+
+      rx_cnt = ldb get_rx_a;
+      rx_remain = ldb get_rx_a + 1;
+      rx_tail = ldb get_rx_a + 2;
+      rx_head = ldb get_rx_a + 3;
+
+      tx_cnt = ldb get_tx_a;
+      tx_remain = ldb get_tx_a + 1;
+      tx_tail = ldb get_tx_a + 2;
+      tx_head = ldb get_tx_a + 3;
+
     }
 
     // Use addresses starting from 300
     if (e & (1 << 25)) <> 0 {
       #print_eth_secondcase(0,0,0,0);
       // Handle RX
+      // Get the latest rx values
+
+      #get_rx_vals(get_rx_c, 0, get_rx_a, 4);
+
+      #get_tx_vals(get_tx_c, 0, get_tx_a, 4);
+
+
+      tx_cnt = ldb get_tx_a;
+      tx_remain = ldb get_tx_a + 1;
+      tx_tail = ldb get_tx_a + 2;
+      tx_head = ldb get_tx_a + 3;
+
+      rx_cnt =  get_rx_a;
+      rx_remain =  get_rx_a + 1;
+      rx_tail =  get_rx_a + 2;
+      rx_head =  get_rx_a + 3;
+
+
       var head = rx_head;
       var num = 1;
       
@@ -323,7 +394,7 @@ if argc == 1 {
       var ring_size_a = @base + 303;
       #eth_ring_size(ring_size_c, 0, ring_size_a, 1);
       var ring_size = ldb ring_size_a;
-
+      
       while head <> rx_tail {
         #in_loop(0,0,0,0);
         if ring_size <= num {
@@ -375,8 +446,8 @@ if argc == 1 {
         rx_head = head; 
         rx_remain = rx_remain + 1;
 
-        set_rx_c = @base + 500;
-        set_rx_a = @base + 504;
+        set_rx_c = @base + 400;
+        set_rx_a = @base + 408; 
 
         strb set_rx_c, rx_cnt;
         strb set_rx_c + 1, rx_remain;
@@ -402,6 +473,21 @@ if argc == 1 {
 
         #eth_driver_enqueue_used(rx_enqueue_c, 8, rx_enqueue_a, 0);
 
+        #get_rx_vals(get_rx_c, 0, get_rx_a, 4);
+
+        #get_tx_vals(get_tx_c, 0, get_tx_a, 4);
+
+
+        tx_cnt = ldb get_tx_a;
+        tx_remain = ldb get_tx_a + 1;
+        tx_tail = ldb get_tx_a + 2;
+        tx_head = ldb get_tx_a + 3;
+
+        rx_cnt = ldb get_rx_a;
+        rx_remain = ldb get_rx_a + 1;
+        rx_tail = ldb get_rx_a + 2;
+        rx_head = ldb get_rx_a + 3;
+
         num = num + 1;
 
         #eth_ring_size(ring_size_c, 0, ring_size_a, 1);
@@ -411,12 +497,49 @@ if argc == 1 {
       // Notify the client only if we have actually processed a packet. Not sure how this will work with pancake
       if num > 1 {
         if was_empty == 1 {
+          set_rx_c = @base + 400;
+          set_rx_a = @base + 408;
+
+          set_tx_c = @base + 416;
+          set_tx_a = @base + 424;
+          
+          // Set tx and rx
+          strb set_rx_c, rx_cnt;
+          strb set_rx_c + 1, rx_remain;
+          strb set_rx_c + 2, rx_tail;
+          strb set_rx_c + 3, rx_head;
+
+          #store_rx_vals(set_rx_c, 4, set_rx_a, 0);
+
+          strb set_tx_c, tx_cnt;
+          strb set_tx_c + 1, tx_remain;
+          strb set_tx_c + 2, tx_tail;
+          strb set_tx_c + 3, tx_head;
+
+          #store_tx_vals(set_tx_c, 4, set_tx_c, 0);
+
           #notify_rx(0,0,0,0);
+
+
+          #get_rx_vals(get_rx_c, 0, get_rx_a, 4);
+
+          #get_tx_vals(get_tx_c, 0, get_tx_a, 4);
+
+
+          tx_cnt = ldb get_tx_a;
+          tx_remain = ldb get_tx_a + 1;
+          tx_tail = ldb get_tx_a + 2;
+          tx_head = ldb get_tx_a + 3;
+
+          rx_cnt = ldb get_rx_a;
+          rx_remain = ldb get_rx_a + 1;
+          rx_tail = ldb get_rx_a + 2;
+          rx_head = ldb get_rx_a + 3;
         }
       }
 
-      set_rx_c = @base + 500;
-      set_rx_a = @base + 504;
+      set_rx_c = @base + 400;
+      set_rx_a = @base + 408;
 
       strb set_rx_c, rx_cnt;
       strb set_rx_c + 1, rx_remain;
