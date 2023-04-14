@@ -498,6 +498,20 @@ void ffistore_tx_vals(unsigned char *c, long clen, unsigned char *a, long alen) 
     // __sync_synchronize();
 }
 
+void ffiget_tx_head(unsigned char *c, long clen, unsigned char *a, long alen) {
+    a[0] = (unsigned char) tx.head;
+}
+
+void ffiget_tx_tail(unsigned char *c, long clen, unsigned char *a, long alen) {
+    a[0] = (unsigned char) tx.tail;
+}
+
+void ffiget_tx_len_index(unsigned char *c, long clen, unsigned char *a, long alen) {
+    int head = c[0];
+
+    a[0] = tx_lengths[head];
+}
+
 void ffiget_rx_head(unsigned char *c, long clen, unsigned char *a, long alen) {
     sel4cp_dbg_puts("---- This is the value of head in get_rx_head: ");
     puthex64(rx.head);
@@ -632,8 +646,13 @@ void ffieth_driver_enqueue_avail(unsigned char *c, long clen, unsigned char *a, 
     // In this case we assume that the 'c' array will contain the address of the cookie that we need
     sel4cp_dbg_puts("Entering the driver enqueue avail function\n");
     buff_desc_t *desc = (buff_desc_t *) byte8_to_uintptr(c);
-    int d_len = byte2_to_int(&c[8]);
-
+    int d_len = byte2_to_int(&c[0]);
+    int head = c[8];
+    int cnt_org = c[9];
+    tx.head = head;
+    /* race condition if add/remove is not synchronized. */
+    tx.remain += cnt_org;
+    /* give the buffer back */
     sel4cp_dbg_puts("This is the value of desc endcoded_addr: ");
     puthex64(desc->encoded_addr);
     sel4cp_dbg_puts("\n");
@@ -729,6 +748,27 @@ void ffiget_tx_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
         return;
     }
     uintptr_to_byte8(a, (volatile struct descriptor *)(hw_ring_buffer_vaddr + (sizeof(struct descriptor) * RX_COUNT)));
+}
+
+// Function to check descriptor status in TX ring
+void fficheck_tx_descr(unsigned char *c, long clen, unsigned char *a, long alen) {
+    int head = c[0];
+
+    volatile struct descriptor *d = &(tx.descr[head]);
+
+    /* If this buffer was not sent, we can't release any buffer. */
+    if (d->stat & TXD_READY) {
+        /* give it another chance */
+        if (!(eth->tdar & TDAR_TDAR)) {
+            eth->tdar = TDAR_TDAR;
+        }
+        if (d->stat & TXD_READY) {
+            a[0] = 1;
+            return;
+        }
+    }
+
+    a[0] = 0;
 }
 
 // Getters and Setters for the cookies, descr and phys arrays

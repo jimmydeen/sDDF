@@ -314,48 +314,80 @@ if argc == 1 {
   while (e & irq_mask) <> 0 {
     #in_loop(0,0,0,0);
     if (e & (1 << 27)) <> 0 {
+      // Use heap addresses from 500
       #print_eth_firstcase(0,0,0,0);
-      set_rx_c = @base + 400;
-      set_rx_a = @base + 408;
+      var cnt_org = 0;
+      var get_head_a = @base + 500;
+      #get_tx_head(0,0,get_head_a, 1);
+      var head = ldb get_head_a;
+      var get_cookie_c = @base + 504;
+      var get_cookie_a = @base + 513;
 
-      set_tx_c = @base + 416;
-      set_tx_a = @base + 424;
+      var cnt = 0;
 
-      // Set tx and rx
-      strb set_rx_c, rx_cnt;
-      strb set_rx_c + 1, rx_remain;
-      strb set_rx_c + 2, rx_tail;
-      strb set_rx_c + 3, rx_head;
+      var tx_tail = 0;
+      var get_tx_tail = @base + 501;
+      #get_tx_tail(0,0,get_tx_tail, 1);
+      tx_tail = ldb get_tx_tail;
 
-      #store_rx_vals(set_rx_c, 4, set_rx_a, 0);
+      if 0 == cnt {
+        var get_tx_len_index_c = @base + 502;
+        var get_tx_len_index_a = @base + 503;
+        strb get_tx_len_index_c, head;
+        #get_tx_len_index(get_tx_len_index_c, 1, get_tx_len_index_a, 1);
+        cnt = ldb get_tx_len_index_a;
+        if 0 == cnt {
+          if cnt > 254 {
+            return 1;
+          }
+        }
+        cnt_org = cnt;
+        strb get_cookie_c, head;
+        strb get_cookie_c + 1, 0;
 
-      strb set_tx_c, tx_cnt;
-      strb set_tx_c + 1, tx_remain;
-      strb set_tx_c + 2, tx_tail;
-      strb set_tx_c + 3, tx_head;
+        #get_cookies(get_cookie_c, 9, get_cookie_a, 0);
+      }
 
-      #store_tx_vals(set_tx_c, 4, set_tx_c, 0);
+      // Check descr, and try and send buffer
+      var check_descr_c = @base + 520;
+      var check_descr_a = @base + 521;
 
-      #complete_tx(0,0,0,0);
+      #check_tx_descr(check_descr_c, 1, check_descr_a, 1);
 
-      // Get tx and rx
-      get_rx_c = @base + 16;
-      get_rx_a = @base + 20;
-      get_tx_c = @base + 16;
-      get_tx_a = @base + 20;
+      var check_descr_ret = ldb check_descr_a;
 
-      #get_rx_vals(get_rx_c, 0, get_rx_a, 4);
-      #get_tx_vals(get_tx_c, 0, get_tx_a, 4);
+      if check_descr_a <> 0 {
+        // Not sure if I should break or return here
+        return 1;
+      }
 
-      rx_cnt = ldb get_rx_a;
-      rx_remain = ldb get_rx_a + 1;
-      rx_tail = ldb get_rx_a + 2;
-      rx_head = ldb get_rx_a + 3;
+      head = head + 1;
 
-      tx_cnt = ldb get_tx_a;
-      tx_remain = ldb get_tx_a + 1;
-      tx_tail = ldb get_tx_a + 2;
-      tx_head = ldb get_tx_a + 3;
+      if head == tx_cnt {
+        head = 0;
+      }
+
+      // This may not be correct
+      cnt = cnt - 1;
+
+      if 0 == cnt {
+        var enqueue_avail_c = @base + 522;
+        var enqueue_avail_a = @base + 525;
+        strb enqueue_avail_c, get_cookie_c;
+        strb enqueue_avail_c + 1, get_cookie_c + 1;
+        strb enqueue_avail_c + 2, get_cookie_c + 2;
+        strb enqueue_avail_c + 3, get_cookie_c + 3;
+        strb enqueue_avail_c + 4, get_cookie_c + 4;
+        strb enqueue_avail_c + 5, get_cookie_c + 5;
+        strb enqueue_avail_c + 6, get_cookie_c + 6;
+        strb enqueue_avail_c + 7, get_cookie_c + 7;
+
+        strb enqueue_avail_c + 8, head;
+        strb enqueue_avail_c + 9, cnt_org;
+
+        #eth_driver_enqueue_avail(enqueue_avail_c, 10, enqueue_avail_a, 0);
+
+      }
 
     }
 
