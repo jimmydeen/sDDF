@@ -499,6 +499,9 @@ void ffistore_tx_vals(unsigned char *c, long clen, unsigned char *a, long alen) 
 }
 
 void ffiget_rx_head(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("---- This is the value of head in get_rx_head: ");
+    puthex64(rx.head);
+    sel4cp_dbg_puts("\n");
     a[0] = (unsigned char) rx.head;
 }
 void ffiset_rx_head(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -539,7 +542,7 @@ void ffiprint_eth_firstcase () {
 }
 
 void ffiprint_eth_secondcase() {
-    sel4cp_dbg_puts("---------- WE ARE IN THE SECOND ETH CASE ----------\n");
+    sel4cp_dbg_puts("---------- WE ARE IN THE SECOND ETH CASE (PANCAKE) ----------\n");
 }
 
 void ffiprint_eth_thirdcase() {
@@ -613,6 +616,9 @@ void ffieth_driver_enqueue_used(unsigned char *c, long clen, unsigned char *a, l
     sel4cp_dbg_puts("This is the value of desc cookie: ");
     puthex64(desc->cookie);
     sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is the value of head in driver enqueue: ");
+    puthex64(c[10]);
+    sel4cp_dbg_puts("\n");
     ring_ctx_t *ring = &rx;
 
     ring->head = c[10];
@@ -650,13 +656,13 @@ void ffieth_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen)
 void ffieth_ring_size(unsigned char *c, long clen, unsigned char *a, long alen) {
     sel4cp_dbg_puts("In the eth ring size function\n");
     int ret = ring_size(rx_ring.avail_ring);
-    // int_to_byte4(ret, a);
+    int_to_byte2(ret, a);
 
     sel4cp_dbg_puts("This is the size of the rx avail ring: ");
     puthex64(ret);
     sel4cp_dbg_puts("\n");
 
-    a[0] = ret;
+    // a[0] = ret;
 }
 
 void fficalling_init(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -1061,6 +1067,7 @@ void fficheck_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
 
     if (d->stat & RXD_EMPTY) {
         a[0] = 1;
+        sel4cp_dbg_puts("From the check empty ffi function, we should be breaking from loop\n");
     } else {
         a[0] = 0;
     }
@@ -1490,6 +1497,137 @@ complete_tx(volatile struct enet_regs *eth)
     }
 }
 
+static void eth_second() {
+    sel4cp_dbg_puts("------------ In our eth_second function ------------\n");
+    char get_head_c[1];
+    char get_head_a[1];
+
+    char ring_empty_c[1];
+    char ring_empty_a[1];
+
+    ffiget_rx_head(get_head_c, 1, get_head_c, 0);
+
+    int head = get_head_c[0];
+    // int head = rx.head;
+    int num = 1;
+    ffieth_ring_empty(ring_empty_c, 1, ring_empty_a, 1);
+    
+    int was_empty = ring_empty_a[0];
+
+    char ring_size_c[1];
+    char ring_size_a[2];
+    ffieth_ring_size(ring_size_c, 0, ring_size_a, 1);
+    int ring_size = byte2_to_int(ring_size_a);
+    sel4cp_dbg_puts("This is the size of the rx avail ring in eth second: ");
+    puthex64(ring_size);
+    sel4cp_dbg_puts("\n");
+
+    int rx_tail = rx.tail;
+    while (head != rx_tail) {
+        sel4cp_dbg_puts("---Looping in eth_second---\n");
+        ffieth_ring_size(ring_size_c, 0, ring_size_a, 1);
+        ring_size = byte2_to_int(ring_size_a);
+        if (ring_size <= num) {
+            sel4cp_dbg_puts("Breaking in ring_size leq num\n");
+            break;
+        }
+
+        char check_empty_c[9];
+        char check_empty_a[1];
+
+        check_empty_c[0] = 1;
+        check_empty_c[1] = (char) head;
+
+        fficheck_empty(check_empty_c, 9, check_empty_a, 1);
+
+        int check_empty_ret = check_empty_a[0];
+
+        // volatile struct descriptor *d = &(rx.descr[head]);
+        // if (d->stat & RXD_EMPTY) {
+        //     sel4cp_dbg_puts("Breaking in handle rx loop, value of head: ");
+        //     puthex64(head);
+        //     sel4cp_dbg_puts("\n");
+        //     break;
+        // }
+        if (check_empty_ret == 1) {
+            sel4cp_dbg_puts("Breaking in check empty ret\n");
+            break;
+        }
+
+        check_empty_c[0] = 0;
+        check_empty_c[1] = (char) head;
+
+        ffiget_descr_len(check_empty_c, 9, check_empty_a, 1);
+
+        char descr_len[2];
+        descr_len[0] = check_empty_c[0];
+        descr_len[1] = check_empty_c[1];
+
+        char get_cookie_c[9];
+        char get_cookie_a[9];
+
+        get_cookie_c[0] = (char) head;
+        get_cookie_c[1] = 1;
+
+        ffiget_cookies(get_cookie_c, 9, get_cookie_a, 9);
+
+        head = head + 1;
+
+        char get_rx_cnt[1];
+        ffiget_rx_count(0,0,get_rx_cnt, 1);
+
+        int rx_cnt = get_rx_cnt[0];
+
+        // Handle wrap around
+        if (head == rx_cnt) {
+            head = 0;
+        }
+
+        // rx.head = head;
+        // rx.remain++;
+
+        char rx_enqueue_c[11];
+        char rx_enqueue_a[1];
+
+        rx_enqueue_c[0] = get_cookie_c[0];
+        rx_enqueue_c[1] = get_cookie_c[1];
+        rx_enqueue_c[2] = get_cookie_c[2];
+        rx_enqueue_c[3] = get_cookie_c[3];
+        rx_enqueue_c[4] = get_cookie_c[4];
+        rx_enqueue_c[5] = get_cookie_c[5];
+        rx_enqueue_c[6] = get_cookie_c[6];
+        rx_enqueue_c[7] = get_cookie_c[7];
+
+        rx_enqueue_c[8] = descr_len[0];
+        rx_enqueue_c[9] = descr_len[1];
+
+        rx_enqueue_c[10] = (char) head;
+        
+        ffieth_driver_enqueue_used(rx_enqueue_c, 8, rx_enqueue_a, 0);
+
+        num += 1;
+
+    }
+
+    sel4cp_dbg_puts("This is the value of num: ");
+    puthex64(num);
+    sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("This is the value of was_empty: ");
+    puthex64(was_empty);
+    sel4cp_dbg_puts("\n");
+
+    if (num > 1) {
+        if (was_empty == 1) {
+            sel4cp_dbg_puts("Attempting to notify lwip\n");
+            ffinotify_rx(0,0,0,0);
+        }
+    }
+
+    ffifill_rx_bufs(0,0,0,0);
+
+    sel4cp_dbg_puts("------------ Finished eth second func ------------\n");
+}
+
 static void 
 handle_eth(volatile struct enet_regs *eth)
 {
@@ -1503,8 +1641,9 @@ handle_eth(volatile struct enet_regs *eth)
         }
         if (e & NETIRQ_RXF) {
             sel4cp_dbg_puts("\t In the handle rx irq case\n");
-            handle_rx(eth);
-            fill_rx_bufs(eth);
+            // handle_rx(eth);
+            // fill_rx_bufs(eth);
+            eth_second();
         }
         if (e & NETIRQ_EBERR) {
             print("Error: System bus/uDMA");

@@ -366,7 +366,7 @@ if argc == 1 {
 
       var get_head_a = @base + 1;
       #get_rx_head(0, 0, get_head_a, 1);
-      head = ldb get_head_a;
+      var head = ldb get_head_a;
       var num = 1;
       
       // Check if the ring is empty
@@ -374,16 +374,18 @@ if argc == 1 {
       var ring_empty_a = @base + 301;
       #eth_ring_empty(ring_empty_c, 0, ring_empty_a, 1);
       var was_empty = ldb ring_empty_a;
-      var ring_empty_ret = ldb ring_empty_a;
 
       // Get the current ring size
-      var ring_size_c = @base + 302;
-      var ring_size_a = @base + 303;
-      #eth_ring_size(ring_size_c, 0, ring_size_a, 1);
-      var ring_size = ldb ring_size_a;
-      
+      var ring_size_c = @base + 400;
+      var ring_size_a = @base + 401;
+
       while head <> rx_tail {
         #in_loop(0,0,0,0);
+        #eth_ring_size(ring_size_c, 0, ring_size_a, 2);
+        var ring_size1 = ldb ring_size_a;
+        var ring_size2 = ldb ring_size_a + 1;
+        var ring_size = (ring_size1 << 8) | ring_size2;
+
         if ring_size <= num {
           #break_loop(0,0,0,0);
           break;
@@ -393,7 +395,7 @@ if argc == 1 {
         var check_empty_c = @base + 304;
         var check_empty_a = @base + 313;
 
-        strb check_empty_c, 0;
+        strb check_empty_c, 1;
         strb check_empty_c + 1, head;
 
         #check_empty(check_empty_c, 9, check_empty_a, 1);
@@ -461,8 +463,6 @@ if argc == 1 {
 
         num = num + 1;
 
-        #eth_ring_size(ring_size_c, 0, ring_size_a, 1);
-        ring_size = ldb ring_size_a;
       }
 
       // Notify the client only if we have actually processed a packet. Not sure how this will work with pancake
@@ -480,6 +480,7 @@ if argc == 1 {
       // Need to get the latest rx values
 
       #finished_second_case(0,0,0,0);
+      return 0;
     }
 
     if (e & (1 << 22)) <> 0 {
