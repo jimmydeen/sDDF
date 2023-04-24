@@ -1,0 +1,112 @@
+
+// No need to get channel, we are going to run the tx complete function first, then tx_complete
+
+// Process_tx_ready
+
+// Get the original size of the used drv ring
+var orig_drv_size_c = @base + 10;
+var orig_drv_size_a = @base + 11;
+
+#drv_ring_size(orig_drv_size_c, 1, orig_drv_size_a, 8);
+
+var enqueued = 0;
+
+var drv_empty_c = @base;
+var drv_empty_a = @base + 1;
+
+// Store 0 for checking used ring
+strb drv_empty_c, 0;
+
+#drv_ring_empty(drv_empty_c, 1, drv_empty_a, 1);
+
+var drv_used_was_empty = ldb drv_empty_a;
+
+// Need to check the client rings. Right now we are just handling 1 client, so only check 0
+
+var client_empty_c = @base + 2;
+var client_empty_a = @base + 4;
+
+strb client_empty_c, 0;
+strb client_empty_c + 1, 0;
+
+#client_ring_empty(client_empty_c, 2, client_empty_a, 1);
+
+var client_used_was_empty = ldb client_empty_a;
+
+while client_used_was_empty <> 1 {
+    // Check ring full here for drv used ring
+    var drv_used_full_c = @base + 8;
+    var drv_used_full_a = @base + 9;
+
+    #drv_ring_full(drv_used_full_c, 1, drv_used_full_a, 1);
+
+    var drv_ring_full_ret = ldb drv_used_full_a;
+    
+    if (drv_ring_full_ret == 1) {
+        break;
+    }
+
+    // Dequeue and then enqueue in C, nothing in between these calls so batch them
+    var dequeue_enqueue_a = @base + 5;
+    #process_dequeue_enqueue(0,0,dequeue_enqueue_a,1);
+    
+    // Ret will be 0 on success, if 1, there was an error dequeueing so we break from loop
+    var dequeue_enqueue_ret = ldb dequeue_enqueue_a;
+    if dequeue_enqueue_ret == 1 {
+        break;
+    }
+
+    enqueued = enqueued + 1;
+
+    strb client_empty_c, 0;
+    strb client_empty_c + 1, 0;
+
+    #client_ring_empty(client_empty_c, 2, client_empty_a, 1);
+
+    client_used_was_empty = ldb client_empty_a;
+}
+
+// Pack original size and enqueued into args array for ffi
+var process_signal_c = @base + 20;
+var process_signal_a = @base + 32;
+
+strb process_signal_c, ldb orig_drv_size_a;
+strb process_signal_c + 1, ldb orig_drv_size_a + 1;
+strb process_signal_c + 2, ldb orig_drv_size_a + 2;
+strb process_signal_c + 3, ldb orig_drv_size_a + 3;
+strb process_signal_c + 4, ldb orig_drv_size_a + 4;
+strb process_signal_c + 5, ldb orig_drv_size_a + 5;
+strb process_signal_c + 6, ldb orig_drv_size_a + 6;
+strb process_signal_c + 7, ldb orig_drv_size_a + 7;
+
+strb process_signal_c + 8, (enqueued >> 24) & 255;
+strb process_signal_c + 9, (enqueued >> 16) & 255;
+strb process_signal_c + 10, (enqueued >> 8) & 255;
+strb process_signal_c + 11, (enqueued & 255);
+
+#process_set_signal(process_signal_c, 12, process_signal_a, 1);
+
+// End of Process tx ready function
+
+// Start of Process tx_complete function
+var drv_avail_ring_c = @base + 6;
+var drv_avail_ring_a = @base + 7;
+
+strb drv_avail_ring_c, 1;
+
+#drv_ring_empty(drv_avail_ring_c, 1, drv_avail_ring_a, 1);
+
+var complete_drv_was_empty = ldb drv_avail_ring_a;
+
+while (complete_drv_was_empty <> 1) {
+    // Similairly batch the dequeue and enqueue
+    #complete_dequeue_enqueue(0,0,0,0);
+
+    strb drv_avail_ring_c, 1;
+
+    #drv_ring_empty(drv_avail_ring_c, 1, drv_avail_ring_a, 1);
+
+    complete_drv_was_empty = ldb drv_avail_ring_a;
+}
+
+return 0;

@@ -4,8 +4,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
 #
 
-# @ivanv: Changes any of the params given e.g SEL4CP_CONFIG,
-# doesn't actually cause a re-compile. We should fix this.
 ifeq ($(strip $(BUILD_DIR)),)
 $(error BUILD_DIR must be specified)
 endif
@@ -22,9 +20,12 @@ ifeq ($(strip $(SEL4CP_CONFIG)),)
 $(error SEL4CP_CONFIG must be specified)
 endif
 
-ifeq ($(strip $(TOOLCHAIN)),)
-	TOOLCHAIN := aarch64-none-elf
+ifeq ($(strip $(CAKE_COMPILER)),)
+$(error CAKE_COMPILER must be specified)
 endif
+
+
+TOOLCHAIN := aarch64-none-elf
 
 CPU := cortex-a53
 
@@ -40,8 +41,8 @@ RINGBUFFERDIR=libsharedringbuffer
 BOARD_DIR := $(SEL4CP_SDK)/board/$(SEL4CP_BOARD)/$(SEL4CP_CONFIG)
 
 IMAGES := eth.elf lwip.elf benchmark.elf idle.elf mux_rx.elf mux_tx.elf copy.elf
-CFLAGS := -mcpu=$(CPU) -mstrict-align -ffreestanding -g3 -O3 -Wall -Wno-unused-function -DNO_ASSERT
-LDFLAGS := -L$(BOARD_DIR)/lib -L.
+CFLAGS := -mcpu=$(CPU) -mstrict-align -ffreestanding -g3 -O3 -Wall  -Wno-unused-function
+LDFLAGS := -L$(BOARD_DIR)/lib -Llib
 LIBS := -lsel4cp -Tsel4cp.ld -lc
 
 IMAGE_FILE = $(BUILD_DIR)/loader.img
@@ -53,9 +54,7 @@ CFLAGS += -I$(BOARD_DIR)/include \
 	-I$(LWIPDIR)/include \
 	-I$(LWIPDIR)/include/ipv4 \
 	-I$(RINGBUFFERDIR)/include \
-	-I$(BENCHDIR)/include \
-	-MD \
-	-MP
+	-I$(BENCHDIR)/include 
 
 # COREFILES, CORE4FILES: The minimum set of files needed for lwIP.
 COREFILES=$(LWIPDIR)/core/init.c \
@@ -97,22 +96,22 @@ LWIP_OBJS := $(LWIPFILES:.c=.o) lwip.o libsharedringbuffer/shared_ringbuffer.o u
 
 ETH_OBJS := eth.o libsharedringbuffer/shared_ringbuffer.o
 MUX_RX_OBJS := mux_rx.o libsharedringbuffer/shared_ringbuffer.o
-MUX_TX_OBJS := mux_tx.o libsharedringbuffer/shared_ringbuffer.o
+MUX_TX_OBJS := mux_tx.o libsharedringbuffer/shared_ringbuffer.o mux_tx_ffi.o
 COPY_OBJS := copy.o libsharedringbuffer/shared_ringbuffer.o
 BENCH_OBJS := benchmark/benchmark.o
 IDLE_OBJS := benchmark/idle.o
 
-OBJS := $(sort $(addprefix $(BUILD_DIR)/, $(ETH_OBJS) $(MUX_RX_OBJS) $(MUX_TX_OBJS)\
-	$(COPY_OBJS) $(BENCH_OBJS) $(IDLE_OBJS) \
-	$(LWIP_OBJS)))
-DEPS := $(OBJS:.o=.d)
+all: directories $(IMAGE_FILE)
 
-all: $(IMAGE_FILE)
--include $(DEPS)
 
-$(BUILD_DIR)/%.d $(BUILD_DIR)/%.o: %.c Makefile
-	mkdir -p `dirname $(BUILD_DIR)/$*.o`
-	$(CC) -c $(CFLAGS) $< -o $(BUILD_DIR)/$*.o
+$(BUILD_DIR)/mux_tx.o: $(BUILD_DIR)/mux_tx.S Makefile
+	$(CC) -c $(CFLAGS) -mcpu=$(CPU) $< -o $@
+
+$(BUILD_DIR)/mux_tx.S: mux_tx.pk Makefile
+	$(CAKE_COMPILER) --target=arm8 --pancake < $< > $@
+
+$(BUILD_DIR)/%.o: %.c Makefile
+	$(CC) -c $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/%.o: %.s Makefile
 	$(AS) -g3 -mcpu=$(CPU) $< -o $@
@@ -141,12 +140,28 @@ $(BUILD_DIR)/idle.elf: $(addprefix $(BUILD_DIR)/, $(IDLE_OBJS))
 $(IMAGE_FILE) $(REPORT_FILE): $(addprefix $(BUILD_DIR)/, $(IMAGES)) eth.system
 	$(SEL4CP_TOOL) eth.system --search-path $(BUILD_DIR) --board $(SEL4CP_BOARD) --config $(SEL4CP_CONFIG) -o $(IMAGE_FILE) -r $(REPORT_FILE)
 
-.PHONY: all compile clean
+.PHONY: all depend compile clean
 
 %.o:
 	$(CC) $(CFLAGS) -c $(@:.o=.c) -o $@
+
+#Make the Directories
+directories:
+	$(info $(shell mkdir -p $(BUILD_DIR)/lwip/src))	\
+	$(info $(shell mkdir -p $(BUILD_DIR)/lwip/src/core)) 	\
+	$(info $(shell mkdir -p $(BUILD_DIR)/lwip/src/core/ipv4)) \
+	$(info $(shell mkdir -p $(BUILD_DIR)/lwip/src/netif))	\
+    $(info $(shell mkdir -p $(BUILD_DIR)/libsharedringbuffer))	\
+	$(info $(shell mkdir -p $(BUILD_DIR)/benchmark))	\
 
 clean:
 	rm -f *.o *.elf .depend*
 	find . -name \*.o |xargs --no-run-if-empty rm
 
+depend dep: .depend
+
+include .depend
+
+.depend: $(LWIPFILES)
+	$(CC) $(CFLAGS) -MM $^ > .depend || rm -f .depend
+	
