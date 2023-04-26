@@ -97,6 +97,7 @@ strb drv_avail_ring_c, 1;
 #drv_ring_empty(drv_avail_ring_c, 1, drv_avail_ring_a, 1);
 
 var complete_drv_was_empty = ldb drv_avail_ring_a;
+var enqueued = 0;
 
 while (complete_drv_was_empty <> 1) {
     // Similairly batch the dequeue and enqueue
@@ -107,6 +108,13 @@ while (complete_drv_was_empty <> 1) {
     #drv_ring_empty(drv_avail_ring_c, 1, drv_avail_ring_a, 1);
 
     complete_drv_was_empty = ldb drv_avail_ring_a;
+    enqueued = 1;
+}
+
+if enqueued == 1 {
+    if complete_drv_was_empty == 1 {
+        #notify_client(0,0,0,0);
+    }
 }
 
 return 0;

@@ -191,14 +191,10 @@ void ffiprocess_dequeue_enqueue(unsigned char *c, long clen, unsigned char *a, l
     unsigned int len;
     void *cookie;
 
-    int err = dequeue_used(&state.tx_ring_clients[0], &addr, &len, &cookie);  
-
-    if (err) {
-        print("process_tx_ready dequeue used failed.\n");
-        a[0] = 1;
-    }
-
-    enqueue_used(&state.tx_ring_drv, addr, len, cookie);
+    int err = dequeue_used(&state.tx_ring_clients[0], &addr, &len, &cookie);
+    assert(!err);
+    err = enqueue_used(&state.tx_ring_drv, addr, len, cookie);
+    assert(!err);
 
     a[0] = 0;
 }
@@ -260,10 +256,6 @@ void ffidrv_ring_size(unsigned char *c, long clen, unsigned char *a, long alen) 
     return;
 }
 
-void fficlient_ring_size(unsigned char *c, long clen, unsigned char *a, long alen) {
-    return;
-}
-
 /**
  * Get the size of either used or avail ring of tx drv ring
 */
@@ -284,6 +276,10 @@ void ffidrv_ring_full(unsigned char *c, long clen, unsigned char *a, long alen) 
     }
 
     return;
+}
+
+void ffinotify_client(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_notify(CLIENT_CH);
 }
 
 /*---------- Functions needed by cakeml ----------*/
@@ -331,10 +327,10 @@ void init(void)
 void notified(sel4cp_channel ch)
 {
     if (ch == CLIENT_CH || ch == DRIVER_TX_CH) {
-        sel4cp_dbg_puts("Entering cml_main\n");
+        // sel4cp_dbg_puts("Entering cml_main\n");
         cml_main();
-        sel4cp_dbg_puts("Returning from pancake\n");
-        return;
+        // sel4cp_dbg_puts("Returning from pancake\n");
+        // return;
     } else {
         print("MUX TX|ERROR: unexpected notification from channel: ");
         puthex64(ch);
