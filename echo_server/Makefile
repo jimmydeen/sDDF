@@ -97,7 +97,7 @@ LWIP_OBJS := $(LWIPFILES:.c=.o) lwip.o libsharedringbuffer/shared_ringbuffer.o u
 ETH_OBJS := eth.o libsharedringbuffer/shared_ringbuffer.o
 MUX_RX_OBJS := mux_rx.o libsharedringbuffer/shared_ringbuffer.o mux_rx_ffi.o
 MUX_TX_OBJS := mux_tx.o libsharedringbuffer/shared_ringbuffer.o mux_tx_ffi.o
-COPY_OBJS := copy.o libsharedringbuffer/shared_ringbuffer.o
+COPY_OBJS := copy.o libsharedringbuffer/shared_ringbuffer.o copy_ffi.o
 BENCH_OBJS := benchmark/benchmark.o
 IDLE_OBJS := benchmark/idle.o
 
@@ -116,6 +116,11 @@ $(BUILD_DIR)/mux_rx.o: $(BUILD_DIR)/mux_rx.S Makefile
 $(BUILD_DIR)/mux_rx.S: mux_rx.pk Makefile
 	$(CAKE_COMPILER) --target=arm8 --pancake < $< > $@
 
+$(BUILD_DIR)/copy.o: $(BUILD_DIR)/copy.S Makefile
+	$(CC) -c $(CFLAGS) -mcpu=$(CPU) $< -o $@
+
+$(BUILD_DIR)/copy.S: copy.pk Makefile
+	$(CAKE_COMPILER) --target=arm8 --pancake < $< > $@
 
 $(BUILD_DIR)/%.o: %.c Makefile
 	$(CC) -c $(CFLAGS) $< -o $@
