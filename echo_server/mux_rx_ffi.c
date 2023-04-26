@@ -592,7 +592,7 @@ void init(void)
 
 void notified(sel4cp_channel ch)
 {
-    //sel4cp_dbg_puts("---------- In the mux rx notified func ----------\n");
+    sel4cp_dbg_puts("---------- In the mux rx notified func ----------\n");
     if (!initialised) {
         //sel4cp_dbg_puts("In the not init case\n");
         cml_arg = 1;
@@ -603,6 +603,8 @@ void notified(sel4cp_channel ch)
 
         sel4cp_notify(DRIVER_CH);
         initialised = 1;
+        sel4cp_dbg_puts("Finished the mux rx notified func\n");
+
         return;
     }
 
@@ -618,5 +620,5 @@ void notified(sel4cp_channel ch)
         assert(0);
     }
 
-    //sel4cp_dbg_puts("Finished the mux rx notified func\n");
+    sel4cp_dbg_puts("Finished the mux rx notified func\n");
 }

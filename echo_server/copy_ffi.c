@@ -382,7 +382,7 @@ void init(void)
 
 void notified(sel4cp_channel ch)
 {
-    // sel4cp_dbg_puts("---------- In the copy notified function ----------\n");
+    sel4cp_dbg_puts("---------- In the copy notified function ----------\n");
     if (!initialised) {
         // sel4cp_dbg_puts("In copy notified init case\n");
         /*
@@ -391,7 +391,7 @@ void notified(sel4cp_channel ch)
          */
         sel4cp_notify(MUX_RX_CH);
         initialised = 1;
-        // sel4cp_dbg_puts("Returning from the copy notified init case\n");
+        sel4cp_dbg_puts("Returning from the copy notified init case\n");
         return;
     }
 
@@ -405,4 +405,6 @@ void notified(sel4cp_channel ch)
         print("\n");
         assert(0);
     }
+        sel4cp_dbg_puts("Finished the copy notified func\n");
+
 }

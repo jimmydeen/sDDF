@@ -326,7 +326,7 @@ void init(void)
 
 void notified(sel4cp_channel ch)
 {
-    //sel4cp_dbg_puts("---------- In the mux tx notified func ----------\n");
+    sel4cp_dbg_puts("---------- In the mux tx notified func ----------\n");
 
     if (ch == CLIENT_CH || ch == DRIVER_TX_CH) {
         //sel4cp_dbg_puts("Entering cml_main\n");
@@ -338,6 +338,11 @@ void notified(sel4cp_channel ch)
         puthex64(ch);
         print("\n");
         assert(0);
+            sel4cp_dbg_puts("Finished the mux tx notified func\n");
+
         return;
     }
+
+        sel4cp_dbg_puts("Finished the mux tx notified func\n");
+
 }
