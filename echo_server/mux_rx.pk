@@ -1,0 +1,261 @@
+// Get the cml_arg global variable from FFI file. This will tell us what functions to run.
+var get_arg_a = @base;
+#get_args(0,0,get_arg_a, 1);
+var cml_arg = ldb get_arg_a;
+
+// A constant for the current num of clients. For now, num_clients is set to 1.
+var num_clients = 1;
+
+if (cml_arg == 1) {
+    #first_func(0,0,0,0);
+    // When cml_arg is 1, we just want to run the process rx free function.
+    // Start of the process rx free function. Heap starts at @base + 45
+    
+    var drv_avail_size_c = @base + 45;
+    var drv_avail_size_a = @base + 46;
+
+    strb drv_avail_size_c, 1;
+
+    #drv_ring_size(drv_avail_size_c, 1, drv_avail_size_a, 8);
+
+    var enqueued = 0;
+
+    var i = 0;
+
+    while i < num_clients {
+        #in_loop(0,0,0,0);
+        // Check ring empty
+        var client_ring_empty_c = @base + 54;
+        var client_ring_empty_a = @base + 56;
+
+        strb client_ring_empty_c, i;
+        strb client_ring_empty_c + 1, 1;
+
+        #cli_ring_empty(client_ring_empty_c, 2, client_ring_empty_a, 1);
+
+        var client_was_empty = ldb client_ring_empty_a;
+
+        while client_was_empty <> 1 {
+            // Batch the dequeue/enqueue
+            var batch_dequeue_enqueue_c = @base + 57;
+            strb batch_dequeue_enqueue_c, i;
+
+            #batch_dequeue_enqueue(batch_dequeue_enqueue_c, 1, 0, 0);
+
+            enqueue = enqueue + 1;
+            
+            #cli_ring_empty(client_ring_empty_c, 2, client_ring_empty_a, 1);
+
+            client_was_empty = ldb client_ring_empty_a;
+        }
+
+        i = i + 1;
+    }
+
+    // Pass through original size and enqueued to c function to determine if we need to notify driver
+    var notify_delayed_c = @base + 58;
+    var notify_delayed_a = @base + 70;
+
+    strb notify_delayed_c, ldb drv_avail_size_a;
+    strb notify_delayed_c + 1, ldb drv_avail_size_a + 1;
+    strb notify_delayed_c + 2, ldb drv_avail_size_a + 2;
+    strb notify_delayed_c + 3, ldb drv_avail_size_a + 3;
+    strb notify_delayed_c + 4, ldb drv_avail_size_a + 4;
+    strb notify_delayed_c + 5, ldb drv_avail_size_a + 5;
+    strb notify_delayed_c + 6, ldb drv_avail_size_a + 6;
+    strb notify_delayed_c + 7, ldb drv_avail_size_a + 7;
+
+    strb notify_delayed_c + 8, (enqueued >> 24) & 255;
+    strb notify_delayed_c + 9, (enqueued >> 16) & 255;
+    strb notify_delayed_c + 10, (enqueued >> 8) & 255;
+    strb notify_delayed_c + 11, (enqueued & 255);
+
+    #process_set_signal(notify_delayed_c, 12, notify_delayed_a, 1);
+    return 0;
+}
+
+if (cml_arg == 2) {
+    // When cml_arg is 2, we want to run the process rx complete and process rx free functions
+    // Start of the process rx complete function
+
+    // The notify clients array starts at @base + 500 and has a max size of 256
+    var notify_clients = @base + 500;
+
+
+
+    // Set the global variables that are still in c 
+    #set_dropped(0,0,0,0);
+    #set_rx_avail_was_empty(0,0,0,0);
+
+    // Setup loop
+    var drv_used_was_empty_c = @base;
+    var drv_used_was_empty_a = @base + 1;
+
+    strb drv_used_was_empty_c, 0;
+
+    #drv_ring_empty(drv_used_was_empty_c, 1, drv_used_was_empty_a, 1);
+
+    var drv_used_was_empty = ldb drv_used_was_empty_a;
+
+    while (drv_used_was_empty <> 1) {
+        #in_loop(0,0,0,0);
+        var dequeue_used_c = @base + 2;
+        var dequeue_used_a = @base + 3;
+
+        #drv_dequeue_used(dequeue_used_c, 1, dequeue_used_a, 24);
+
+        var drv_dequeue_used_ret = ldb dequeue_used_c;
+        
+        var get_client_c = @base + 27;
+        var get_client_a = @base + 35;
+
+        strb get_client_c, ldb dequeue_used_a;
+        strb get_client_c + 1, ldb dequeue_used_a + 1;
+        strb get_client_c + 2, ldb dequeue_used_a + 2;
+        strb get_client_c + 3, ldb dequeue_used_a + 3;
+        strb get_client_c + 4, ldb dequeue_used_a + 4;
+        strb get_client_c + 5, ldb dequeue_used_a + 5;
+        strb get_client_c + 6, ldb dequeue_used_a + 6;
+        strb get_client_c + 7, ldb dequeue_used_a + 7;
+
+        #get_client(get_client_c, 8, get_client_a, 1);
+
+        var client = ldb get_client_a;
+        var client_ret = ldb get_client_c;
+        if client_ret <> 1 {
+            // Check if the ring is full
+            var cli_ring_full_c = @base + 36;
+            var cli_ring_full_a = @base + 38;
+            strb cli_ring_full_c, client;
+            strb cli_ring_full_c, 0;
+
+            #cli_ring_full(cli_ring_full_c, 2, cli_ring_full_a, 1);
+
+            var cli_ring_is_full = ldb cli_ring_full_a;
+
+            if cli_ring_is_full <> 1 {
+
+                var cli_used_was_empty_c = @base + 39;
+                var cli_used_was_empty_a = @base + 41;
+
+                strb cli_used_was_empty_c, client;
+                strb cli_used_was_empty_c, 0;
+
+                #cli_ring_empty(cli_used_was_empty_c, 2, cli_used_was_empty_a, 1);
+
+                var cli_used_was_empty = ldb cli_used_was_empty_a;
+
+                // Enqueue. Use the return array of dequeue used as the argument array for enqueue
+                var enqueue_used_a = @base + 42;
+                strb enqueue_used_a, client;
+                #cli_enqueue_used(dequeue_used_a, 24, enqueue_used_a, 1);
+
+                if (cli_used_was_empty == 1) {
+                    // Set the corresponding value in the notify clients array
+                    // Notify clients is a byte array, so indexing is simpler
+                    #storing_notify_clients(0,0,0,0);
+                    strb notify_clients + client, 1;
+                }
+
+            } else {
+                // Use the return array of dequeue used as the arg array for enqueue avail
+                var enqueue_avail_a = @base + 43;
+                #drv_enqueue_avail(dequeue_used_a, 24, enqueue_avail_a, 1);
+                var enqueue_avail_ret = ldb enqueue_avail_a;
+                if enqueue_avail_ret == 1 {
+                    break;
+                }
+                #increment_dropped(0,0,0,0);
+            }
+
+            // Loop over the bitmap and see who needs to be notified
+            var client = 0;
+            while client < num_clients {
+                var curr_client = ldb (notify_clients + client);
+                var client_test_c = @base + 100;
+                strb client_test_c, client;
+                strb client_test_c + 1, curr_client;
+                #print_client(client_test_c, 2,0,0);
+                if (curr_client == 1) {
+                    var notify_client_c = @base + 44;
+                    strb notify_client_c, client;
+                    #notify_client(notify_client_c, 1, 0, 0);
+                }
+
+                client = client + 1;
+            }
+        }
+
+        #drv_ring_empty(drv_used_was_empty_c, 1, drv_used_was_empty_a, 1);
+
+        drv_used_was_empty = ldb drv_used_was_empty_a;
+    }
+    // End of the process rx complete function
+
+    // Start of the process rx free function. Heap starts at @base + 45
+    var drv_avail_size_c = @base + 45;
+    var drv_avail_size_a = @base + 46;
+
+    strb drv_avail_size_c, 1;
+
+    #drv_ring_size(drv_avail_size_c, 1, drv_avail_size_a, 8);
+
+    var enqueued = 0;
+
+    var i = 0;
+
+    while i < num_clients {
+        #in_loop(0,0,0,0);
+        // Check ring empty
+        var client_ring_empty_c = @base + 54;
+        var client_ring_empty_a = @base + 56;
+
+        strb client_ring_empty_c, i;
+        strb client_ring_empty_c + 1, 1;
+
+        #cli_ring_empty(client_ring_empty_c, 2, client_ring_empty_a, 1);
+
+        var client_was_empty = ldb client_ring_empty_a;
+
+        while client_was_empty <> 1 {
+            #in_inner_loop(0,0,0,0);
+
+            // Batch the dequeue/enqueue
+            var batch_dequeue_enqueue_c = @base + 57;
+            strb batch_dequeue_enqueue_c, i;
+
+            #batch_dequeue_enqueue(batch_dequeue_enqueue_c, 1, 0, 0);
+
+            enqueue = enqueue + 1;
+              
+            #cli_ring_empty(client_ring_empty_c, 2, client_ring_empty_a, 1);
+
+            client_was_empty = ldb client_ring_empty_a;
+        }
+
+        i = i + 1;
+    }
+
+    // Pass through original size and enqueued to c function to determine if we need to notify driver
+    var notify_delayed_c = @base + 58;
+    var notify_delayed_a = @base + 70;
+
+    strb notify_delayed_c, ldb drv_avail_size_a;
+    strb notify_delayed_c + 1, ldb drv_avail_size_a + 1;
+    strb notify_delayed_c + 2, ldb drv_avail_size_a + 2;
+    strb notify_delayed_c + 3, ldb drv_avail_size_a + 3;
+    strb notify_delayed_c + 4, ldb drv_avail_size_a + 4;
+    strb notify_delayed_c + 5, ldb drv_avail_size_a + 5;
+    strb notify_delayed_c + 6, ldb drv_avail_size_a + 6;
+    strb notify_delayed_c + 7, ldb drv_avail_size_a + 7;
+
+    strb notify_delayed_c + 8, (enqueued >> 24) & 255;
+    strb notify_delayed_c + 9, (enqueued >> 16) & 255;
+    strb notify_delayed_c + 10, (enqueued >> 8) & 255;
+    strb notify_delayed_c + 11, (enqueued & 255);
+
+    #process_set_signal(notify_delayed_c, 12, notify_delayed_a, 1);
+}
+
+
+return 0;

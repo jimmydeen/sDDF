@@ -326,10 +326,12 @@ void init(void)
 
 void notified(sel4cp_channel ch)
 {
+    sel4cp_dbg_puts("---------- In the mux tx notified func ----------\n");
+
     if (ch == CLIENT_CH || ch == DRIVER_TX_CH) {
-        // sel4cp_dbg_puts("Entering cml_main\n");
+        sel4cp_dbg_puts("Entering cml_main\n");
         cml_main();
-        // sel4cp_dbg_puts("Returning from pancake\n");
+        sel4cp_dbg_puts("Returning from pancake\n");
         // return;
     } else {
         print("MUX TX|ERROR: unexpected notification from channel: ");
