@@ -42,6 +42,35 @@ Checks to make before benchmarking:
 * Run with LWIP asserts turned off as well (`LWIP_NOASSERT`).
 * Make sure compiler optimisations are enabled.
 
+## Building with Pancake
+
+In the build directory there will be two .S files outputted, mux_tx.S and mux_rx.S. Add the following changes into both .S files (overwrite the existing sections), and run the make command again. This is to make Pancake return to where ```cml_main()``` was called, without it we will never return back to the core platform's handler loop.
+```
+cdecl(cml_main):
+     _ldrel x0, cake_main            /* arg1: entry address */
+     _ldrel x1, cdecl(cml_heap)      /* arg2: first address of heap */
+     ldr    x1,[x1]
+     _ldrel x2, cake_bitmaps
+     str    x2,[x1]                  /* store bitmap pointer */
+     _ldrel x2, cdecl(cml_stack)     /* arg3: first address of stack */
+     ldr    x2,[x2]
+     _ldrel x3, cdecl(cml_stackend)  /* arg4: first address past the stack */
+     ldr    x3,[x3]
+	 str x30, [sp, #-32]!
+     b      cake_main
+     .ltorg
+```
+
+And, 
+
+```
+cake_exit:
+     ldr x30, [sp], #32
+	 ret
+     .p2align 4
+
+```
+
 ## Supported Boards
 
 ### iMX8MM-EVK
