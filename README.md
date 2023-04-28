@@ -42,6 +42,8 @@ Checks to make before benchmarking:
 * Run with LWIP asserts turned off as well (`LWIP_NOASSERT`).
 * Make sure compiler optimisations are enabled.
 
+[Benchmarks for Pancake mux.](https://bit.ly/3oHrgZ4)
+
 ## Building with Pancake
 
 In the build directory there will be two .S files outputted, mux_tx.S and mux_rx.S. Add the following changes into both .S files (overwrite the existing sections), and run the make command again. This is to make Pancake return to where ```cml_main()``` was called, without it we will never return back to the core platform's handler loop.
