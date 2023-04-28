@@ -125,20 +125,21 @@ uintptr_t byte8_to_uintptr(unsigned char *b){
 /*------------ Debugging FFI functions ------------ */
 
 void ffiin_loop(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("Looping\n");
+    sel4cp_dbg_puts("Looping\n");
 }
 
 void ffibreaking(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("Attempting to break from loop");
+    sel4cp_dbg_puts("Attempting to break from loop");
 }
 
 /*------------ MUX FFI functions ------------ */
 
+/* Wrapper around the ring empty function. Specifically for the drv ring */
 void ffidrv_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
     //sel4cp_dbg_puts("In the drv ring empty function\n");
     if (clen != 1 || alen != 1) {
         // Insufficient args
-        //sel4cp_dbg_puts("Insufficient args or ret space\n");
+        sel4cp_dbg_puts("Insufficient args or ret space\n");
         return;
     }
     int ring = c[0];
@@ -156,11 +157,12 @@ void ffidrv_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen)
     a[0] = ret;
 }
 
+/* Wrapper around the ring empty function. Specifically for the client ring */
 void fficlient_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
     //sel4cp_dbg_puts("In the client ring empty function\n");
     if (clen != 2 || alen != 1) {
         // Need 1 arg for client num, and one for ring distinction
-        //sel4cp_dbg_puts("Insufficient args or ret space\n");
+        sel4cp_dbg_puts("Insufficient args or ret space\n");
         return;
     }
 
@@ -180,10 +182,11 @@ void fficlient_ring_empty(unsigned char *c, long clen, unsigned char *a, long al
     a[0] = ret;
 }
 
+/* Batch the dequeue and enqueue from the used rings.*/
 void ffiprocess_dequeue_enqueue(unsigned char *c, long clen, unsigned char *a, long alen) {
     //sel4cp_dbg_puts("In the process dequeue enqueue func\n");
     if (alen != 1) {
-        //sel4cp_dbg_puts("Insufficent ret array size\n");
+        sel4cp_dbg_puts("Insufficent ret array size\n");
         return;
     }
 
@@ -199,12 +202,13 @@ void ffiprocess_dequeue_enqueue(unsigned char *c, long clen, unsigned char *a, l
     a[0] = 0;
 }
 
+/* Check paramaters, and notify the driver's transmit channel*/
 void ffiprocess_set_signal(unsigned char *c, long clen, unsigned char *a, long alen) {
     //sel4cp_dbg_puts("In the process set signal func\n");
     // First 8 bytes for size of ring buffer
     // Next 4 bytes for the number of enqueues
     if (clen != 12) {
-        //sel4cp_dbg_puts("Insufficient args\n");
+        sel4cp_dbg_puts("Insufficient args\n");
         return;
     }
     
@@ -227,6 +231,7 @@ void ffiprocess_set_signal(unsigned char *c, long clen, unsigned char *a, long a
     return;
 }
 
+/* Batch dequeue and enqueue from the avail rings */
 void fficomplete_dequeue_enqueue(unsigned char *c, long clen, unsigned char *a, long alen) {
     //sel4cp_dbg_puts("In the complete dequeue enqueue func\n");
     uintptr_t addr;
@@ -236,10 +241,11 @@ void fficomplete_dequeue_enqueue(unsigned char *c, long clen, unsigned char *a, 
     enqueue_avail(&state.tx_ring_clients[0], addr, len, cookie);
 }
 
+/* Wrapper around the ring size function. Specifically for the drv ring */
 void ffidrv_ring_size(unsigned char *c, long clen, unsigned char *a, long alen) {
     //sel4cp_dbg_puts("In the drv ring size func\n");
     if (clen != 1 || alen != 8) {
-        //sel4cp_dbg_puts("Insufficient size for arg or return arrays\n");
+        sel4cp_dbg_puts("Insufficient size for arg or return arrays\n");
         return;
     }
 
@@ -261,7 +267,7 @@ void ffidrv_ring_size(unsigned char *c, long clen, unsigned char *a, long alen) 
 */
 void ffidrv_ring_full(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (clen != 1 || alen != 1) {
-        //sel4cp_dbg_puts("Insufficent size for arf or return arrays\n");
+        sel4cp_dbg_puts("Insufficent size for arf or return arrays\n");
         return;
     }
 
@@ -278,6 +284,7 @@ void ffidrv_ring_full(unsigned char *c, long clen, unsigned char *a, long alen) 
     return;
 }
 
+/* Wrapper around the notify client sel4cp call */
 void ffinotify_client(unsigned char *c, long clen, unsigned char *a, long alen) {
     sel4cp_notify(CLIENT_CH);
 }

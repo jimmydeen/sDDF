@@ -260,7 +260,7 @@ void ffidrv_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen)
 void fficli_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
     //sel4cp_dbg_puts("In the cli ring empty func\n");
     if (clen != 2 || alen != 1) {
-        //sel4cp_dbg_puts("Arg/ret arrays of incorrect size\n");
+        sel4cp_dbg_puts("Arg/ret arrays of incorrect size\n");
         return;
     }
 
@@ -284,7 +284,7 @@ void fficli_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen)
 void fficli_ring_full(unsigned char *c, long clen, unsigned char *a, long alen) {
     //sel4cp_dbg_puts("In the cli ring full func\n");
     if (clen != 2 || alen != 1) {
-        //sel4cp_dbg_puts("Arg/ret arrays of incorrect size\n");
+        sel4cp_dbg_puts("Arg/ret arrays of incorrect size\n");
         return;
     }
 
@@ -304,7 +304,7 @@ void fficli_ring_full(unsigned char *c, long clen, unsigned char *a, long alen) 
 void ffidrv_ring_size(unsigned char *c, long clen, unsigned char *a, long alen) {
     //sel4cp_dbg_puts("In the drv ring size func\n");
     if (clen != 1 || alen != 8) {
-        //sel4cp_dbg_puts("Insufficient size for arg or return arrays\n");
+        sel4cp_dbg_puts("Insufficient size for arg or return arrays\n");
         return;
     }
 
@@ -327,7 +327,7 @@ void ffidrv_dequeue_used(unsigned char *c, long clen, unsigned char *a, long ale
     //sel4cp_dbg_puts("In the drv dequeue used func\n");
     // We need to return the addr, len and cookie to pancake. Assuming 8 bytes for each
     if (clen != 1 || alen != 24) {
-        //sel4cp_dbg_puts("Return array of incorrect size\n");
+        sel4cp_dbg_puts("Return array of incorrect size\n");
         return;
     }
 
@@ -356,7 +356,7 @@ void ffidrv_dequeue_used(unsigned char *c, long clen, unsigned char *a, long ale
 void fficli_enqueue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
     //sel4cp_dbg_puts("In the cli enqueue used func\n");
     if (clen != 24 || alen != 1) {
-        //sel4cp_dbg_puts("Argument/Return array of incorrect size\n");
+        sel4cp_dbg_puts("Argument/Return array of incorrect size\n");
         return;
     }
 
@@ -380,7 +380,7 @@ void fficli_enqueue_used(unsigned char *c, long clen, unsigned char *a, long ale
 void ffidrv_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
     //sel4cp_dbg_puts("In teh drv enqueue avail func\n");
     if (clen != 24 || alen != 1) {
-        //sel4cp_dbg_puts("Argument/Return array of incorrect size\n");
+        sel4cp_dbg_puts("Argument/Return array of incorrect size\n");
         return;
     }
 
@@ -406,7 +406,7 @@ void ffidrv_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long al
 void ffibatch_dequeue_enqueue(unsigned char *c, long clen, unsigned char *a, long alen) {
     //sel4cp_dbg_puts("In the batch dequeue enqueue func\n");
     if (clen != 1) {
-        //sel4cp_dbg_puts("Argument array of incorrect size\n");
+        sel4cp_dbg_puts("Argument array of incorrect size\n");
         return;
     }
 
@@ -426,7 +426,7 @@ void ffibatch_dequeue_enqueue(unsigned char *c, long clen, unsigned char *a, lon
 void ffiget_client(unsigned char *c, long clen, unsigned char *a, long alen) {
     //sel4cp_dbg_puts("In the get client func\n");
     if (clen != 8 || alen != 1) {
-        //sel4cp_dbg_puts("Argument/Return array of incorrect size\n");
+        sel4cp_dbg_puts("Argument/Return array of incorrect size\n");
         return;
     }
 
@@ -453,7 +453,7 @@ void ffiget_client(unsigned char *c, long clen, unsigned char *a, long alen) {
 void ffinotify_client(unsigned char *c, long clen, unsigned char *a, long alen) {
     //sel4cp_dbg_puts("In the notify client func\n");
     if (clen != 1) {
-        //sel4cp_dbg_puts("Argument array of incorrect size\n");
+        sel4cp_dbg_puts("Argument array of incorrect size\n");
         return;
     }
 
@@ -469,7 +469,7 @@ void ffiprocess_set_signal(unsigned char *c, long clen, unsigned char *a, long a
     // First 8 bytes for size of ring buffer
     // Next 4 bytes for the number of enqueues
     if (clen != 12) {
-        //sel4cp_dbg_puts("Insufficient args\n");
+        sel4cp_dbg_puts("Insufficient args\n");
         return;
     }
     
