@@ -3,7 +3,8 @@ var get_arg_a = @base;
 #get_args(0,0,get_arg_a, 1);
 var cml_arg = ldb get_arg_a;
 
-// A constant for the current num of clients. For now, num_clients is set to 1.
+// A constant (not actually a constant, DONT CHANGE ELSEWHERE)
+// for the current num of clients. For now, num_clients is set to 1.
 var num_clients = 1;
 
 if (cml_arg == 1) {
