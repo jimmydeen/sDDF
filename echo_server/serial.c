@@ -8,6 +8,7 @@
 #include <sel4/sel4.h>
 #include "serial.h"
 #include "shared_ringbuffer.h"
+#include "util.h"
 
 #define BIT(nr) (1UL << (nr))
 
@@ -201,6 +202,7 @@ void handle_tx() {
 
 // Increment the number of chars that the server has requested us to get.
 void handle_rx() {
+    // Instead, we add a buffer to the avail ring.
     global_serial_driver.num_to_get_chars++;
 }
 
@@ -218,7 +220,7 @@ void handle_irq() {
     int input = getchar();
 
     if (input == -1) {
-        sel4cp_dbg_puts(sel4cp_name);
+        // sel4cp_dbg_puts(sel4cp_name);
         sel4cp_dbg_puts(": invalid input when attempting to getchar\n");
         return;
     }
@@ -235,8 +237,14 @@ void handle_irq() {
     */
     sel4cp_dbg_puts("Looping to service all current requests to getchar\n");
 
+    // Instead of doing this, loop over the avail ring to see if it is not empty.
+    // We should be placing a 
     while (global_serial_driver.num_to_get_chars > 0) {
         sel4cp_dbg_puts("In loop\n");
+        uint64_t avail_size = ring_size(rx_ring.avail_ring);
+        sel4cp_dbg_puts("This is the size of the avail ring: ");
+        puthex64(avail_size);
+        sel4cp_dbg_puts("\n");
         // Address that we will pass to dequeue to store the buffer address
         uintptr_t buffer = 0;
         // Integer to store the length of the buffer
@@ -247,7 +255,7 @@ void handle_irq() {
         int ret = dequeue_avail(&rx_ring, &buffer, &buffer_len, &cookie);
 
         if (ret != 0) {
-            sel4cp_dbg_puts(sel4cp_name);
+            // sel4cp_dbg_puts(sel4cp_name);
             sel4cp_dbg_puts(": unable to dequeue from the rx available ring\n");
             return;
         }
@@ -258,7 +266,7 @@ void handle_irq() {
         ret = enqueue_used(&rx_ring, buffer, 1, &cookie);
 
         if (ret != 0) {
-            sel4cp_dbg_puts(sel4cp_name);
+            // sel4cp_dbg_puts(sel4cp_name);
             sel4cp_dbg_puts(": unable to enqueue to the tx available ring\n");
             return;
         }
@@ -271,7 +279,7 @@ void handle_irq() {
 }
 
 void init_post() {
-    sel4cp_dbg_puts(sel4cp_name);
+    // sel4cp_dbg_puts(sel4cp_name);
     sel4cp_dbg_puts(": init_post function running\n");
 
     // Init the shared ring buffers
@@ -284,7 +292,7 @@ void init_post() {
 
 // Init function required by CP for every PD
 void init(void) {
-    sel4cp_dbg_puts(sel4cp_name);
+    // sel4cp_dbg_puts(sel4cp_name);
     sel4cp_dbg_puts(": elf PD init function running\n");
 
 
@@ -332,7 +340,7 @@ void init(void) {
 
 // Entry point that is invoked on a serial interrupt, or notifications from the server using the TX and RX channels
 void notified(sel4cp_channel ch) {
-    sel4cp_dbg_puts(sel4cp_name);
+    // sel4cp_dbg_puts(sel4cp_name);
     sel4cp_dbg_puts(": elf PD notified function running\n");
 
     switch(ch) {
