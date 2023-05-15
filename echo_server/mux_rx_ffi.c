@@ -142,47 +142,6 @@ void ffiget_args(unsigned char *c, long clen, unsigned char *a, long alen) {
     a[0] = cml_arg;
 }
 
-/*------------ Debugging FFI functions ------------ */
-
-void ffiin_loop(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("Looping\n");
-}
-
-void ffiin_inner_loop(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In inner loop\n");
-}
-
-void ffifinished_loop(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("Finished loop\n");
-}
-
-void ffibreaking(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("Attempting to break from loop");
-}
-
-void ffifirst_func(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In the first function\n");
-}
-
-void ffifinished_func(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("Finished function\n");
-}
-
-void ffiprint_client(unsigned char *c, long clen, unsigned char *a, long alen) {
-    int index = c[0];
-    int val_at_index = c[1];
-
-    //sel4cp_dbg_puts("This is the current client: ");
-    //puthex64(index);
-    //sel4cp_dbg_puts("\nThis is the value at client in notify array: ");
-    //puthex64(val_at_index);
-    //sel4cp_dbg_puts("\n");
-}
-
-void ffistoring_notify_clients(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("---------We are storing in the notify clients array---------\n");
-}
-
 /*------------ MUX FFI functions ------------ */
 
 int compare_mac(uint8_t *mac1, uint8_t *mac2)
@@ -258,7 +217,6 @@ void ffidrv_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen)
 
 /* Wrapper around the ring_empty function for the client */
 void fficli_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In the cli ring empty func\n");
     if (clen != 2 || alen != 1) {
         sel4cp_dbg_puts("Arg/ret arrays of incorrect size\n");
         return;
@@ -273,16 +231,11 @@ void fficli_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen)
         a[0] = ring_empty(state.rx_ring_clients[client].avail_ring);
     }
 
-    //sel4cp_dbg_puts("This is the value of cli ring empty: ");
-    //puthex64(a[0]);
-    //sel4cp_dbg_puts("\n");
-
     return;
 }
 
 /* Wrapper around the ring_full function for the client*/
 void fficli_ring_full(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In the cli ring full func\n");
     if (clen != 2 || alen != 1) {
         sel4cp_dbg_puts("Arg/ret arrays of incorrect size\n");
         return;
@@ -302,14 +255,12 @@ void fficli_ring_full(unsigned char *c, long clen, unsigned char *a, long alen) 
 
 /* Wrapper around the ring size function */
 void ffidrv_ring_size(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In the drv ring size func\n");
     if (clen != 1 || alen != 8) {
         sel4cp_dbg_puts("Insufficient size for arg or return arrays\n");
         return;
     }
 
-    // int ring = c[0];
-    int ring = 1;
+    int ring = c[0];
     uint64_t size = 0;
     if (ring == 0) {
         size = ring_size(state.rx_ring_drv.used_ring);
@@ -324,7 +275,6 @@ void ffidrv_ring_size(unsigned char *c, long clen, unsigned char *a, long alen) 
 
 /* Dequeue from the used ring of the drv ring*/
 void ffidrv_dequeue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In the drv dequeue used func\n");
     // We need to return the addr, len and cookie to pancake. Assuming 8 bytes for each
     if (clen != 1 || alen != 24) {
         sel4cp_dbg_puts("Return array of incorrect size\n");
@@ -354,7 +304,6 @@ void ffidrv_dequeue_used(unsigned char *c, long clen, unsigned char *a, long ale
 
 /* Enqueue into the client used ring */
 void fficli_enqueue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In the cli enqueue used func\n");
     if (clen != 24 || alen != 1) {
         sel4cp_dbg_puts("Argument/Return array of incorrect size\n");
         return;
@@ -378,7 +327,6 @@ void fficli_enqueue_used(unsigned char *c, long clen, unsigned char *a, long ale
 
 /* Enqueue into the drv avail ring. On return of 1, break from loop*/
 void ffidrv_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In teh drv enqueue avail func\n");
     if (clen != 24 || alen != 1) {
         sel4cp_dbg_puts("Argument/Return array of incorrect size\n");
         return;
@@ -424,7 +372,6 @@ void ffibatch_dequeue_enqueue(unsigned char *c, long clen, unsigned char *a, lon
 
 /* Wrapper for the ffi around the get client function */
 void ffiget_client(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In the get client func\n");
     if (clen != 8 || alen != 1) {
         sel4cp_dbg_puts("Argument/Return array of incorrect size\n");
         return;
@@ -439,9 +386,6 @@ void ffiget_client(unsigned char *c, long clen, unsigned char *a, long alen) {
     } else {
         c[0] = 0;
     }
-    //sel4cp_dbg_puts("This is the value of get_client: ");
-    //puthex64(ret);
-    //sel4cp_dbg_puts("\n");
 
     // We are storing this int int a char for simplicity, change this later to allow for more clients
     a[0] = (unsigned char) ret;
@@ -451,7 +395,6 @@ void ffiget_client(unsigned char *c, long clen, unsigned char *a, long alen) {
 
 /* Wrapper around the sel4cp_notify function */
 void ffinotify_client(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In the notify client func\n");
     if (clen != 1) {
         sel4cp_dbg_puts("Argument array of incorrect size\n");
         return;
@@ -465,7 +408,6 @@ void ffinotify_client(unsigned char *c, long clen, unsigned char *a, long alen) 
 }
 
 void ffiprocess_set_signal(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In the process set signal func\n");
     // First 8 bytes for size of ring buffer
     // Next 4 bytes for the number of enqueues
     if (clen != 12) {
@@ -476,16 +418,7 @@ void ffiprocess_set_signal(unsigned char *c, long clen, unsigned char *a, long a
     uint64_t size = byte8_to_uintptr(c);
     int enqueued = byte4_to_int(&c[8]);
 
-    //sel4cp_dbg_puts("This is the value of size: ");
-    //puthex64(size);
-    //sel4cp_dbg_puts("\n");
-
-    //sel4cp_dbg_puts("This is the value of enqueued: ");
-    //puthex64(enqueued);
-    //sel4cp_dbg_puts("\n");
-
     if ((size == 0 || size + enqueued != ring_size(state.rx_ring_drv.avail_ring)) && enqueued != 0) {
-        //sel4cp_dbg_puts("We are calling notify delayed\n");
         sel4cp_notify_delayed(DRIVER_CH);
     }
 
@@ -494,49 +427,35 @@ void ffiprocess_set_signal(unsigned char *c, long clen, unsigned char *a, long a
 
 /* Manipulate the global dropped variable*/
 void ffiset_dropped(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In the set dropped func\n");
     dropped = 0;
 }
 void ffiincrement_dropped(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In the increment dropped func\n");
     dropped = dropped + 1;
 }
 
 /* Set the value of the rx avail ring. Need to keep the global variables in here */
 void ffiset_rx_avail_was_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In the set rx avail was empty func\n");
     rx_avail_was_empty = ring_empty(state.rx_ring_drv.avail_ring);
 }
 
 /*---------- Functions needed by cakeml ----------*/
 void cml_exit(int arg) {
     // We should never get to this function
-    //sel4cp_dbg_puts("In the cml_exit function, we should not be here\n");    
+    sel4cp_dbg_puts("In the cml_exit function, we should not be here\n");    
 }
 
 /* Need to come up with a replacement for this clear cache function. Might be worth testing just flushing the entire l1 cache, but might cause issues with returning to this file*/
 void cml_clear() {
-//   __builtin___clear_cache(&cake_codebuffer_begin, &cake_codebuffer_end);
-    ////sel4cp_dbg_puts("Trying to clear cache\n");
+    sel4cp_dbg_puts("Trying to clear cache, we should not be here\n");
 }
 
 void init_pancake_mem() {
-    ////sel4cp_dbg_puts("In the init pancake mem function\n");
     unsigned long sz = 2048*1024; // 1 MB unit\n",
     unsigned long cml_heap_sz = sz;    // Default: 1 MB heap\n", (* TODO: parameterise *)
     unsigned long cml_stack_sz = sz;   // Default: 1 MB stack\n", (* TODO: parameterise *)
     cml_heap = &cml_memory[0];
-    //sel4cp_dbg_puts("Pancake heap start: ");
-    //puthex64(cml_heap);
-    //sel4cp_dbg_puts("\n");
     cml_stack = cml_heap + cml_heap_sz;
-    //sel4cp_dbg_puts("Pancake stack start: ");
-    //puthex64(cml_stack);
-    //sel4cp_dbg_puts("\n");
     cml_stackend = cml_stack + cml_stack_sz;
-    //sel4cp_dbg_puts("Pancake stack end: ");
-    //puthex64(cml_stackend);
-    //sel4cp_dbg_puts("\n");
 }
 
 /*---------- sel4cp Entry Points ----------*/
@@ -545,8 +464,8 @@ seL4_MessageInfo_t
 protected(sel4cp_channel ch, sel4cp_msginfo msginfo)
 {
     if (ch >= NUM_CLIENTS) {
-        //sel4cp_dbg_puts("Received ppc on unexpected channel ");
-        //puthex64(ch);
+        sel4cp_dbg_puts("Received ppc on unexpected channel ");
+        puthex64(ch);
         return sel4cp_msginfo_new(0, 0);
     }
     // return the MAC address.
@@ -555,7 +474,7 @@ protected(sel4cp_channel ch, sel4cp_msginfo msginfo)
                      (state.mac_addrs[ch][2] << 8) |
                      (state.mac_addrs[ch][3]);
     uint32_t upper = (state.mac_addrs[ch][4] << 24) | (state.mac_addrs[ch][5] << 16);
-    //sel4cp_dbg_puts("Mux rx is sending mac: ");
+    sel4cp_dbg_puts("Mux rx is sending mac: ");
     dump_mac(state.mac_addrs[ch]);
     sel4cp_mr_set(0, lower);
     sel4cp_mr_set(1, upper);
@@ -594,12 +513,9 @@ void notified(sel4cp_channel ch)
 {
     sel4cp_dbg_puts("---------- In the mux rx notified func ----------\n");
     if (!initialised) {
-        //sel4cp_dbg_puts("In the not init case\n");
         cml_arg = 1;
 
         cml_main();
-
-        //sel4cp_dbg_puts("Returned back from pancake\n");
 
         sel4cp_notify(DRIVER_CH);
         initialised = 1;
@@ -609,10 +525,8 @@ void notified(sel4cp_channel ch)
     }
 
     if (ch == COPY_CH || ch == DRIVER_CH) {
-        //sel4cp_dbg_puts("In the complete + free case\n");
         cml_arg = 2;
         cml_main();
-        //sel4cp_dbg_puts("Returned back from pancake\n");
     } else {
         print("MUX RX|ERROR: unexpected notification from channel: ");
         puthex64(ch);

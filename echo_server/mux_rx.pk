@@ -8,7 +8,6 @@ var cml_arg = ldb get_arg_a;
 var num_clients = 1;
 
 if (cml_arg == 1) {
-    #first_func(0,0,0,0);
     // When cml_arg is 1, we just want to run the process rx free function.
     // Start of the process rx free function. Heap starts at @base + 45
     
@@ -24,7 +23,6 @@ if (cml_arg == 1) {
     var i = 0;
 
     while i < num_clients {
-        #in_loop(0,0,0,0);
         // Check ring empty
         var client_ring_empty_c = @base + 54;
         var client_ring_empty_a = @base + 56;
@@ -97,7 +95,6 @@ if (cml_arg == 2) {
     var drv_used_was_empty = ldb drv_used_was_empty_a;
 
     while (drv_used_was_empty <> 1) {
-        #in_loop(0,0,0,0);
         var dequeue_used_c = @base + 2;
         var dequeue_used_a = @base + 3;
 
@@ -152,7 +149,6 @@ if (cml_arg == 2) {
                 if (cli_used_was_empty == 1) {
                     // Set the corresponding value in the notify clients array
                     // Notify clients is a byte array, so indexing is simpler
-                    #storing_notify_clients(0,0,0,0);
                     strb notify_clients + client, 1;
                 }
 
@@ -171,10 +167,6 @@ if (cml_arg == 2) {
             var client = 0;
             while client < num_clients {
                 var curr_client = ldb (notify_clients + client);
-                var client_test_c = @base + 100;
-                strb client_test_c, client;
-                strb client_test_c + 1, curr_client;
-                #print_client(client_test_c, 2,0,0);
                 if (curr_client == 1) {
                     var notify_client_c = @base + 44;
                     strb notify_client_c, client;
@@ -204,7 +196,6 @@ if (cml_arg == 2) {
     var i = 0;
 
     while i < num_clients {
-        #in_loop(0,0,0,0);
         // Check ring empty
         var client_ring_empty_c = @base + 54;
         var client_ring_empty_a = @base + 56;
@@ -217,8 +208,6 @@ if (cml_arg == 2) {
         var client_was_empty = ldb client_ring_empty_a;
 
         while client_was_empty <> 1 {
-            #in_inner_loop(0,0,0,0);
-
             // Batch the dequeue/enqueue
             var batch_dequeue_enqueue_c = @base + 57;
             strb batch_dequeue_enqueue_c, i;
