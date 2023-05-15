@@ -136,7 +136,6 @@ void ffibreaking(unsigned char *c, long clen, unsigned char *a, long alen) {
 
 /* Wrapper around the ring empty function. Specifically for the drv ring */
 void ffidrv_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In the drv ring empty function\n");
     if (clen != 1 || alen != 1) {
         // Insufficient args
         sel4cp_dbg_puts("Insufficient args or ret space\n");
@@ -159,7 +158,6 @@ void ffidrv_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen)
 
 /* Wrapper around the ring empty function. Specifically for the client ring */
 void fficlient_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In the client ring empty function\n");
     if (clen != 2 || alen != 1) {
         // Need 1 arg for client num, and one for ring distinction
         sel4cp_dbg_puts("Insufficient args or ret space\n");
@@ -184,7 +182,6 @@ void fficlient_ring_empty(unsigned char *c, long clen, unsigned char *a, long al
 
 /* Batch the dequeue and enqueue from the used rings.*/
 void ffiprocess_dequeue_enqueue(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In the process dequeue enqueue func\n");
     if (alen != 1) {
         sel4cp_dbg_puts("Insufficent ret array size\n");
         return;
@@ -204,7 +201,6 @@ void ffiprocess_dequeue_enqueue(unsigned char *c, long clen, unsigned char *a, l
 
 /* Check paramaters, and notify the driver's transmit channel*/
 void ffiprocess_set_signal(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In the process set signal func\n");
     // First 8 bytes for size of ring buffer
     // Next 4 bytes for the number of enqueues
     if (clen != 12) {
@@ -215,16 +211,7 @@ void ffiprocess_set_signal(unsigned char *c, long clen, unsigned char *a, long a
     uint64_t size = byte8_to_uintptr(c);
     int enqueued = byte4_to_int(&c[8]);
 
-    //sel4cp_dbg_puts("This is the value of size: ");
-    // puthex64(size);
-    //sel4cp_dbg_puts("\n");
-
-    //sel4cp_dbg_puts("This is the value of enqueued: ");
-    // puthex64(enqueued);
-    //sel4cp_dbg_puts("\n");
-
     if ((size == 0 || size + enqueued != ring_size(state.tx_ring_drv.used_ring)) && enqueued != 0) {
-        //sel4cp_dbg_puts("We are calling notify delayed\n");
         sel4cp_notify_delayed(DRIVER_TX_CH);
     }
 
@@ -243,7 +230,6 @@ void fficomplete_dequeue_enqueue(unsigned char *c, long clen, unsigned char *a, 
 
 /* Wrapper around the ring size function. Specifically for the drv ring */
 void ffidrv_ring_size(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In the drv ring size func\n");
     if (clen != 1 || alen != 8) {
         sel4cp_dbg_puts("Insufficient size for arg or return arrays\n");
         return;
@@ -292,32 +278,21 @@ void ffinotify_client(unsigned char *c, long clen, unsigned char *a, long alen) 
 /*---------- Functions needed by cakeml ----------*/
 void cml_exit(int arg) {
     // We should never get to this function
-    //sel4cp_dbg_puts("In the cml_exit function, we should not be here\n");    
+    sel4cp_dbg_puts("In the cml_exit function, we should not be here\n");    
 }
 
 /* Need to come up with a replacement for this clear cache function. Might be worth testing just flushing the entire l1 cache, but might cause issues with returning to this file*/
 void cml_clear() {
-//   __builtin___clear_cache(&cake_codebuffer_begin, &cake_codebuffer_end);
-    ////sel4cp_dbg_puts("Trying to clear cache\n");
+    sel4cp_dbg_puts("Trying to clear cache, we should not be here\n");
 }
 
 void init_pancake_mem() {
-    ////sel4cp_dbg_puts("In the init pancake mem function\n");
     unsigned long sz = 2048*1024; // 1 MB unit\n",
     unsigned long cml_heap_sz = sz;    // Default: 1 MB heap\n", (* TODO: parameterise *)
     unsigned long cml_stack_sz = sz;   // Default: 1 MB stack\n", (* TODO: parameterise *)
     cml_heap = &cml_memory[0];
-    //sel4cp_dbg_puts("Pancake heap start: ");
-    // puthex64(cml_heap);
-    //sel4cp_dbg_puts("\n");
     cml_stack = cml_heap + cml_heap_sz;
-    //sel4cp_dbg_puts("Pancake stack start: ");
-    // puthex64(cml_stack);
-    //sel4cp_dbg_puts("\n");
     cml_stackend = cml_stack + cml_stack_sz;
-    //sel4cp_dbg_puts("Pancake stack end: ");
-    // puthex64(cml_stackend);
-    //sel4cp_dbg_puts("\n");
 }
 
 /*---------- sel4cp Entry Points ----------*/
@@ -336,16 +311,13 @@ void notified(sel4cp_channel ch)
     sel4cp_dbg_puts("---------- In the mux tx notified func ----------\n");
 
     if (ch == CLIENT_CH || ch == DRIVER_TX_CH) {
-        //sel4cp_dbg_puts("Entering cml_main\n");
         cml_main();
-        //sel4cp_dbg_puts("Returning from pancake\n");
-        // return;
     } else {
         print("MUX TX|ERROR: unexpected notification from channel: ");
         puthex64(ch);
         print("\n");
         assert(0);
-            sel4cp_dbg_puts("Finished the mux tx notified func\n");
+        sel4cp_dbg_puts("Finished the mux tx notified func\n");
 
         return;
     }
