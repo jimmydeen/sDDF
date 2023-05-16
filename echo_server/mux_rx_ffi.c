@@ -451,6 +451,10 @@ void init_pancake_mem() {
     cml_stackend = cml_stack + cml_stack_sz;
 }
 
+/* The handler loop in pancake will essentially 'block' on this ffi call.
+We save the return address back to pancake here, and we instead jump back to the core
+platform's handler loop. In the notified function, we will return back to the 
+Pancake code, essentially where this function should've returned to.*/
 void ffisuspend(unsigned char *c, long clen, unsigned char *a, long alen) {
     sel4cp_dbg_puts("We are in the ffi suspend function\n");
     // We want to jump back to the core platform's handler loop here
