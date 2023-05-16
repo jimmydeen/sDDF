@@ -50,7 +50,8 @@ ring_handle_t tx_ring;
 
 // Attempt to save the address that notified needs to return to
 void *notified_return;
-
+// Saving where our we want to re-enter our pancake handler loop
+void *pancake_return;
 struct serial_driver global_serial_driver_data = {0};
 
 static char cml_memory[1024*1024*2];
@@ -569,6 +570,31 @@ void ffidequeue_enqueue_avail(unsigned char *c, long clen, unsigned char *a, lon
     
 }
 
+/*
+These following functions are used to implement the pancake handler loop
+*/
+
+void ffisuspend(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("We are in the ffi suspend function\n");
+    // We want to jump back to the core platform's handler loop here
+    // save the return address of this function
+    pancake_return = __builtin_return_address(0);
+
+    if (current_channel == 1) {
+        // irq ack
+        sel4cp_irq_ack(current_channel);
+    }
+
+    current_channel = 0;
+    void (*foo)(void) = (void (*)())notified_return;
+    // Need to make sure that this is not adding unnecessary stuff to the stack
+    foo();
+}
+
+void ffirunning(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("We have now re-entered the pancake handler loop\n");
+}
+
 void init_pancake_mem() {
     unsigned long sz = 1024*1024; // 1 MB unit\n",
     unsigned long cml_heap_sz = sz;    // Default: 1 MB heap\n", (* TODO: parameterise *)
@@ -587,6 +613,8 @@ we can only have 1 entry point in our pancake program. So we will have to have t
 void init(void) {
     sel4cp_dbg_puts(sel4cp_name);
     sel4cp_dbg_puts(": elf PD init function running\n");
+    current_channel = 0;
+    notified_return = __builtin_return_address(0);
 
     // Call init_post here to setup the ring buffer regions. The init_post case in the notified
     // switch statement may be redundant. Init post is now in the serial_driver_data file
@@ -599,6 +627,9 @@ void init(void) {
     init_post(c, clen, a, alen);
     init_pancake_mem();
     sel4cp_dbg_puts("Finished initing the pancake mem and the device driver\n");
+
+    // Call into pancake main, this will run all the init code, and then suspend on the ffi call
+    cml_main();
 }
 
 // Entry point that is invoked on a serial interrupt, or notifications from the server using the TX and RX channels
@@ -614,15 +645,10 @@ void notified(sel4cp_channel ch) {
     // Here, we want to call to cakeml main - this will be our entry point into the pancake program.
     if (ch == 8 || ch == 1 || ch == 10) {
         current_channel = (char) ch;
-        // char *heap_arr = (char *) cml_heap;
-
-        // sel4cp_dbg_puts("This is the address of heap_arr -- ");
-        // sel4cp_dbg_puts();
-        // sel4cp_dbg_puts("\n");
-        // heap_arr[1] = 8;
-
-        cml_main();
-
+        // Jumping back into the pancake handler loop
+        void (*foo)(void) = (void (*)())pancake_return;
+        // Need to make sure that this is not adding unnecessary stuff to the stack
+        foo();
     }
 
     sel4cp_dbg_puts("After main call, I'm not sure if we should ever get here\n");
