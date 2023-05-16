@@ -47,7 +47,7 @@ while (1 == 1) {
             var tx_fifo_ret  = 0;
             tx_fifo_ret = ldb temp_a_uart;
             if tx_fifo_ret == 1 {
-              break;
+              continue;
             } else {
                 if temp == 10 {
                   strb c_arr_uart, 13;

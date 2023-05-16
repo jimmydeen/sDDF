@@ -15,7 +15,7 @@
 #include "serial.h"
 #include "shared_ringbuffer.h"
 #include "serial_driver_data.h"
-
+#include "util.h"
 #ifdef EVAL
 #include <sys/time.h>
 #include <sys/stat.h>
@@ -158,7 +158,7 @@ int byte8_to_int(unsigned char *b){
 }
 
 void cml_exit(int arg) {
-    sel4cp_dbg_puts("CALLING CML_EXIT\n");
+    // sel4cp_dbg_puts("CALLING CML_EXIT\n");
 
     if (current_channel == 1) {
         // irq ack
@@ -173,7 +173,7 @@ void cml_exit(int arg) {
 /* Need to come up with a replacement for this clear cache function. Might be worth testing just flushing the entire l1 cache, but might cause issues with returning to this file*/
 void cml_clear() {
 //   __builtin___clear_cache(&cake_codebuffer_begin, &cake_codebuffer_end);
-    sel4cp_dbg_puts("Trying to clear cache\n");
+    // sel4cp_dbg_puts("Trying to clear cache\n");
 }
 
 /*
@@ -208,23 +208,23 @@ void ffiget_channel(unsigned char *c, long clen, unsigned char *a, long alen) {
 
 void ffiprint_int(unsigned char *c, long clen, unsigned char *a, long alen) {
 
-    sel4cp_dbg_puts("The address of c is -- (");
+    // sel4cp_dbg_puts("The address of c is -- (");
 
-    sel4cp_dbg_puts(c);
+    // sel4cp_dbg_puts(c);
 
-    sel4cp_dbg_puts("\n");
+    // sel4cp_dbg_puts("\n");
 
     char arg = c[0];
 
-    sel4cp_dbg_puts("We received the following int --- (");
-    sel4cp_dbg_puts(arg);
-    sel4cp_dbg_puts(")\n");
+    // sel4cp_dbg_puts("We received the following int --- (");
+    // sel4cp_dbg_puts(arg);
+    // sel4cp_dbg_puts(")\n");
 }
 
 void ffiinternal_is_tx_fifo_busy(unsigned char *c, long clen, unsigned char *a, long alen)
 {
 
-    // sel4cp_dbg_puts("Checking if the fifo buffer is busy\n");
+    // // sel4cp_dbg_puts("Checking if the fifo buffer is busy\n");
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
     /* check the TXFE (transmit buffer FIFO empty) flag, which is cleared
@@ -234,15 +234,15 @@ void ffiinternal_is_tx_fifo_busy(unsigned char *c, long clen, unsigned char *a, 
      */
 
     int ret = (0 == (regs->sr2 & UART_SR2_TXFIFO_EMPTY));
-    // sel4cp_dbg_puts("Attempting to access a buffer\n");
+    // // sel4cp_dbg_puts("Attempting to access a buffer\n");
     if (ret) {
-        // sel4cp_dbg_puts("FIFO was busy\n");
+        // // sel4cp_dbg_puts("FIFO was busy\n");
         a[0] = 1;
     } else {
-        // sel4cp_dbg_puts("FIFO was not busy\n");
+        // // sel4cp_dbg_puts("FIFO was not busy\n");
         a[0] = 0;
     }
-    // sel4cp_dbg_puts("Returning from tx fifo busy function\n");
+    // // sel4cp_dbg_puts("Returning from tx fifo busy function\n");
 }
 
 int serial_configure(
@@ -287,11 +287,11 @@ int serial_configure(
     }
     /* Apply the changes */
     regs->cr2 = cr2;
-    sel4cp_dbg_puts("finished configuring the line, setting the baud rate\n");
+    // sel4cp_dbg_puts("finished configuring the line, setting the baud rate\n");
     /* Now set the board rate */
     imx_uart_set_baud(bps);
 
-    sel4cp_dbg_puts("Configured serial, enabling uart\n");
+    // sel4cp_dbg_puts("Configured serial, enabling uart\n");
 
     return 0;
 }
@@ -317,14 +317,14 @@ void ffigetchar(unsigned char *c, long clen, unsigned char *a, long alen)
 
 // Putchar that is using the hardware FIFO buffers --> Switch to DMA later 
 void ffiputchar_regs(unsigned char *c, long clen, unsigned char *a, long alen) {
-    // sel4cp_dbg_puts("Entered putchar in serial_driver_data\n");
-    // sel4cp_dbg_puts("\t");
-    // sel4cp_dbg_puts(c[0]);
-    // sel4cp_dbg_puts("\n");
+    sel4cp_dbg_puts("\t\tEntered putchar in serial_driver_data\n");
+    // // sel4cp_dbg_puts("\t");
+    // // sel4cp_dbg_puts(c[0]);
+    // // sel4cp_dbg_puts("\n");
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
     regs->txd = c[0];
-    // sel4cp_dbg_puts("Finished putchar regs\n");
+    // // sel4cp_dbg_puts("Finished putchar regs\n");
 }
 
 void ffiincrement_num_chars(unsigned char *c, long clen, unsigned char *a, long alen) {
@@ -335,7 +335,7 @@ void init_post(unsigned char *c, long clen, unsigned char *a, long alen) {
     // Setup the ring buffer mechanisms here as well as init the global serial driver data
 
 
-    sel4cp_dbg_puts("Init the ring buffers\n");
+    // sel4cp_dbg_puts("Init the ring buffers\n");
 
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
@@ -349,13 +349,13 @@ void init_post(unsigned char *c, long clen, unsigned char *a, long alen) {
     global_serial_driver_data.tx_ring = tx_ring;
     global_serial_driver_data.num_to_get_chars = 0;
 
-    sel4cp_dbg_puts("Line configuration\n");
+    // sel4cp_dbg_puts("Line configuration\n");
 
     /* Line configuration */
     int ret = serial_configure(115200, 8, PARITY_NONE, 1);
 
     if (ret != 0) {
-        sel4cp_dbg_puts("Error occured during line configuration\n");
+        // sel4cp_dbg_puts("Error occured during line configuration\n");
     }
 
         /* Enable the UART */
@@ -372,9 +372,9 @@ void init_post(unsigned char *c, long clen, unsigned char *a, long alen) {
 
 void ffiserial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
     // Dequeue from shared mem avail avail buffer
-    sel4cp_dbg_puts("In serial dequeue avail function\n");
+    // sel4cp_dbg_puts("In serial dequeue avail function\n");
     if (clen != 1) {
-        sel4cp_dbg_puts("There are no arguments supplied when args are expected");
+        // sel4cp_dbg_puts("There are no arguments supplied when args are expected");
         a[0] = 1;
         return;
     }
@@ -386,7 +386,7 @@ void ffiserial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long
 
     if (global_serial_driver_data.num_to_get_chars <= 0) {
         // We have no more get char requests to service. 
-        sel4cp_dbg_puts("No requests for get char outstanding\n");
+        // sel4cp_dbg_puts("No requests for get char outstanding\n");
         a[0] = 1;
         return;
     }
@@ -412,13 +412,13 @@ void ffiserial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long
     int_to_byte8(buffer, &a[1]);
 
     global_serial_driver_data.num_to_get_chars--;
-    sel4cp_dbg_puts("Finished serial dequeue avail function\n");
+    // sel4cp_dbg_puts("Finished serial dequeue avail function\n");
 }
 
 void ffiserial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("Starting serial enqueue used function\n");
+    // sel4cp_dbg_puts("Starting serial enqueue used function\n");
     if (clen <= 0) {
-        sel4cp_dbg_puts("There are no arguments supplied when args are expected");
+        // sel4cp_dbg_puts("There are no arguments supplied when args are expected");
         return;
     }
 
@@ -442,22 +442,22 @@ void ffiserial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long 
 }
 
 void ffiserial_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("In the serial driver dequeue used function\n");
+    sel4cp_dbg_puts("----------------In the serial driver dequeue used function\n");
     if (clen != 1) {
-        sel4cp_dbg_puts("There are no arguments supplied when args are expected\n");
+        // sel4cp_dbg_puts("There are no arguments supplied when args are expected\n");
         return;
     }
 
     if (alen != BUFFER_SIZE) {
         // We always need the a array to be 1024 bytes long, the same length as the buffers 
         // in the ring buffers. 
-        sel4cp_dbg_puts("Argument alen not of correct size\n");
+        // sel4cp_dbg_puts("Argument alen not of correct size\n");
         return;
     }
     bool rx_tx = c[0];
 
     void *cookie = 0;
-    sel4cp_dbg_puts("Attempting driver dequeue\n");
+    // sel4cp_dbg_puts("Attempting driver dequeue\n");
     // Address that we will pass to dequeue to store the buffer address
     uintptr_t buffer = 0;
     // Integer to store the length of the buffer
@@ -471,13 +471,13 @@ void ffiserial_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a
 
     if (ret != 0) {
         // alen = 0;
-        sel4cp_dbg_puts("Driver dequeue was unsuccessful\n");
+        // sel4cp_dbg_puts("Driver dequeue was unsuccessful\n");
         c[0] = 0;
         return;
     } else {
-        sel4cp_dbg_puts("Driver dequeue successful, attempting memcpy\n");
+        // sel4cp_dbg_puts("Driver dequeue successful, attempting memcpy\n");
         if (buffer_len >= BUFFER_SIZE) {
-            sel4cp_dbg_puts("Buffer len too large\n");
+            // sel4cp_dbg_puts("Buffer len too large\n");
             return;
         }
         int mem_ret = memcpy(a, (char *) buffer, buffer_len);
@@ -489,13 +489,13 @@ void ffiserial_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a
         // Copy over the length of the buffer that is to be printed
         int_to_byte8(buffer_len, &c[1]);
     }
-    sel4cp_dbg_puts("Finished buffer dequeue\n");
+    // sel4cp_dbg_puts("Finished buffer dequeue\n");
 }
 
 void ffiserial_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("We are in the ffi serial enqueue available function\n");
+    // sel4cp_dbg_puts("We are in the ffi serial enqueue available function\n");
     if (clen != 1) {
-        sel4cp_dbg_puts("There are no arguments supplied when args are expected");
+        // sel4cp_dbg_puts("There are no arguments supplied when args are expected");
         return;
     }
 
@@ -517,16 +517,16 @@ void ffiserial_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long
     }
 
     if (a[0] != 0) {
-        sel4cp_dbg_puts("Error in serial enqueue used\n");
+        // sel4cp_dbg_puts("Error in serial enqueue used\n");
     }
 }
 
 void ffidequeue_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
     // Dequeue from shared mem avail avail buffer
-    sel4cp_dbg_puts("In serial dequeue avail function\n");
+    // sel4cp_dbg_puts("In serial dequeue avail function\n");
     
     if (clen != 1) {
-        sel4cp_dbg_puts("There are no arguments supplied when args are expected");
+        // sel4cp_dbg_puts("There are no arguments supplied when args are expected");
         a[0] = 1;
         return;
     }
@@ -538,7 +538,7 @@ void ffidequeue_enqueue_avail(unsigned char *c, long clen, unsigned char *a, lon
 
     if (global_serial_driver_data.num_to_get_chars <= 0) {
         // We have no more get char requests to service. 
-        sel4cp_dbg_puts("No requests for get char outstanding\n");
+        // sel4cp_dbg_puts("No requests for get char outstanding\n");
         a[0] = -1;
         return;
     }
@@ -560,7 +560,7 @@ void ffidequeue_enqueue_avail(unsigned char *c, long clen, unsigned char *a, lon
     // For now pass buffer addresses through the alen value  
     // alen = buffer;
     global_serial_driver_data.num_to_get_chars--;
-    sel4cp_dbg_puts("Finished serial dequeue avail function\n");
+    // sel4cp_dbg_puts("Finished serial dequeue avail function\n");
 
     int input = c[1];
 
@@ -611,8 +611,8 @@ we can only have 1 entry point in our pancake program. So we will have to have t
 
 // Init function required by CP for every PD
 void init(void) {
-    sel4cp_dbg_puts(sel4cp_name);
-    sel4cp_dbg_puts(": elf PD init function running\n");
+    // sel4cp_dbg_puts(sel4cp_name);
+    // sel4cp_dbg_puts(": elf PD init function running\n");
     current_channel = 0;
     notified_return = __builtin_return_address(0);
 
@@ -626,7 +626,7 @@ void init(void) {
 
     init_post(c, clen, a, alen);
     init_pancake_mem();
-    sel4cp_dbg_puts("Finished initing the pancake mem and the device driver\n");
+    // sel4cp_dbg_puts("Finished initing the pancake mem and the device driver\n");
 
     // Call into pancake main, this will run all the init code, and then suspend on the ffi call
     cml_main();
@@ -636,10 +636,10 @@ void init(void) {
 void notified(sel4cp_channel ch) {
     notified_return = __builtin_return_address(0);
 
-    sel4cp_dbg_puts(sel4cp_name);
-    sel4cp_dbg_puts(": elf PD notified function running\n");
+    // sel4cp_dbg_puts(sel4cp_name);
+    // sel4cp_dbg_puts(": elf PD notified function running\n");
 
-    sel4cp_dbg_puts("Attempting to jump to pancake main\n");
+    // sel4cp_dbg_puts("Attempting to jump to pancake main\n");
 
 
     // Here, we want to call to cakeml main - this will be our entry point into the pancake program.
@@ -651,5 +651,5 @@ void notified(sel4cp_channel ch) {
         foo();
     }
 
-    sel4cp_dbg_puts("After main call, I'm not sure if we should ever get here\n");
+    // sel4cp_dbg_puts("After main call, I'm not sure if we should ever get here\n");
 }
