@@ -20,6 +20,11 @@
 
 static char cml_memory[1024*1024*2];
 
+// Attempt to save the address that notified needs to return to
+void *notified_return;
+// Saving where our we want to re-enter our pancake handler loop
+void *pancake_return;
+
 // /* exported in cake.S */
 extern void cml_main(void);
 
@@ -430,7 +435,7 @@ void ffiset_rx_avail_was_empty(unsigned char *c, long clen, unsigned char *a, lo
 /*---------- Functions needed by cakeml ----------*/
 void cml_exit(int arg) {
     // We should never get to this function
-    sel4cp_dbg_puts("In the cml_exit function, we should not be here\n");    
+    print("In the cml_exit function, we should not be here\n");    
 }
 
 void cml_clear() {
@@ -444,6 +449,28 @@ void init_pancake_mem() {
     cml_heap = &cml_memory[0];
     cml_stack = cml_heap + cml_heap_sz;
     cml_stackend = cml_stack + cml_stack_sz;
+}
+
+void ffisuspend(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("We are in the ffi suspend function\n");
+    // We want to jump back to the core platform's handler loop here
+    // save the return address of this function
+    pancake_return = __builtin_return_address(0);
+
+    if (cml_arg == 1) {
+        // irq ack
+        sel4cp_notify(DRIVER_CH);
+        initialised = 1;
+    }
+
+    cml_arg = 0;
+    void (*foo)(void) = (void (*)())notified_return;
+    // Need to make sure that this is not adding unnecessary stuff to the stack
+    foo();
+}
+
+void ffirunning(unsigned char *c, long clen, unsigned char *a, long alen) {
+    sel4cp_dbg_puts("We have now re-entered the pancake handler loop\n");
 }
 
 /*---------- sel4cp Entry Points ----------*/
@@ -471,6 +498,9 @@ protected(sel4cp_channel ch, sel4cp_msginfo msginfo)
 
 void init(void)
 {
+    cml_arg = 9;
+    notified_return = __builtin_return_address(0);
+
     init_pancake_mem();
     print("Pancake: mem initialised\n");
 
@@ -497,23 +527,32 @@ void init(void)
 
     // FIX ME: Use the notify function pointer to put the notification in?
     ring_init(&state.rx_ring_clients[0], (ring_buffer_t *)rx_avail_cli, (ring_buffer_t *)rx_used_cli, NULL, 0);
+    // Run init code for Pancake. Once that has done, it will enter its handler loop, 
+    // suspend on the ffi call
+    cml_main();
 }
 
 void notified(sel4cp_channel ch)
 {
+    notified_return = __builtin_return_address(0);
+
     if (!initialised) {
         cml_arg = 1;
 
-        cml_main();
+        // Jumping back into the pancake handler loop
+        void (*foo)(void) = (void (*)())pancake_return;
+        // Need to make sure that this is not adding unnecessary stuff to the stack
+        foo();
 
-        sel4cp_notify(DRIVER_CH);
-        initialised = 1;
         return;
     }
 
     if (ch == COPY_CH || ch == DRIVER_CH) {
         cml_arg = 2;
-        cml_main();
+        // Jumping back into the pancake handler loop
+        void (*foo)(void) = (void (*)())pancake_return;
+        // Need to make sure that this is not adding unnecessary stuff to the stack
+        foo();
     } else {
         print("MUX RX|ERROR: unexpected notification from channel: ");
         puthex64(ch);
