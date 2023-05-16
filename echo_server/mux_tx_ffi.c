@@ -18,10 +18,6 @@
 #include "util.h"
 
 static char cml_memory[2048*1024*2];
-// Attempt to save the address that notified needs to return to
-void *notified_return;
-unsigned int argc;
-char **argv;
 
 // /* exported in cake.S */
 extern void cml_main(void);
@@ -29,8 +25,6 @@ extern void cml_main(void);
 extern void *cml_heap;
 extern void *cml_stack;
 extern void *cml_stackend;
-
-#define MDC_FREQ    20000000UL
 
 /* Memory regions. These all have to be here to keep compiler happy */
 uintptr_t tx_avail_drv;
@@ -122,16 +116,6 @@ uintptr_t byte8_to_uintptr(unsigned char *b){
              ((uintptr_t) b[4] << 24) | (uintptr_t) (b[5] << 16) | (uintptr_t) (b[6] << 8) | b[7]);
 }
 
-/*------------ Debugging FFI functions ------------ */
-
-void ffiin_loop(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("Looping\n");
-}
-
-void ffibreaking(unsigned char *c, long clen, unsigned char *a, long alen) {
-    sel4cp_dbg_puts("Attempting to break from loop");
-}
-
 /*------------ MUX FFI functions ------------ */
 
 /* Wrapper around the ring empty function. Specifically for the drv ring */
@@ -142,7 +126,7 @@ void ffidrv_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen)
         return;
     }
     int ring = c[0];
-
+    // Arbitrarily initialising ret to 5, don't want to init to 0 or 1
     char ret = 5;
 
     if (ring == 0) {
@@ -166,7 +150,7 @@ void fficlient_ring_empty(unsigned char *c, long clen, unsigned char *a, long al
 
     int client = c[0];
     int ring = c[1];
-
+    // Arbitrarily initialising ret to 5, don't want to init to 0 or 1
     char ret = 5;
 
     if (ring == 0) {
@@ -220,7 +204,6 @@ void ffiprocess_set_signal(unsigned char *c, long clen, unsigned char *a, long a
 
 /* Batch dequeue and enqueue from the avail rings */
 void fficomplete_dequeue_enqueue(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In the complete dequeue enqueue func\n");
     uintptr_t addr;
     unsigned int len;
     void *cookie;
@@ -281,7 +264,6 @@ void cml_exit(int arg) {
     sel4cp_dbg_puts("In the cml_exit function, we should not be here\n");    
 }
 
-/* Need to come up with a replacement for this clear cache function. Might be worth testing just flushing the entire l1 cache, but might cause issues with returning to this file*/
 void cml_clear() {
     sel4cp_dbg_puts("Trying to clear cache, we should not be here\n");
 }
@@ -308,8 +290,6 @@ void init(void)
 
 void notified(sel4cp_channel ch)
 {
-    sel4cp_dbg_puts("---------- In the mux tx notified func ----------\n");
-
     if (ch == CLIENT_CH || ch == DRIVER_TX_CH) {
         cml_main();
     } else {
@@ -317,11 +297,8 @@ void notified(sel4cp_channel ch)
         puthex64(ch);
         print("\n");
         assert(0);
-        sel4cp_dbg_puts("Finished the mux tx notified func\n");
+            sel4cp_dbg_puts("Finished the mux tx notified func\n");
 
         return;
     }
-
-        sel4cp_dbg_puts("Finished the mux tx notified func\n");
-
 }

@@ -18,11 +18,7 @@
 #include "util.h"
 #include "netif/ethernet.h"
 
-static char cml_memory[2048*1024*2];
-// Attempt to save the address that notified needs to return to
-void *notified_return;
-unsigned int argc;
-char **argv;
+static char cml_memory[1024*1024*2];
 
 // /* exported in cake.S */
 extern void cml_main(void);
@@ -31,10 +27,8 @@ extern void *cml_heap;
 extern void *cml_stack;
 extern void *cml_stackend;
 
-// cml arg 1 for just process_free, cml arg 2 for process complete and process f
+// cml arg 1 for just process_free, cml arg 2 for process complete and process free
 int cml_arg = 0;
-
-#define MDC_FREQ    20000000UL
 
 /* Memory regions. These all have to be here to keep compiler happy */
 uintptr_t rx_avail_drv;
@@ -135,7 +129,7 @@ uintptr_t byte8_to_uintptr(unsigned char *b){
 
 void ffiget_args(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (alen != 1) {
-        //sel4cp_dbg_puts("Return array of incorrect size\n");
+        sel4cp_dbg_puts("Return array of incorrect size\n");
         return;
     }
 
@@ -195,9 +189,8 @@ int get_client(uintptr_t dma_vaddr) {
 /* Call the ring empty function on the drv ring. Used/available is determined by supplied
 args. */
 void ffidrv_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen) {
-    //sel4cp_dbg_puts("In the drv ring empty func\n");
     if (clen != 1 || alen != 1) {
-        //sel4cp_dbg_puts("Arg/ret arrays of incorrect size\n");
+        sel4cp_dbg_puts("Arg/ret arrays of incorrect size\n");
         return;
     }
 
@@ -207,10 +200,6 @@ void ffidrv_ring_empty(unsigned char *c, long clen, unsigned char *a, long alen)
     } else {
         a[0] = ring_empty(state.rx_ring_drv.avail_ring);
     }
-
-    //sel4cp_dbg_puts("This is the value of a[0]: ");
-    //puthex64(a[0]);
-    //sel4cp_dbg_puts("\n");
 
     return;
 }
@@ -444,13 +433,12 @@ void cml_exit(int arg) {
     sel4cp_dbg_puts("In the cml_exit function, we should not be here\n");    
 }
 
-/* Need to come up with a replacement for this clear cache function. Might be worth testing just flushing the entire l1 cache, but might cause issues with returning to this file*/
 void cml_clear() {
     sel4cp_dbg_puts("Trying to clear cache, we should not be here\n");
 }
 
 void init_pancake_mem() {
-    unsigned long sz = 2048*1024; // 1 MB unit\n",
+    unsigned long sz = 1024*1024; // 1 MB unit\n",
     unsigned long cml_heap_sz = sz;    // Default: 1 MB heap\n", (* TODO: parameterise *)
     unsigned long cml_stack_sz = sz;   // Default: 1 MB stack\n", (* TODO: parameterise *)
     cml_heap = &cml_memory[0];
@@ -484,6 +472,8 @@ protected(sel4cp_channel ch, sel4cp_msginfo msginfo)
 void init(void)
 {
     init_pancake_mem();
+    print("Pancake: mem initialised\n");
+
    // set up client macs
     // use a dummy one for our one client. 
     state.mac_addrs[0][0] = 0x52;
@@ -511,7 +501,6 @@ void init(void)
 
 void notified(sel4cp_channel ch)
 {
-    sel4cp_dbg_puts("---------- In the mux rx notified func ----------\n");
     if (!initialised) {
         cml_arg = 1;
 
@@ -519,8 +508,6 @@ void notified(sel4cp_channel ch)
 
         sel4cp_notify(DRIVER_CH);
         initialised = 1;
-        sel4cp_dbg_puts("Finished the mux rx notified func\n");
-
         return;
     }
 
@@ -533,6 +520,4 @@ void notified(sel4cp_channel ch)
         print("\n");
         assert(0);
     }
-
-    sel4cp_dbg_puts("Finished the mux rx notified func\n");
 }
