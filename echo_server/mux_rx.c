@@ -1,3 +1,4 @@
+/* We need to determine direction of chars to get*/
 
 #include <stdbool.h>
 #include <stdint.h>
