@@ -4,7 +4,8 @@
 
     <memory_region name="shared_dma_tx_drv" size="0x200_000" page_size="0x200_000" />
     <memory_region name="shared_dma_tx_cli" size="0x200_000" page_size="0x200_000" />
-
+    <memory_region name="shared_dma_rx_drv" size="0x200_000" page_size="0x200_000" />
+    <memory_region name="shared_dma_rx_cli" size="0x200_000" page_size="0x200_000" />
     <!-- shared memory for ring buffer mechanism : serial -->
     <memory_region name="rx_avail_serial_drv" size="0x200_000" page_size="0x200_000"/>
     <memory_region name="rx_used_serial_drv" size="0x200_000" page_size="0x200_000"/>
@@ -46,7 +47,8 @@
         <map mr="tx_avail_serial_cli" vaddr="0x3_400_000" perms="rw" cached="true" setvar_vaddr="tx_avail" />
         <map mr="tx_used_serial_cli" vaddr="0x3_600_000" perms="rw" cached="true" setvar_vaddr="tx_used" />
 
-        <map mr="shared_dma_tx_cli" vaddr="0x2_400_000" perms="rw" cached="true" setvar_vaddr="shared_dma" />
+        <map mr="shared_dma_tx_cli" vaddr="0x2_400_000" perms="rw" cached="true" setvar_vaddr="shared_dma_tx" />
+        <map mr="shared_dma_rx_cli" vaddr="0x2_800_000" perms="rw" cached="true" setvar_vaddr="shared_dma_rx" />
 
         <!-- <map mr="uart" vaddr="0x5_000_000" perms="rw" cached="false" setvar_vaddr="uart_base" /> -->
 
@@ -69,10 +71,24 @@
 
     </protection_domain>            
 
+    <protection_domain name="mux_rx" priority="99" pp="true">
+        <program_image path="mux_rx.elf" />
+
+         <!-- shared memory for driver/mux ring buffer mechanism -->
+        <map mr="rx_avail_serial_drv" vaddr="0x4_400_000" perms="rw" cached="true" setvar_vaddr="rx_avail_drv" />
+        <map mr="rx_used_serial_drv" vaddr="0x4_600_000" perms="rw" cached="true" setvar_vaddr="rx_used_drv" />
+
+        <!-- shared memory for mux/client ring buffer mechanism -->
+        <map mr="rx_avail_serial_cli" vaddr="0x3_400_000" perms="rw" cached="true" setvar_vaddr="rx_avail_cli" />
+        <map mr="rx_used_serial_cli" vaddr="0x3_600_000" perms="rw" cached="true" setvar_vaddr="rx_used_cli" />
+
+        <map mr="shared_dma_tx_drv" vaddr="0x2_200_000" perms="rw" cached="true" setvar_vaddr="shared_dma_tx_drv" />
+
+        <map mr="shared_dma_tx_cli" vaddr="0x2_400_000" perms="rw" cached="true" setvar_vaddr="shared_dma_tx_cli" />
+
+    </protection_domain>  
 
     <!-- These following channels are needed for communication between the server and driver -->
-
-  
 
     <channel>
         <end pd="serial_server" id="9"/>

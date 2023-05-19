@@ -13,7 +13,8 @@ uintptr_t rx_used;
 uintptr_t tx_avail;
 uintptr_t tx_used;
 
-uintptr_t shared_dma;
+uintptr_t shared_dma_rx;
+uintptr_t shared_dma_tx;
 
 struct serial_server global_serial_server = {0};
 
@@ -61,7 +62,7 @@ int serial_server_printf(char *string) {
 
     bool is_empty = ring_empty(local_server->tx_ring.used_ring);
 
-    ret = enqueue_used(&local_server->tx_ring, buffer, print_len, &cookie);
+    ret = enqueue_used(&local_server->tx_ring, buffer, print_len, cookie);
 
     if(ret != 0) {
         sel4cp_dbg_puts(sel4cp_name);
@@ -184,7 +185,7 @@ void init(void) {
 
     // Add buffers to the rx ring
     for (int i = 0; i < NUM_BUFFERS - 1; i++) {
-        int ret = enqueue_avail(&local_server->rx_ring, shared_dma + (i * BUFFER_SIZE), BUFFER_SIZE, NULL);
+        int ret = enqueue_avail(&local_server->rx_ring, shared_dma_rx + (i * BUFFER_SIZE), BUFFER_SIZE, NULL);
 
         if (ret != 0) {
             sel4cp_dbg_puts(sel4cp_name);
@@ -199,7 +200,7 @@ void init(void) {
     // Add buffers to the tx ring
     for (int i = 0; i < NUM_BUFFERS - 1; i++) {
         // Have to start at the memory region left of by the rx ring
-        int ret = enqueue_avail(&local_server->tx_ring, shared_dma + ((i + NUM_BUFFERS) * BUFFER_SIZE), BUFFER_SIZE, NULL);
+        int ret = enqueue_avail(&local_server->tx_ring, shared_dma_tx + ((i + NUM_BUFFERS) * BUFFER_SIZE), BUFFER_SIZE, NULL);
 
         if (ret != 0) {
             sel4cp_dbg_puts(sel4cp_name);
