@@ -192,6 +192,9 @@ void handle_tx() {
         sel4cp_dbg_puts("in the driver dequeue loop\n");
         // Buffer cointaining the bytes to write to serial
         char *phys = (char * )buffer;
+        sel4cp_dbg_puts("This is what we are memcpying in driver: ");
+        sel4cp_dbg_puts(phys);
+        sel4cp_dbg_puts("\n");
         // Handle the tx
         raw_tx(phys, len, cookie);
         // Then enqueue this buffer back into the available queue, so that it can be collected and reused by the server

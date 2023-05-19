@@ -53,6 +53,8 @@ int serial_server_printf(char *string) {
 
     sel4cp_dbg_puts("Attempting memcpy to buffer\n");
     // Copy over the string to be printed to the buffer
+    sel4cp_dbg_puts("This is what we are memcpying in server: ");
+    sel4cp_dbg_puts(string);
     memcpy((char *) buffer, string, print_len);
 
     // We then need to add this buffer to the transmit used ring structure

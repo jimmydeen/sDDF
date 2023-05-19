@@ -7,11 +7,12 @@
 #include "serial.h"
 #include "shared_ringbuffer.h"
 #include "util.h"
+#include <string.h>
 
 /* TODO: ADD IN DIFFERENT COLOURS TO DIFFERENTIATE DIFFERENT CLIENT STREAMS */
 
 #define CLI_CH 10
-#define DRV_CH 11
+#define DRV_CH 9
 
 #define NUM_CLIENTS 1
 
@@ -25,9 +26,11 @@ uintptr_t tx_used_drv;
 uintptr_t tx_avail_cli;
 uintptr_t tx_used_cli;
 
-// Have an array of client rings. 
-ring_handle_t cli_tx_ring[NUM_CLIENTS];
+uintptr_t shared_dma_tx_drv;
+uintptr_t shared_dma_tx_cli;
 
+// Have an array of client rings. 
+ring_handle_t tx_ring;
 ring_handle_t drv_tx_ring;
 
 int handle_tx(int curr_client) {
@@ -37,9 +40,10 @@ int handle_tx(int curr_client) {
     unsigned int len = 0;
     void *cookie = 0;
 
-    ring_handle_t tx_ring = cli_tx_ring[curr_client];
-
-    while(!driver_dequeue(tx_ring.used_ring, &buffer, &len, &cookie)) {
+    bool was_empty = ring_empty(drv_tx_ring.used_ring);
+    
+    while(!dequeue_used(&tx_ring, &buffer, &len, &cookie)) {
+        sel4cp_dbg_puts("Looping in our mux tx driver dequeue loop\n");
         // We want to enqueue into the drivers used ring
         uintptr_t drv_buffer = 0;
         unsigned int drv_len = 0;
@@ -50,11 +54,18 @@ int handle_tx(int curr_client) {
             sel4cp_dbg_puts("Failed to dequeue buffer from drv tx avail ring\n");
             return;
         }
-        memcpy(drv_buffer, buffer, len);
+
+        char *string = (char *) buffer;
+
+        sel4cp_dbg_puts("This is what we are memcpying in mux tx: ");
+        sel4cp_dbg_puts(string);
+        sel4cp_dbg_puts("\n");
+
+        memcpy((char *) drv_buffer, string, len);
         drv_len = len;
         drv_cookie = cookie;
 
-        ret = enqueue_used(drv_tx_ring, &drv_buffer, &drv_len, &drv_cookie);
+        ret = enqueue_used(&drv_tx_ring, drv_buffer, drv_len, drv_cookie);
         if (ret != 0) {
             sel4cp_dbg_puts("Failed to enqueue buffer to drv tx used ring\n");
             // Don't know if I should return here, because we need to enqueue a
@@ -62,21 +73,42 @@ int handle_tx(int curr_client) {
         }
 
         // enqueue back to the client avail ring
-        enqueue_avail(tx_ring.used_ring, &buffer, &len, &cookie);
+        enqueue_avail(&tx_ring, buffer, len, cookie);
+    }
+
+    if (was_empty) {
+        sel4cp_dbg_puts("Mux tx notifying driver\n");
+        sel4cp_notify(DRV_CH);
     }
 }
 
 void init (void) {
     // We want to init the client rings here. Currently this only inits one client
-    ring_init(&cli_tx_ring[0], (ring_buffer_t *)tx_avail_cli, (ring_buffer_t *)tx_used_cli, NULL, 0);
+    ring_init(&tx_ring, (ring_buffer_t *)tx_avail_cli, (ring_buffer_t *)tx_used_cli, NULL, 0);
     ring_init(&drv_tx_ring, (ring_buffer_t *)tx_avail_drv, (ring_buffer_t *)tx_used_drv, NULL, 0);
+
+    // Add buffers to the drv tx ring from our shared dma region
+    for (int i = 0; i < NUM_BUFFERS - 1; i++) {
+        // Have to start at the memory region left of by the rx ring
+        int ret = enqueue_avail(&drv_tx_ring, shared_dma_tx_drv + ((i + NUM_BUFFERS) * BUFFER_SIZE), BUFFER_SIZE, NULL);
+
+        if (ret != 0) {
+            sel4cp_dbg_puts(sel4cp_name);
+            sel4cp_dbg_puts(": tx buffer population, unable to enqueue buffer\n");
+        }
+    }
+
+    sel4cp_dbg_puts("mux tx init finished\n");  
 
 }
 
 void notified(sel4cp_channel ch) {
+    sel4cp_dbg_puts("In the mux tx notified channel: ");
+    // puthex64(ch);
+    sel4cp_dbg_puts("\n");
     // We should only ever recieve notifications from the client
     // Sanity check the client
-    if (curr_client < 1 || curr_client > NUM_CLIENTS) {
+    if (ch < 1 || ch > NUM_CLIENTS) {
         sel4cp_dbg_puts("Received a bad client channel\n");
         return;
     }
