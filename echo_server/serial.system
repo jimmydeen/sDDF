@@ -100,9 +100,20 @@
         <end pd="mux_tx" id="9"/>
     </channel>
 
+   <channel>
+        <end pd="serial_server" id="11"/>
+        <end pd="mux_rx" id="1"/>
+    </channel>
+
+    <channel>
+        <end pd="serial" id="10"/>
+        <end pd="mux_rx" id="11"/>
+    </channel>
+
     <channel>
         <end pd="serial" id="10"/>
         <end pd="serial_server" id="11"/>
     </channel>
+
 
 </system>
