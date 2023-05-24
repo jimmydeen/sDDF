@@ -40,7 +40,11 @@ Otherwise, can put "\" before "@" to escape this.*/
 int escape_character;
 int client;
 int num_to_get_chars;
+
 int give_char(int curr_client, char got_char) {
+    if (num_to_get_chars <= 0) {
+        return 1;
+    }
     sel4cp_dbg_puts("In the give char function\n");
     // Address that we will pass to dequeue to store the buffer address
     uintptr_t buffer = 0;
@@ -74,8 +78,10 @@ int give_char(int curr_client, char got_char) {
     if (ret != 0) {
         // sel4cp_dbg_puts(sel4cp_name);
         sel4cp_dbg_puts(": unable to enqueue to the tx available ring\n");
-        return;
+        return 1;
     }
+
+    num_to_get_chars -= 1;
     sel4cp_dbg_puts("Finished the give char function\n");
 }
 
@@ -85,9 +91,6 @@ void handle_rx(int curr_client) {
     sel4cp_dbg_puts("MUX rx we have recieved a request to get a character\n");
     // We want to request a character here, then busy wait until we get anything back
 
-    // Notify driver that we want to get a character
-    sel4cp_notify(DRV_CH);
-
     // Address that we will pass to dequeue to store the buffer address
     uintptr_t buffer = 0;
     // Integer to store the length of the buffer
@@ -95,15 +98,11 @@ void handle_rx(int curr_client) {
 
     void *cookie = 0;
 
-    while (dequeue_used(&drv_rx_ring, &buffer, &buffer_len, &cookie) != 0) {
-        /* The ring is currently empty, as there is no character to get. 
-        We will spin here until we have gotten a character. As the driver is a higher priority than us, 
-        it should be able to pre-empt this loop
-        */
-        sel4cp_dbg_puts(""); /* From Patrick, this is apparently needed to stop the compiler from optimising out the 
-        as it is currently empty. When compiled in a release version the puts statement will be compiled
-        into a nop command.
-        */
+    // We can only be here if we have been notified by the driver
+    int ret = dequeue_used(&drv_rx_ring, &buffer, &buffer_len, &cookie) != 0;
+    if (ret != 0) {
+        sel4cp_dbg_puts(sel4cp_name);
+        sel4cp_dbg_puts(": getchar - unable to dequeue used buffer\n");
     }
 
     // We are only getting one character at a time, so we just need to cast the buffer to an int
@@ -116,7 +115,7 @@ void handle_rx(int curr_client) {
 
     /* Now that we are finished with the used buffer, we can add it back to the available ring*/
 
-    int ret = enqueue_avail(&drv_rx_ring, buffer, buffer_len, NULL);
+    ret = enqueue_avail(&drv_rx_ring, buffer, buffer_len, NULL);
 
     if (ret != 0) {
         sel4cp_dbg_puts(sel4cp_name);
@@ -127,6 +126,7 @@ void handle_rx(int curr_client) {
 
     // We have now gotten a character, deal with the input direction switch
     if (escape_character == 1) {
+        sel4cp_dbg_puts("Escape character is 1\n");
         // The previous character was an escape character
         give_char(curr_client, got_char);
         escape_character = 0;
@@ -142,10 +142,11 @@ void handle_rx(int curr_client) {
             client = curr_client;
         }
         escape_character = 0;
-        handle_rx(curr_client);
     } else if (escape_character == 0) {
+        sel4cp_dbg_puts("Escape character is 0\n");
         // No escape character has been set
-        if (got_char == "\\") {
+        if (got_char == '\\') {
+            sel4cp_dbg_puts("WE GOT AN ESCAPE CHARACTER\n");
             escape_character = 1;
             // The next character is going to be escaped
         } else if (got_char == '@') {
@@ -153,7 +154,6 @@ void handle_rx(int curr_client) {
             sel4cp_dbg_puts("We are switching input direction\n");
             sel4cp_dbg_puts("We need to get another character maybe?\n");
             escape_character = 2;
-            handle_rx(curr_client);
         } else {
             give_char(curr_client, got_char);
         }
@@ -192,10 +192,14 @@ void notified(sel4cp_channel ch) {
     sel4cp_dbg_puts("\n");
     // We should only ever recieve notifications from the client
     // Sanity check the client
-    if (ch < 1 || ch > NUM_CLIENTS) {
+    if (ch == DRV_CH) {
+        handle_rx(client);
+    } else if (ch < 1 || ch > NUM_CLIENTS) {
         sel4cp_dbg_puts("Received a bad client channel\n");
         return;
+    }  else {
+        // This was recieved on a client channel. Index the number of characters to get
+        num_to_get_chars += 1;
     }
 
-    handle_rx(ch);
 }

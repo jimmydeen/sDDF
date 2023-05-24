@@ -246,41 +246,36 @@ void handle_irq() {
     sel4cp_dbg_puts("Looping to service all current requests to getchar\n");
 
     // Instead of doing this, loop over the avail ring to see if it is not empty.
-    // We should be placing a 
-    while (global_serial_driver.num_to_get_chars > 0) {
-        sel4cp_dbg_puts("In loop\n");
-        uint64_t avail_size = ring_size(rx_ring.avail_ring);
-        sel4cp_dbg_puts("This is the size of the avail ring: ");
-        puthex64(avail_size);
-        sel4cp_dbg_puts("\n");
-        // Address that we will pass to dequeue to store the buffer address
-        uintptr_t buffer = 0;
-        // Integer to store the length of the buffer
-        unsigned int buffer_len = 0; 
+     
+    sel4cp_dbg_puts("In loop\n");
+    uint64_t avail_size = ring_size(rx_ring.avail_ring);
+    sel4cp_dbg_puts("This is the size of the avail ring: ");
+    puthex64(avail_size);
+    sel4cp_dbg_puts("\n");
+    // Address that we will pass to dequeue to store the buffer address
+    uintptr_t buffer = 0;
+    // Integer to store the length of the buffer
+    unsigned int buffer_len = 0; 
 
-        void *cookie = 0;
+    void *cookie = 0;
 
-        int ret = dequeue_avail(&rx_ring, &buffer, &buffer_len, &cookie);
+    int ret = dequeue_avail(&rx_ring, &buffer, &buffer_len, &cookie);
 
-        if (ret != 0) {
-            // sel4cp_dbg_puts(sel4cp_name);
-            sel4cp_dbg_puts(": unable to dequeue from the rx available ring\n");
-            return;
-        }
+    if (ret != 0) {
+        // sel4cp_dbg_puts(sel4cp_name);
+        sel4cp_dbg_puts(": unable to dequeue from the rx available ring\n");
+        return;
+    }
 
-        ((char *) buffer)[0] = (char) input;
+    ((char *) buffer)[0] = (char) input;
 
-        // Now place in the rx used ring
-        ret = enqueue_used(&rx_ring, buffer, 1, &cookie);
+    // Now place in the rx used ring
+    ret = enqueue_used(&rx_ring, buffer, 1, &cookie);
 
-        if (ret != 0) {
-            // sel4cp_dbg_puts(sel4cp_name);
-            sel4cp_dbg_puts(": unable to enqueue to the tx available ring\n");
-            return;
-        }
-
-        // We have serviced one getchar request, we can now decrement the count
-        global_serial_driver.num_to_get_chars--;
+    if (ret != 0) {
+        // sel4cp_dbg_puts(sel4cp_name);
+        sel4cp_dbg_puts(": unable to enqueue to the tx available ring\n");
+        return;
     }
 
     sel4cp_dbg_puts("Finished handling the irq\n");
@@ -355,6 +350,7 @@ void notified(sel4cp_channel ch) {
         case IRQ_CH:
             handle_irq();
             sel4cp_irq_ack(ch);
+            sel4cp_notify(RX_CH);
             return;
         case INIT:
             init_post();
