@@ -82,9 +82,9 @@
         <map mr="rx_avail_serial_cli" vaddr="0x3_400_000" perms="rw" cached="true" setvar_vaddr="rx_avail_cli" />
         <map mr="rx_used_serial_cli" vaddr="0x3_600_000" perms="rw" cached="true" setvar_vaddr="rx_used_cli" />
 
-        <map mr="shared_dma_tx_drv" vaddr="0x2_200_000" perms="rw" cached="true" setvar_vaddr="shared_dma_tx_drv" />
+        <map mr="shared_dma_rx_drv" vaddr="0x2_200_000" perms="rw" cached="true" setvar_vaddr="shared_dma_rx_drv" />
 
-        <map mr="shared_dma_tx_cli" vaddr="0x2_400_000" perms="rw" cached="true" setvar_vaddr="shared_dma_tx_cli" />
+        <map mr="shared_dma_rx_cli" vaddr="0x2_400_000" perms="rw" cached="true" setvar_vaddr="shared_dma_rx_cli" />
 
     </protection_domain>  
 
@@ -110,10 +110,6 @@
         <end pd="mux_rx" id="11"/>
     </channel>
 
-    <channel>
-        <end pd="serial" id="10"/>
-        <end pd="serial_server" id="11"/>
-    </channel>
 
 
 </system>

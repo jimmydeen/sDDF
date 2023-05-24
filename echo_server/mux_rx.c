@@ -6,6 +6,7 @@
 #include <sel4/sel4.h>
 #include "serial.h"
 #include "shared_ringbuffer.h"
+#include <string.h>
 
 #define CLI_CH 1
 #define DRV_CH 11
@@ -39,11 +40,35 @@ int escape_character;
 int client;
 
 int give_char(int curr_client, char got_char) {
+    // Address that we will pass to dequeue to store the buffer address
+    uintptr_t buffer = 0;
+    // Integer to store the length of the buffer
+    unsigned int buffer_len = 0; 
 
+    void *cookie = 0;
+
+    int ret = dequeue_avail(&rx_ring, &buffer, &buffer_len, &cookie);
+
+    if (ret != 0) {
+        // sel4cp_dbg_puts(sel4cp_name);
+        sel4cp_dbg_puts(": unable to dequeue from the rx available ring\n");
+        return;
+    }
+
+    ((char *) buffer)[0] = (char) got_char;
+
+    // Now place in the rx used ring
+    ret = enqueue_used(&rx_ring, buffer, 1, &cookie);
+
+    if (ret != 0) {
+        // sel4cp_dbg_puts(sel4cp_name);
+        sel4cp_dbg_puts(": unable to enqueue to the tx available ring\n");
+        return;
+    }
 }
 
 /* We will check for escape characters in here, as well as dealing with switching direction*/
-int handle_rx(int curr_client) {
+void handle_rx(int curr_client) {
     // We want to request a character here, then busy wait until we get anything back
 
     // Notify driver that we want to get a character
@@ -83,24 +108,35 @@ int handle_rx(int curr_client) {
         sel4cp_dbg_puts(": getchar - unable to enqueue used buffer back into available ring\n");
     }
 
-    // We have now gotten a character, deal with the input direction switch
+    /* TO DO: Need to add in handling of white space and EOF */
 
-    if (escape_character == 0) {
+    // We have now gotten a character, deal with the input direction switch
+    if (escape_character == 1) {
+        // The previous character was an escape character
+        give_char(curr_client, got_char);
+        escape_character = 0;
+    }  else if (escape_character == 2) {
+        // We are now switching input direction
+        int new_client = atoi(got_char);
+        if (new_client < 1 || new_client > NUM_CLIENTS) {
+            sel4cp_dbg_puts("Attempted to switch to invalid client number\n");
+        } else {
+            sel4cp_dbg_puts("Switching to different client\n");
+            curr_client = new_client;
+        }
+        escape_character = 0;
+    } else if (escape_character == 0) {
         // No escape character has been set
         if (got_char == "\\") {
-            escape_character == 1;
-            // We want to somehow grab another character here
+            escape_character = 1;
+            // The next character is going to be escaped
+        } else if (got_char == '@') {
+            // We are changing input direction
+            escape_character = 2;
         } else {
             give_char(curr_client, got_char);
         }
-    } else if (escape_character == 1) {
-        // We have previously recieved the escape character
-    } else if (escape_character == 2) {
-
-    } 
-
-
-
+    }
 }
 
 void init (void) {
@@ -109,7 +145,7 @@ void init (void) {
     ring_init(&drv_rx_ring, (ring_buffer_t *)rx_avail_drv, (ring_buffer_t *)rx_used_drv, NULL, 0);
 
     for (int i = 0; i < NUM_BUFFERS - 1; i++) {
-        int ret = enqueue_avail(&local_server->rx_ring, shared_dma_rx_drv + (i * BUFFER_SIZE), BUFFER_SIZE, NULL);
+        int ret = enqueue_avail(&rx_ring, shared_dma_rx_drv + (i * BUFFER_SIZE), BUFFER_SIZE, NULL);
 
         if (ret != 0) {
             sel4cp_dbg_puts(sel4cp_name);

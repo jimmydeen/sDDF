@@ -33,7 +33,7 @@ RINGBUFFERDIR=libsharedringbuffer
 
 BOARD_DIR := $(SEL4CP_SDK)/board/$(SEL4CP_BOARD)/$(SEL4CP_CONFIG)
 
-IMAGES := serial.elf serial_server.elf mux_tx.elf
+IMAGES := serial.elf serial_server.elf mux_tx.elf mux_rx.elf
 CFLAGS := -mcpu=$(CPU) -mstrict-align -ffreestanding -g3 -O3 -Wall  -Wno-unused-function
 LDFLAGS := -L$(BOARD_DIR)/lib -Llib
 LIBS := -lsel4cp -Tsel4cp.ld -lc
@@ -48,6 +48,7 @@ CFLAGS += -I$(BOARD_DIR)/include \
 SERIAL_OBJS := serial.o libsharedringbuffer/shared_ringbuffer.o
 SERIAL_SERVER_OBJS := serial_server.o libsharedringbuffer/shared_ringbuffer.o
 MUX_TX_OBJS := mux_tx.o libsharedringbuffer/shared_ringbuffer.o
+MUX_RX_OBJS := mux_rx.o libsharedringbuffer/shared_ringbuffer.o
 all: directories $(IMAGE_FILE)
 
 $(BUILD_DIR)/%.o: %.c Makefile
@@ -57,6 +58,9 @@ $(BUILD_DIR)/%.o: %.s Makefile
 	$(AS) -g3 -mcpu=$(CPU) $< -o $@
 
 $(BUILD_DIR)/mux_tx.elf: $(addprefix $(BUILD_DIR)/, $(MUX_TX_OBJS))
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
+
+$(BUILD_DIR)/mux_rx.elf: $(addprefix $(BUILD_DIR)/, $(MUX_RX_OBJS))
 	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
 
 $(BUILD_DIR)/serial.elf: $(addprefix $(BUILD_DIR)/, $(SERIAL_OBJS))
