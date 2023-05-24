@@ -174,7 +174,6 @@ int putchar(int c) {
 static void
 raw_tx(char *phys, unsigned int len, void *cookie)
 {
-    sel4cp_dbg_puts("entering raw tx function\n");
     // This is byte by byte for now, switch to DMA use later
     for (int i = 0; i < len || phys[i] != '\0'; i++) {
         // Loop until the fifo queue is ready to transmit
@@ -183,25 +182,18 @@ raw_tx(char *phys, unsigned int len, void *cookie)
 }
 
 void handle_tx() {
-    sel4cp_dbg_puts("In the handle tx func\n");
     uintptr_t buffer = 0;
     unsigned int len = 0;
     void *cookie = 0;
     // Dequeue something from the Tx ring -> the server will have placed something in here, if its empty then nothing to do
-    sel4cp_dbg_puts("Dequeuing and printing everything currently in the ring buffer\n");
     while (!driver_dequeue(tx_ring.used_ring, &buffer, &len, &cookie)) {
-        sel4cp_dbg_puts("in the driver dequeue loop\n");
         // Buffer cointaining the bytes to write to serial
         char *phys = (char * )buffer;
-        sel4cp_dbg_puts("This is what we are memcpying in driver: ");
-        sel4cp_dbg_puts(phys);
-        sel4cp_dbg_puts("\n");
         // Handle the tx
         raw_tx(phys, len, cookie);
         // Then enqueue this buffer back into the available queue, so that it can be collected and reused by the server
         enqueue_avail(&tx_ring, buffer, len, &cookie);
     }
-    sel4cp_dbg_puts("Finished handle_tx\n");
 }
 
 // Increment the number of chars that the server has requested us to get.
@@ -218,17 +210,11 @@ void handle_irq() {
     Then we want to dequeue from the rx available ring, and populate it, then add to the rx used queue
     ready to be processed by the client server
     */
-
-    sel4cp_dbg_puts("Entering handle irq function\n");
-
     int input = getchar();
 
     // We also want to print the character that we have recieved. 
     putchar(input);
 
-    sel4cp_dbg_puts("This is the value of the get char in the driver: ");
-    sel4cp_dbg_puts(&input);
-    sel4cp_dbg_puts("\n");
 
     if (input == -1) {
         // sel4cp_dbg_puts(sel4cp_name);
@@ -236,25 +222,6 @@ void handle_irq() {
         return;
     }
 
-    // Only process the character if we need to, that is the server is waiting on a getchar request
-
-    /*
-    I'm not too sure if we need to loop here, as we only have one server and one driver, and the 
-    server should be blocking on getchar calls. Additionally, currently the driver has an unlimited budget, 
-    and is running at a higher priority than any of the other PD's so it shouldn't be pre-empted. 
-
-    However, if we have multiple clients waiting on getchars we may have an issue, I need to look 
-    more into the expected behaviour of getchar in these situations.
-    */
-    sel4cp_dbg_puts("Looping to service all current requests to getchar\n");
-
-    // Instead of doing this, loop over the avail ring to see if it is not empty.
-     
-    sel4cp_dbg_puts("In loop\n");
-    uint64_t avail_size = ring_size(rx_ring.avail_ring);
-    sel4cp_dbg_puts("This is the size of the avail ring: ");
-    // puthex64(avail_size);
-    sel4cp_dbg_puts("\n");
     // Address that we will pass to dequeue to store the buffer address
     uintptr_t buffer = 0;
     // Integer to store the length of the buffer
@@ -281,7 +248,6 @@ void handle_irq() {
         return;
     }
 
-    sel4cp_dbg_puts("Finished handling the irq\n");
 }
 
 void init_post() {
@@ -359,7 +325,6 @@ void notified(sel4cp_channel ch) {
             init_post();
             break;
         case TX_CH:
-            sel4cp_dbg_puts("Notified to print something\n");
             handle_tx();
             break;
         case RX_CH:

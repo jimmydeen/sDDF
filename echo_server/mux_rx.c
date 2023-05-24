@@ -47,17 +47,9 @@ int client;
 int num_to_get_chars[NUM_CLIENTS];
 
 int give_char(int curr_client, char got_char) {
-
-    if (curr_client == 1) {
-        sel4cp_dbg_puts("MUX RX GIVE CHAR GOT CLIENT 1\n");
-    } else if (curr_client == 2) {
-        sel4cp_dbg_puts("MUX RX GIVE CHAR GOT CLIENT 1\n");
-    }
-
     if (num_to_get_chars[curr_client - 1] <= 0) {
         return 1;
     }
-    sel4cp_dbg_puts("In the give char function\n");
     // Address that we will pass to dequeue to store the buffer address
     uintptr_t buffer = 0;
     // Integer to store the length of the buffer
@@ -65,11 +57,6 @@ int give_char(int curr_client, char got_char) {
 
     void *cookie = 0;
 
-    sel4cp_dbg_puts("This is the char we have in give_char: ");
-    sel4cp_dbg_puts(&got_char);
-    sel4cp_dbg_puts("\n");
-
-    sel4cp_dbg_puts("Attempting to dequeue from rx avail ring\n");
     int ret = dequeue_avail(&rx_ring[curr_client - 1], &buffer, &buffer_len, &cookie);
 
     if (ret != 0) {
@@ -78,11 +65,7 @@ int give_char(int curr_client, char got_char) {
         return;
     }
 
-    sel4cp_dbg_puts("Attempting to copy char to buffer\n");
-
     ((char *) buffer)[0] = (char) got_char;
-
-    sel4cp_dbg_puts("Finsihed copying to buffer\n");
 
     // Now place in the rx used ring
     ret = enqueue_used(&rx_ring[curr_client - 1], buffer, 1, &cookie);
@@ -94,15 +77,11 @@ int give_char(int curr_client, char got_char) {
     }
 
     num_to_get_chars[curr_client - 1] -= 1;
-    sel4cp_dbg_puts("Finished the give char function\n");
 }
 
 
 /* We will check for escape characters in here, as well as dealing with switching direction*/
 void handle_rx() {
-    sel4cp_dbg_puts("MUX rx we have recieved a request to get a character\n");
-    // We want to request a character here, then busy wait until we get anything back
-
     // Address that we will pass to dequeue to store the buffer address
     uintptr_t buffer = 0;
     // Integer to store the length of the buffer
@@ -121,10 +100,6 @@ void handle_rx() {
 
     char got_char = *((char *) buffer);
 
-    sel4cp_dbg_puts("MUX RX THIS IS THE CHARACTER WE GOT FROM THE DRIVER: ");
-    sel4cp_dbg_puts(&got_char);
-    sel4cp_dbg_puts("\n");
-
     /* Now that we are finished with the used buffer, we can add it back to the available ring*/
 
     ret = enqueue_avail(&drv_rx_ring, buffer, buffer_len, NULL);
@@ -138,12 +113,10 @@ void handle_rx() {
 
     // We have now gotten a character, deal with the input direction switch
     if (escape_character == 1) {
-        sel4cp_dbg_puts("Escape character is 1\n");
         // The previous character was an escape character
         give_char(client, got_char);
         escape_character = 0;
     }  else if (escape_character == 2) {
-        sel4cp_dbg_puts("CASE OF SWITCHING INPUT DIRECTION\n");
         // We are now switching input direction
         int new_client = atoi(&got_char);
         // We also want this to show in the terminal, so print it
@@ -151,33 +124,20 @@ void handle_rx() {
         if (new_client < 1 || new_client > NUM_CLIENTS) {
             sel4cp_dbg_puts("Attempted to switch to invalid client number\n");
         } else {
-            sel4cp_dbg_puts("Switching to different client\n");
-            // print("Switching input to client ");
-            // print(&got_char);
-            // print("\n");
             client = new_client;
         }
         escape_character = 0;
     } else if (escape_character == 0) {
-        sel4cp_dbg_puts("Escape character is 0\n");
         // No escape character has been set
         if (got_char == '\\') {
-            sel4cp_dbg_puts("WE GOT AN ESCAPE CHARACTER\n");
             escape_character = 1;
             // The next character is going to be escaped
         } else if (got_char == '@') {
-            // We are changing input direction
-            sel4cp_dbg_puts("We are switching input direction\n");
-            sel4cp_dbg_puts("We need to get another character maybe?\n");
-            // We also want this to show in the terminal, so print it 
-            // print("@");
             escape_character = 2;
         } else {
             give_char(client, got_char);
         }
     }
-
-    sel4cp_dbg_puts("Finsihed the handle rx function\n");
 }
 
 void init (void) {
@@ -208,9 +168,6 @@ void init (void) {
 }
 
 void notified(sel4cp_channel ch) {
-    sel4cp_dbg_puts("In the mux RX notified channel: ");
-    // puthex64(ch);
-    sel4cp_dbg_puts("\n");
     // We should only ever recieve notifications from the client
     // Sanity check the client
     if (ch == DRV_CH) {

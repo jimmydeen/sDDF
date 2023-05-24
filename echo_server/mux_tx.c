@@ -37,7 +37,6 @@ ring_handle_t tx_ring[NUM_CLIENTS];
 ring_handle_t drv_tx_ring;
 
 int handle_tx(int curr_client) {
-    sel4cp_dbg_puts("In the mux tx handle tx function\n");
     // Copy data from the client ring to the driver rings.
     uintptr_t buffer = 0;
     unsigned int len = 0;
@@ -46,7 +45,6 @@ int handle_tx(int curr_client) {
     bool was_empty = ring_empty(drv_tx_ring.used_ring);
     
     while(!dequeue_used(&tx_ring[curr_client - 1], &buffer, &len, &cookie)) {
-        sel4cp_dbg_puts("Looping in our mux tx driver dequeue loop\n");
         // We want to enqueue into the drivers used ring
         uintptr_t drv_buffer = 0;
         unsigned int drv_len = 0;
@@ -59,10 +57,6 @@ int handle_tx(int curr_client) {
         }
 
         char *string = (char *) buffer;
-
-        sel4cp_dbg_puts("This is what we are memcpying in mux tx: ");
-        sel4cp_dbg_puts(string);
-        sel4cp_dbg_puts("\n");
 
         memcpy((char *) drv_buffer, string, len);
         drv_len = len;
@@ -107,20 +101,11 @@ void init (void) {
 }
 
 void notified(sel4cp_channel ch) {
-    sel4cp_dbg_puts("In the mux tx notified channel: ");
-    // puthex64(ch);
-    sel4cp_dbg_puts("\n");
     // We should only ever recieve notifications from the client
     // Sanity check the client
     if (ch < 1 || ch > NUM_CLIENTS) {
         sel4cp_dbg_puts("Received a bad client channel\n");
         return;
-    }
-
-    if (ch == 1) {
-        sel4cp_dbg_puts("WE GOT CLIENT 1\n");
-    } else if (ch == 2) {
-        sel4cp_dbg_puts("WE GOT CLIENT 2\n");
     }
 
     handle_tx(ch);
