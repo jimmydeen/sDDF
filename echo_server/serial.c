@@ -223,6 +223,9 @@ void handle_irq() {
 
     int input = getchar();
 
+    // We also want to print the character that we have recieved. 
+    putchar(input);
+
     sel4cp_dbg_puts("This is the value of the get char in the driver: ");
     sel4cp_dbg_puts(&input);
     sel4cp_dbg_puts("\n");
@@ -250,7 +253,7 @@ void handle_irq() {
     sel4cp_dbg_puts("In loop\n");
     uint64_t avail_size = ring_size(rx_ring.avail_ring);
     sel4cp_dbg_puts("This is the size of the avail ring: ");
-    puthex64(avail_size);
+    // puthex64(avail_size);
     sel4cp_dbg_puts("\n");
     // Address that we will pass to dequeue to store the buffer address
     uintptr_t buffer = 0;

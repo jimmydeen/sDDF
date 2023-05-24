@@ -14,7 +14,7 @@
 #define CLI_CH 10
 #define DRV_CH 9
 
-#define NUM_CLIENTS 1
+#define NUM_CLIENTS 2
 
 /* Memory regions as defined in the system file */
 
@@ -25,12 +25,15 @@ uintptr_t tx_used_drv;
 // Transmit rings with the client
 uintptr_t tx_avail_cli;
 uintptr_t tx_used_cli;
+uintptr_t tx_avail_cli2;
+uintptr_t tx_used_cli2;
 
 uintptr_t shared_dma_tx_drv;
 uintptr_t shared_dma_tx_cli;
+uintptr_t shared_dma_tx_cli2;
 
 // Have an array of client rings. 
-ring_handle_t tx_ring;
+ring_handle_t tx_ring[NUM_CLIENTS];
 ring_handle_t drv_tx_ring;
 
 int handle_tx(int curr_client) {
@@ -42,7 +45,7 @@ int handle_tx(int curr_client) {
 
     bool was_empty = ring_empty(drv_tx_ring.used_ring);
     
-    while(!dequeue_used(&tx_ring, &buffer, &len, &cookie)) {
+    while(!dequeue_used(&tx_ring[curr_client - 1], &buffer, &len, &cookie)) {
         sel4cp_dbg_puts("Looping in our mux tx driver dequeue loop\n");
         // We want to enqueue into the drivers used ring
         uintptr_t drv_buffer = 0;
@@ -73,7 +76,7 @@ int handle_tx(int curr_client) {
         }
 
         // enqueue back to the client avail ring
-        enqueue_avail(&tx_ring, buffer, len, cookie);
+        enqueue_avail(&tx_ring[curr_client - 1], buffer, len, cookie);
     }
 
     if (was_empty) {
@@ -84,7 +87,8 @@ int handle_tx(int curr_client) {
 
 void init (void) {
     // We want to init the client rings here. Currently this only inits one client
-    ring_init(&tx_ring, (ring_buffer_t *)tx_avail_cli, (ring_buffer_t *)tx_used_cli, NULL, 0);
+    ring_init(&tx_ring[0], (ring_buffer_t *)tx_avail_cli, (ring_buffer_t *)tx_used_cli, NULL, 0);
+    ring_init(&tx_ring[1], (ring_buffer_t *)tx_avail_cli2, (ring_buffer_t *)tx_used_cli2, NULL, 0);
     ring_init(&drv_tx_ring, (ring_buffer_t *)tx_avail_drv, (ring_buffer_t *)tx_used_drv, NULL, 0);
 
     // Add buffers to the drv tx ring from our shared dma region
@@ -111,6 +115,12 @@ void notified(sel4cp_channel ch) {
     if (ch < 1 || ch > NUM_CLIENTS) {
         sel4cp_dbg_puts("Received a bad client channel\n");
         return;
+    }
+
+    if (ch == 1) {
+        sel4cp_dbg_puts("WE GOT CLIENT 1\n");
+    } else if (ch == 2) {
+        sel4cp_dbg_puts("WE GOT CLIENT 2\n");
     }
 
     handle_tx(ch);

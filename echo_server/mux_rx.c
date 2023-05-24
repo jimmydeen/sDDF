@@ -12,7 +12,7 @@
 #define CLI_CH 1
 #define DRV_CH 11
 
-#define NUM_CLIENTS 1
+#define NUM_CLIENTS 2
 
 /* Memory regions as defined in the system file */
 
@@ -23,12 +23,15 @@ uintptr_t rx_used_drv;
 // Transmit rings with the client
 uintptr_t rx_avail_cli;
 uintptr_t rx_used_cli;
+uintptr_t rx_avail_cli2;
+uintptr_t rx_used_cli2;
 
 uintptr_t shared_dma_rx_drv;
 uintptr_t shared_dma_rx_cli;
+uintptr_t shared_dma_rx_cli2;
 
 // Have an array of client rings. 
-ring_handle_t rx_ring;
+ring_handle_t rx_ring[NUM_CLIENTS];
 ring_handle_t drv_rx_ring;
 
 /* We need to do some processing of the input stream to determine when we need 
@@ -39,10 +42,19 @@ Otherwise, can put "\" before "@" to escape this.*/
 
 int escape_character;
 int client;
-int num_to_get_chars;
+// We want to keep track of each clients requests, so that they can be serviced once we have changed 
+// input direction
+int num_to_get_chars[NUM_CLIENTS];
 
 int give_char(int curr_client, char got_char) {
-    if (num_to_get_chars <= 0) {
+
+    if (curr_client == 1) {
+        sel4cp_dbg_puts("MUX RX GIVE CHAR GOT CLIENT 1\n");
+    } else if (curr_client == 2) {
+        sel4cp_dbg_puts("MUX RX GIVE CHAR GOT CLIENT 1\n");
+    }
+
+    if (num_to_get_chars[curr_client - 1] <= 0) {
         return 1;
     }
     sel4cp_dbg_puts("In the give char function\n");
@@ -58,7 +70,7 @@ int give_char(int curr_client, char got_char) {
     sel4cp_dbg_puts("\n");
 
     sel4cp_dbg_puts("Attempting to dequeue from rx avail ring\n");
-    int ret = dequeue_avail(&rx_ring, &buffer, &buffer_len, &cookie);
+    int ret = dequeue_avail(&rx_ring[curr_client - 1], &buffer, &buffer_len, &cookie);
 
     if (ret != 0) {
         // sel4cp_dbg_puts(sel4cp_name);
@@ -73,7 +85,7 @@ int give_char(int curr_client, char got_char) {
     sel4cp_dbg_puts("Finsihed copying to buffer\n");
 
     // Now place in the rx used ring
-    ret = enqueue_used(&rx_ring, buffer, 1, &cookie);
+    ret = enqueue_used(&rx_ring[curr_client - 1], buffer, 1, &cookie);
 
     if (ret != 0) {
         // sel4cp_dbg_puts(sel4cp_name);
@@ -81,13 +93,13 @@ int give_char(int curr_client, char got_char) {
         return 1;
     }
 
-    num_to_get_chars -= 1;
+    num_to_get_chars[curr_client - 1] -= 1;
     sel4cp_dbg_puts("Finished the give char function\n");
 }
 
 
 /* We will check for escape characters in here, as well as dealing with switching direction*/
-void handle_rx(int curr_client) {
+void handle_rx() {
     sel4cp_dbg_puts("MUX rx we have recieved a request to get a character\n");
     // We want to request a character here, then busy wait until we get anything back
 
@@ -128,18 +140,22 @@ void handle_rx(int curr_client) {
     if (escape_character == 1) {
         sel4cp_dbg_puts("Escape character is 1\n");
         // The previous character was an escape character
-        give_char(curr_client, got_char);
+        give_char(client, got_char);
         escape_character = 0;
     }  else if (escape_character == 2) {
         sel4cp_dbg_puts("CASE OF SWITCHING INPUT DIRECTION\n");
         // We are now switching input direction
         int new_client = atoi(&got_char);
+        // We also want this to show in the terminal, so print it
+        // print(&got_char);
         if (new_client < 1 || new_client > NUM_CLIENTS) {
             sel4cp_dbg_puts("Attempted to switch to invalid client number\n");
         } else {
             sel4cp_dbg_puts("Switching to different client\n");
-            curr_client = new_client;
-            client = curr_client;
+            // print("Switching input to client ");
+            // print(&got_char);
+            // print("\n");
+            client = new_client;
         }
         escape_character = 0;
     } else if (escape_character == 0) {
@@ -153,9 +169,11 @@ void handle_rx(int curr_client) {
             // We are changing input direction
             sel4cp_dbg_puts("We are switching input direction\n");
             sel4cp_dbg_puts("We need to get another character maybe?\n");
+            // We also want this to show in the terminal, so print it 
+            // print("@");
             escape_character = 2;
         } else {
-            give_char(curr_client, got_char);
+            give_char(client, got_char);
         }
     }
 
@@ -164,7 +182,9 @@ void handle_rx(int curr_client) {
 
 void init (void) {
     // We want to init the client rings here. Currently this only inits one client
-    ring_init(&rx_ring, (ring_buffer_t *)rx_avail_cli, (ring_buffer_t *)rx_used_cli, NULL, 0);
+    ring_init(&rx_ring[0], (ring_buffer_t *)rx_avail_cli, (ring_buffer_t *)rx_used_cli, NULL, 0);
+    ring_init(&rx_ring[1], (ring_buffer_t *)rx_avail_cli2, (ring_buffer_t *)rx_used_cli2, NULL, 0);
+
     ring_init(&drv_rx_ring, (ring_buffer_t *)rx_avail_drv, (ring_buffer_t *)rx_used_drv, NULL, 0);
 
     for (int i = 0; i < NUM_BUFFERS - 1; i++) {
@@ -182,7 +202,8 @@ void init (void) {
     // Set the current escape character to 0, we can't have recieved an escape character yet
     escape_character = 0;
     // No chars have been requested yet
-    num_to_get_chars = 0;
+    num_to_get_chars[0] = 0;
+    num_to_get_chars[1] = 0;
     sel4cp_dbg_puts("mux rx init finished\n");  
 }
 
@@ -193,13 +214,13 @@ void notified(sel4cp_channel ch) {
     // We should only ever recieve notifications from the client
     // Sanity check the client
     if (ch == DRV_CH) {
-        handle_rx(client);
+        handle_rx();
     } else if (ch < 1 || ch > NUM_CLIENTS) {
         sel4cp_dbg_puts("Received a bad client channel\n");
         return;
     }  else {
         // This was recieved on a client channel. Index the number of characters to get
-        num_to_get_chars += 1;
+        num_to_get_chars[ch - 1] += 1;
     }
 
 }

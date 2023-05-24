@@ -21,6 +21,7 @@
 #define unlikely(x) (!!(x))
 #endif
 
+
 static void
 putC(uint8_t ch)
 {
