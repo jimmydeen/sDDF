@@ -26,6 +26,7 @@ uintptr_t tx_avail;
 uintptr_t tx_used;
 uintptr_t shared_dma_vaddr;
 uintptr_t shared_dma_paddr;
+uintptr_t shared_dma_rx_drv;
 // Base of the uart registers
 uintptr_t uart_base;
 
@@ -221,6 +222,10 @@ void handle_irq() {
     sel4cp_dbg_puts("Entering handle irq function\n");
 
     int input = getchar();
+
+    sel4cp_dbg_puts("This is the value of the get char in the driver: ");
+    sel4cp_dbg_puts(&input);
+    sel4cp_dbg_puts("\n");
 
     if (input == -1) {
         // sel4cp_dbg_puts(sel4cp_name);

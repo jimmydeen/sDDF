@@ -29,6 +29,7 @@
         <map mr="tx_used_serial_drv" vaddr="0x4_600_000" perms="rw" cached="true" setvar_vaddr="tx_used" />
 
         <map mr="shared_dma_tx_drv" vaddr="0x2_200_000" perms="rw" cached="true" setvar_vaddr="shared_dma_vaddr" />
+        <map mr="shared_dma_rx_drv" vaddr="0x2_600_000" perms="rw" cached="true" setvar_vaddr="shared_dma_rx_drv" />
 
         <!-- we need physical addresses dma region -->
         <setvar symbol="shared_dma_paddr" region_paddr="shared_dma_tx_drv" />
@@ -41,8 +42,8 @@
         <program_image path="serial_server.elf" />
 
         <!-- shared memory for ring buffer mechanism -->
-        <map mr="rx_avail_serial_drv" vaddr="0x4_000_000" perms="rw" cached="true" setvar_vaddr="rx_avail" />
-        <map mr="rx_used_serial_drv" vaddr="0x4_200_000" perms="rw" cached="true" setvar_vaddr="rx_used" />
+        <map mr="rx_avail_serial_cli" vaddr="0x4_800_000" perms="rw" cached="true" setvar_vaddr="rx_avail" />
+        <map mr="rx_used_serial_cli" vaddr="0x5_000_000" perms="rw" cached="true" setvar_vaddr="rx_used" />
         
         <map mr="tx_avail_serial_cli" vaddr="0x3_400_000" perms="rw" cached="true" setvar_vaddr="tx_avail" />
         <map mr="tx_used_serial_cli" vaddr="0x3_600_000" perms="rw" cached="true" setvar_vaddr="tx_used" />
@@ -54,7 +55,7 @@
 
     </protection_domain>
 
-    <protection_domain name="mux_tx" priority="100" pp="true">
+    <protection_domain name="mux_tx" priority="99" pp="true">
         <program_image path="mux_tx.elf" />
 
          <!-- shared memory for driver/mux ring buffer mechanism -->
@@ -71,20 +72,19 @@
 
     </protection_domain>            
 
-    <protection_domain name="mux_rx" priority="99" pp="true">
+    <protection_domain name="mux_rx" priority="98" pp="true">
         <program_image path="mux_rx.elf" />
 
          <!-- shared memory for driver/mux ring buffer mechanism -->
-        <map mr="rx_avail_serial_drv" vaddr="0x4_400_000" perms="rw" cached="true" setvar_vaddr="rx_avail_drv" />
-        <map mr="rx_used_serial_drv" vaddr="0x4_600_000" perms="rw" cached="true" setvar_vaddr="rx_used_drv" />
+        <map mr="rx_avail_serial_drv" vaddr="0x4_000_000" perms="rw" cached="true" setvar_vaddr="rx_avail_drv" />
+        <map mr="rx_used_serial_drv" vaddr="0x4_200_000" perms="rw" cached="true" setvar_vaddr="rx_used_drv" />
 
         <!-- shared memory for mux/client ring buffer mechanism -->
-        <map mr="rx_avail_serial_cli" vaddr="0x3_400_000" perms="rw" cached="true" setvar_vaddr="rx_avail_cli" />
-        <map mr="rx_used_serial_cli" vaddr="0x3_600_000" perms="rw" cached="true" setvar_vaddr="rx_used_cli" />
+        <map mr="rx_avail_serial_cli" vaddr="0x4_800_000" perms="rw" cached="true" setvar_vaddr="rx_avail_cli" />
+        <map mr="rx_used_serial_cli" vaddr="0x5_000_000" perms="rw" cached="true" setvar_vaddr="rx_used_cli" />
 
-        <map mr="shared_dma_rx_drv" vaddr="0x2_200_000" perms="rw" cached="true" setvar_vaddr="shared_dma_rx_drv" />
-
-        <map mr="shared_dma_rx_cli" vaddr="0x2_400_000" perms="rw" cached="true" setvar_vaddr="shared_dma_rx_cli" />
+        <map mr="shared_dma_rx_drv" vaddr="0x2_600_000" perms="rw" cached="true" setvar_vaddr="shared_dma_rx_drv" />
+        <map mr="shared_dma_rx_cli" vaddr="0x2_800_000" perms="rw" cached="true" setvar_vaddr="shared_dma_rx_cli" />
 
     </protection_domain>  
 

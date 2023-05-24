@@ -189,7 +189,7 @@ void init(void) {
 
         if (ret != 0) {
             sel4cp_dbg_puts(sel4cp_name);
-            sel4cp_dbg_puts(": rx buffer population, unable to enqueue buffer\n");
+            sel4cp_dbg_puts(": server rx buffer population, unable to enqueue buffer\n");
         }
     }
 
@@ -204,7 +204,7 @@ void init(void) {
 
         if (ret != 0) {
             sel4cp_dbg_puts(sel4cp_name);
-            sel4cp_dbg_puts(": tx buffer population, unable to enqueue buffer\n");
+            sel4cp_dbg_puts(": server tx buffer population, unable to enqueue buffer\n");
         }
     }
 

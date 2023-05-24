@@ -7,6 +7,7 @@
 #include "serial.h"
 #include "shared_ringbuffer.h"
 #include <string.h>
+#include "util.h"
 
 #define CLI_CH 1
 #define DRV_CH 11
@@ -38,8 +39,9 @@ Otherwise, can put "\" before "@" to escape this.*/
 
 int escape_character;
 int client;
-
+int num_to_get_chars;
 int give_char(int curr_client, char got_char) {
+    sel4cp_dbg_puts("In the give char function\n");
     // Address that we will pass to dequeue to store the buffer address
     uintptr_t buffer = 0;
     // Integer to store the length of the buffer
@@ -47,6 +49,11 @@ int give_char(int curr_client, char got_char) {
 
     void *cookie = 0;
 
+    sel4cp_dbg_puts("This is the char we have in give_char: ");
+    sel4cp_dbg_puts(&got_char);
+    sel4cp_dbg_puts("\n");
+
+    sel4cp_dbg_puts("Attempting to dequeue from rx avail ring\n");
     int ret = dequeue_avail(&rx_ring, &buffer, &buffer_len, &cookie);
 
     if (ret != 0) {
@@ -55,7 +62,11 @@ int give_char(int curr_client, char got_char) {
         return;
     }
 
+    sel4cp_dbg_puts("Attempting to copy char to buffer\n");
+
     ((char *) buffer)[0] = (char) got_char;
+
+    sel4cp_dbg_puts("Finsihed copying to buffer\n");
 
     // Now place in the rx used ring
     ret = enqueue_used(&rx_ring, buffer, 1, &cookie);
@@ -65,10 +76,13 @@ int give_char(int curr_client, char got_char) {
         sel4cp_dbg_puts(": unable to enqueue to the tx available ring\n");
         return;
     }
+    sel4cp_dbg_puts("Finished the give char function\n");
 }
+
 
 /* We will check for escape characters in here, as well as dealing with switching direction*/
 void handle_rx(int curr_client) {
+    sel4cp_dbg_puts("MUX rx we have recieved a request to get a character\n");
     // We want to request a character here, then busy wait until we get anything back
 
     // Notify driver that we want to get a character
@@ -81,8 +95,7 @@ void handle_rx(int curr_client) {
 
     void *cookie = 0;
 
-    sel4cp_dbg_puts("Busy waiting until we are able to dequeue something from the rx ring buffer\n");
-    while (dequeue_used(&rx_ring, &buffer, &buffer_len, &cookie) != 0) {
+    while (dequeue_used(&drv_rx_ring, &buffer, &buffer_len, &cookie) != 0) {
         /* The ring is currently empty, as there is no character to get. 
         We will spin here until we have gotten a character. As the driver is a higher priority than us, 
         it should be able to pre-empt this loop
@@ -93,15 +106,17 @@ void handle_rx(int curr_client) {
         */
     }
 
-    sel4cp_dbg_puts("Finished looping, dequeue used buffer successfully\n");
-
     // We are only getting one character at a time, so we just need to cast the buffer to an int
 
     char got_char = *((char *) buffer);
 
+    sel4cp_dbg_puts("MUX RX THIS IS THE CHARACTER WE GOT FROM THE DRIVER: ");
+    sel4cp_dbg_puts(&got_char);
+    sel4cp_dbg_puts("\n");
+
     /* Now that we are finished with the used buffer, we can add it back to the available ring*/
 
-    int ret = enqueue_avail(&rx_ring, buffer, buffer_len, NULL);
+    int ret = enqueue_avail(&drv_rx_ring, buffer, buffer_len, NULL);
 
     if (ret != 0) {
         sel4cp_dbg_puts(sel4cp_name);
@@ -116,15 +131,18 @@ void handle_rx(int curr_client) {
         give_char(curr_client, got_char);
         escape_character = 0;
     }  else if (escape_character == 2) {
+        sel4cp_dbg_puts("CASE OF SWITCHING INPUT DIRECTION\n");
         // We are now switching input direction
-        int new_client = atoi(got_char);
+        int new_client = atoi(&got_char);
         if (new_client < 1 || new_client > NUM_CLIENTS) {
             sel4cp_dbg_puts("Attempted to switch to invalid client number\n");
         } else {
             sel4cp_dbg_puts("Switching to different client\n");
             curr_client = new_client;
+            client = curr_client;
         }
         escape_character = 0;
+        handle_rx(curr_client);
     } else if (escape_character == 0) {
         // No escape character has been set
         if (got_char == "\\") {
@@ -132,11 +150,16 @@ void handle_rx(int curr_client) {
             // The next character is going to be escaped
         } else if (got_char == '@') {
             // We are changing input direction
+            sel4cp_dbg_puts("We are switching input direction\n");
+            sel4cp_dbg_puts("We need to get another character maybe?\n");
             escape_character = 2;
+            handle_rx(curr_client);
         } else {
             give_char(curr_client, got_char);
         }
     }
+
+    sel4cp_dbg_puts("Finsihed the handle rx function\n");
 }
 
 void init (void) {
@@ -145,22 +168,26 @@ void init (void) {
     ring_init(&drv_rx_ring, (ring_buffer_t *)rx_avail_drv, (ring_buffer_t *)rx_used_drv, NULL, 0);
 
     for (int i = 0; i < NUM_BUFFERS - 1; i++) {
-        int ret = enqueue_avail(&rx_ring, shared_dma_rx_drv + (i * BUFFER_SIZE), BUFFER_SIZE, NULL);
+        int ret = enqueue_avail(&drv_rx_ring, shared_dma_rx_drv + (i * BUFFER_SIZE), BUFFER_SIZE, NULL);
 
         if (ret != 0) {
             sel4cp_dbg_puts(sel4cp_name);
-            sel4cp_dbg_puts(": rx buffer population, unable to enqueue buffer\n");
+            sel4cp_dbg_puts(": mux rx buffer population, unable to enqueue buffer\n");
+            return;
         }
     }
 
     // We initialise the current client to 1
     client = 1;
-
+    // Set the current escape character to 0, we can't have recieved an escape character yet
+    escape_character = 0;
+    // No chars have been requested yet
+    num_to_get_chars = 0;
     sel4cp_dbg_puts("mux rx init finished\n");  
 }
 
 void notified(sel4cp_channel ch) {
-    sel4cp_dbg_puts("In the mux tx notified channel: ");
+    sel4cp_dbg_puts("In the mux RX notified channel: ");
     // puthex64(ch);
     sel4cp_dbg_puts("\n");
     // We should only ever recieve notifications from the client
