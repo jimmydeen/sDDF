@@ -13,11 +13,11 @@ echo_server makefile.
 
 ## Building the sDDF
 
-Note that while any ARM GCC toolchain should work, all testing and
-benchmarking so far has been done with the ARM GCC toolchain version 10.2-2020.11.
-
 The Pancake compiler is included within this repo. Unzip the file, and run ```make cake``` within the unzipped repository 
 to build the bootstrapped comipler.
+
+Note that while any ARM GCC toolchain should work, all testing and
+benchmarking so far has been done with the ARM GCC toolchain version 10.2-2020.11.
 
 If you wish to use the default toolchain you can download it from here:
 https://developer.arm.com/-/media/Files/downloads/gnu-a/10.2-2020.11/binrel/gcc-arm-10.2-2020.11-x86_64-aarch64-none-elf.tar.xz?revision=79f65c42-1a1b-43f2-acb7-a795c8427085&hash=61BBFB526E785D234C5D8718D9BA8E61.
