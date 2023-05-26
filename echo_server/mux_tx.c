@@ -44,33 +44,36 @@ int handle_tx(int curr_client) {
 
     bool was_empty = ring_empty(drv_tx_ring.used_ring);
     
-    while(!dequeue_used(&tx_ring[curr_client - 1], &buffer, &len, &cookie)) {
-        // We want to enqueue into the drivers used ring
-        uintptr_t drv_buffer = 0;
-        unsigned int drv_len = 0;
-        void *drv_cookie = 0;
+    // Loop over all clients here
+    for (int client = 0; client < NUM_CLIENTS; client++) {
+        while(!dequeue_used(&tx_ring[client], &buffer, &len, &cookie)) {
+            // We want to enqueue into the drivers used ring
+            uintptr_t drv_buffer = 0;
+            unsigned int drv_len = 0;
+            void *drv_cookie = 0;
 
-        int ret = driver_dequeue(drv_tx_ring.avail_ring, &drv_buffer, &drv_len, &drv_cookie);
-        if (ret != 0) {
-            sel4cp_dbg_puts("Failed to dequeue buffer from drv tx avail ring\n");
-            return;
+            int ret = driver_dequeue(drv_tx_ring.avail_ring, &drv_buffer, &drv_len, &drv_cookie);
+            if (ret != 0) {
+                sel4cp_dbg_puts("Failed to dequeue buffer from drv tx avail ring\n");
+                return;
+            }
+
+            char *string = (char *) buffer;
+
+            memcpy((char *) drv_buffer, string, len);
+            drv_len = len;
+            drv_cookie = cookie;
+
+            ret = enqueue_used(&drv_tx_ring, drv_buffer, drv_len, drv_cookie);
+            if (ret != 0) {
+                sel4cp_dbg_puts("Failed to enqueue buffer to drv tx used ring\n");
+                // Don't know if I should return here, because we need to enqueue a
+                // serpeate buffer
+            }
+
+            // enqueue back to the client avail ring
+            enqueue_avail(&tx_ring[client], buffer, len, cookie);
         }
-
-        char *string = (char *) buffer;
-
-        memcpy((char *) drv_buffer, string, len);
-        drv_len = len;
-        drv_cookie = cookie;
-
-        ret = enqueue_used(&drv_tx_ring, drv_buffer, drv_len, drv_cookie);
-        if (ret != 0) {
-            sel4cp_dbg_puts("Failed to enqueue buffer to drv tx used ring\n");
-            // Don't know if I should return here, because we need to enqueue a
-            // serpeate buffer
-        }
-
-        // enqueue back to the client avail ring
-        enqueue_avail(&tx_ring[curr_client - 1], buffer, len, cookie);
     }
 
     if (was_empty) {
