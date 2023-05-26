@@ -13,7 +13,7 @@ echo_server makefile.
 
 ## Building the sDDF
 
-The Pancake compiler is included within this repo. Unzip the file, and run ```make cake``` within the unzipped repository 
+The Pancake compiler is included within this repo. Extract the supplied file, and run ```make cake``` within the unzipped repository 
 to build the bootstrapped comipler.
 
 Note that while any ARM GCC toolchain should work, all testing and
