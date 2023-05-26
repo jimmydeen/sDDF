@@ -182,6 +182,7 @@ raw_tx(char *phys, unsigned int len, void *cookie)
 }
 
 void handle_tx() {
+    sel4cp_dbg_puts("IN THE DRIVER HANDLE TX FUNC\n");
     uintptr_t buffer = 0;
     unsigned int len = 0;
     void *cookie = 0;
@@ -189,6 +190,9 @@ void handle_tx() {
     while (!driver_dequeue(tx_ring.used_ring, &buffer, &len, &cookie)) {
         // Buffer cointaining the bytes to write to serial
         char *phys = (char * )buffer;
+        sel4cp_dbg_puts("This is the string we recieved in the driver: ");
+        sel4cp_dbg_puts(phys);
+        sel4cp_dbg_puts("\n");
         // Handle the tx
         raw_tx(phys, len, cookie);
         // Then enqueue this buffer back into the available queue, so that it can be collected and reused by the server
@@ -198,7 +202,7 @@ void handle_tx() {
 
 // Increment the number of chars that the server has requested us to get.
 void handle_rx() {
-    // Instead, we add a buffer to the avail ring.
+    // Instead, we add a buffer to the avail ring. This function is deprecated
     global_serial_driver.num_to_get_chars++;
 }
 
@@ -257,9 +261,7 @@ void init_post() {
     // Init the shared ring buffers
     ring_init(&rx_ring, (ring_buffer_t *)rx_avail, (ring_buffer_t *)rx_used, NULL, 0);
     ring_init(&tx_ring, (ring_buffer_t *)tx_avail, (ring_buffer_t *)tx_used, NULL, 0);
-    
-    // Redundant right now, as a channel has not been set up for init calls
-    // sel4cp_notify(INIT);
+
 }
 
 // Init function required by CP for every PD

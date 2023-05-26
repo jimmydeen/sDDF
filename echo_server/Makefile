@@ -16,6 +16,10 @@ ifeq ($(strip $(SEL4CP_BOARD)),)
 $(error SEL4CP_BOARD must be specified)
 endif
 
+ifeq ($(strip $(CAKE_COMPILER)),)
+$(error CAKE_COMPILER must be specified)
+endif
+
 ifeq ($(strip $(SEL4CP_CONFIG)),)
 $(error SEL4CP_CONFIG must be specified)
 endif
@@ -48,9 +52,15 @@ CFLAGS += -I$(BOARD_DIR)/include \
 SERIAL_OBJS := serial.o libsharedringbuffer/shared_ringbuffer.o
 SERIAL_SERVER_OBJS := serial_server.o libsharedringbuffer/shared_ringbuffer.o
 SERIAL_SERVER_OBJS2 := serial_server_2.o libsharedringbuffer/shared_ringbuffer.o
-MUX_TX_OBJS := mux_tx.o libsharedringbuffer/shared_ringbuffer.o
+MUX_TX_OBJS := mux_tx.o mux_tx_ffi.o libsharedringbuffer/shared_ringbuffer.o
 MUX_RX_OBJS := mux_rx.o libsharedringbuffer/shared_ringbuffer.o
 all: directories $(IMAGE_FILE)
+
+$(BUILD_DIR)/mux_tx.o: $(BUILD_DIR)/mux_tx.S Makefile
+	$(CC) -c $(CFLAGS) -mcpu=$(CPU) $< -o $@
+
+$(BUILD_DIR)/mux_tx.S: mux_tx.pk Makefile
+	$(CAKE_COMPILER) --target=arm8 --pancake < $< > $@
 
 $(BUILD_DIR)/%.o: %.c Makefile
 	$(CC) -c $(CFLAGS) $< -o $@

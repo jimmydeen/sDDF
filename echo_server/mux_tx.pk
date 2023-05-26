@@ -1,0 +1,64 @@
+var clients = 0;
+var num_clients_a = @base;
+
+// Get the number of clients as defined in our FFI file
+#num_clients(0, 0, num_clients_a, 1);
+clients = ldb num_clients_a;
+
+// Handle TX function
+
+// Check if the driver's tx used ring was empty.
+var drv_was_empty_c = @base + 1;
+var drv_was_empty_a = @base + 2;
+
+// Store 0 as arg to get the used ring
+strb drv_was_empty_c, 0;
+
+#drv_ring_empty(drv_was_empty_c, 1, drv_was_empty_a, 1);
+
+var was_empty = ldb drv_was_empty_a;
+
+// Loop over all the clients here
+
+var client = 0;
+
+while (client < clients) {
+    // Loop through all of the current client's available ring
+    var cli_dequeue_used_c = @base + 3;
+    var cli_dequeue_used_a = @base + 4;
+
+    strb cli_dequeue_used_c, client;
+    #dequeue_used(cli_dequeue_used_c, 1, cli_dequeue_used_a, 24);
+    var dequeue_used_ret = ldb cli_dequeue_used_c;
+
+    while (dequeue_used_ret <> 1) {
+        // We now want to copy this buffer over to the drv shared ring buffers        
+        var drv_enqueue_dequeue_a = @base + 29;
+        #batch_driver_dequeue_enqueue(cli_dequeue_used_a, 24, drv_enqueue_dequeue_a, 1);
+
+        var driver_dequeue_enqueue_ret = ldb drv_enqueue_dequeue_a;
+
+        if (driver_dequeue_enqueue_ret <> 0) {
+            return 1;
+        }
+        
+        var cli_enqueue_avail_a = @base + 30;
+        strb cli_enqueue_avail_a, client;
+        // Enqueue buffer back into the client available ring
+        #cli_enqueue_avail(cli_dequeue_used_a, 24, cli_enqueue_avail_a, 1);
+
+        // Continue to next iteration of the loop
+        strb cli_dequeue_used_c, client;
+        #dequeue_used(cli_dequeue_used_c, 1, cli_dequeue_used_a, 24);
+        dequeue_used_ret = ldb cli_dequeue_used_c;
+    }
+
+    client = client + 1;
+}
+
+// If we were empty before, notify the driver that we have something to print
+if (was_empty == 1) {
+    #notify_driver(0,0,0,0);
+}
+
+return 0;

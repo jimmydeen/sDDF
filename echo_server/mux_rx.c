@@ -119,8 +119,7 @@ void handle_rx() {
     }  else if (escape_character == 2) {
         // We are now switching input direction
         int new_client = atoi(&got_char);
-        // We also want this to show in the terminal, so print it
-        // print(&got_char);
+
         if (new_client < 1 || new_client > NUM_CLIENTS) {
             sel4cp_dbg_puts("Attempted to switch to invalid client number\n");
         } else {
