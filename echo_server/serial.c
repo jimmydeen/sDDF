@@ -212,8 +212,8 @@ void handle_irq() {
     */
     int input = getchar();
 
-    // We also want to print the character that we have recieved. 
-    putchar(input);
+    // Not sure if we should be printing this here or elsewhere? What is the expected behaviour?
+    // putchar(input);
 
 
     if (input == -1) {
