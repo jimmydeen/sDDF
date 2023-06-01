@@ -1,6 +1,6 @@
 # Brief Intro
  A basic serial driver has been implemented, as well as a multiplexer. This currently multiplexes the driver between two clients.  
- To switch input direction, type the "@" symbol followed immediately by a number. Otherwise, can you put "\" before "@" to escape this.
+ To switch input direction, type the '@' symbol followed immediately by a number or the character 'm'. A number will switch to a specific client, 'm' will toggle simultaneous multi client input. Otherwise, you can put '\' before '@' to escape this.
 
 # sDDF
 seL4 Device Driver Framework
