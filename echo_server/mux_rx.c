@@ -1,5 +1,4 @@
-/* We need to determine direction of chars to get*/
-
+/* MUX is currently limited to a max of 9 clients */
 #include <stdbool.h>
 #include <stdint.h>
 #include <sel4cp.h>
@@ -45,8 +44,54 @@ int client;
 // We want to keep track of each clients requests, so that they can be serviced once we have changed 
 // input direction
 int num_to_get_chars[NUM_CLIENTS];
+int multi_client;
+
+int give_multi_char(char got_char) {
+    for (int curr_client = 0; curr_client < NUM_CLIENTS; curr_client++) {
+
+        if (num_to_get_chars[curr_client] <= 0) {
+            return 1;
+        }
+        // Address that we will pass to dequeue to store the buffer address
+        uintptr_t buffer = 0;
+        // Integer to store the length of the buffer
+        unsigned int buffer_len = 0; 
+
+        void *cookie = 0;
+
+        int ret = dequeue_avail(&rx_ring[curr_client], &buffer, &buffer_len, &cookie);
+
+        if (ret != 0) {
+            // sel4cp_dbg_puts(sel4cp_name);
+            sel4cp_dbg_puts(": unable to dequeue from the rx available ring\n");
+            return;
+        }
+
+        ((char *) buffer)[0] = (char) got_char;
+
+        // Now place in the rx used ring
+        ret = enqueue_used(&rx_ring[curr_client], buffer, 1, &cookie);
+
+        if (ret != 0) {
+            // sel4cp_dbg_puts(sel4cp_name);
+            sel4cp_dbg_puts(": unable to enqueue to the tx available ring\n");
+            return 1;
+        }
+
+        num_to_get_chars[curr_client] -= 1;
+    }
+}
 
 int give_char(int curr_client, char got_char) {
+    if (multi_client == 1) {
+        give_multi_char(got_char);
+        return 0;
+    }
+
+    if (curr_client < 1 || curr_client > NUM_CLIENTS) {
+        return 1;
+    }
+
     if (num_to_get_chars[curr_client - 1] <= 0) {
         return 1;
     }
@@ -109,8 +154,6 @@ void handle_rx() {
         sel4cp_dbg_puts(": getchar - unable to enqueue used buffer back into available ring\n");
     }
 
-    /* TO DO: Need to add in handling of white space and EOF */
-
     // We have now gotten a character, deal with the input direction switch
     if (escape_character == 1) {
         // The previous character was an escape character
@@ -118,14 +161,25 @@ void handle_rx() {
         escape_character = 0;
     }  else if (escape_character == 2) {
         // We are now switching input direction
-        int new_client = atoi(&got_char);
-        // We also want this to show in the terminal, so print it
-        // print(&got_char);
-        if (new_client < 1 || new_client > NUM_CLIENTS) {
-            sel4cp_dbg_puts("Attempted to switch to invalid client number\n");
+
+        // Case for simultaneous multi client input
+        if (got_char == 'm') {
+            multi_client = 1;
+            client = -1;
         } else {
-            client = new_client;
+            // Ensure that multi client input is off
+            multi_client = 0;
+            int new_client = atoi(&got_char);
+            // We also want this to show in the terminal, so print it
+            // print(&got_char);
+            if (new_client < 1 || new_client > NUM_CLIENTS) {
+                sel4cp_dbg_puts("Attempted to switch to invalid client number\n");
+            } else {
+                client = new_client;
+            }
         }
+
+
         escape_character = 0;
     } else if (escape_character == 0) {
         // No escape character has been set
@@ -161,6 +215,8 @@ void init (void) {
     client = 1;
     // Set the current escape character to 0, we can't have recieved an escape character yet
     escape_character = 0;
+    // Disable simultaneous multi client input
+    multi_client = 0;
     // No chars have been requested yet
     num_to_get_chars[0] = 0;
     num_to_get_chars[1] = 0;
