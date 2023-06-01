@@ -39,7 +39,7 @@ to change direction. */
 /* To switch input direction, type the "@" symbol followed immediately by a number.
 Otherwise, can put "\" before "@" to escape this.*/
 
-int escape_character;
+int mux_state;
 int client;
 // We want to keep track of each clients requests, so that they can be serviced once we have changed 
 // input direction
@@ -82,12 +82,7 @@ int give_multi_char(char got_char) {
     }
 }
 
-int give_char(int curr_client, char got_char) {
-    if (multi_client == 1) {
-        give_multi_char(got_char);
-        return 0;
-    }
-
+int give_single_char(int curr_client, char got_char) {
     if (curr_client < 1 || curr_client > NUM_CLIENTS) {
         return 1;
     }
@@ -124,6 +119,14 @@ int give_char(int curr_client, char got_char) {
     num_to_get_chars[curr_client - 1] -= 1;
 }
 
+int give_char(int curr_client, char got_char) {
+    if (multi_client == 1) {
+        give_multi_char(got_char);
+    } else {
+        give_single_char(curr_client, got_char);
+    }
+}
+
 
 /* We will check for escape characters in here, as well as dealing with switching direction*/
 void handle_rx() {
@@ -155,11 +158,11 @@ void handle_rx() {
     }
 
     // We have now gotten a character, deal with the input direction switch
-    if (escape_character == 1) {
+    if (mux_state == 1) {
         // The previous character was an escape character
         give_char(client, got_char);
-        escape_character = 0;
-    }  else if (escape_character == 2) {
+        mux_state = 0;
+    }  else if (mux_state == 2) {
         // We are now switching input direction
 
         // Case for simultaneous multi client input
@@ -179,15 +182,14 @@ void handle_rx() {
             }
         }
 
-
-        escape_character = 0;
-    } else if (escape_character == 0) {
+        mux_state = 0;
+    } else if (mux_state == 0) {
         // No escape character has been set
         if (got_char == '\\') {
-            escape_character = 1;
+            mux_state = 1;
             // The next character is going to be escaped
         } else if (got_char == '@') {
-            escape_character = 2;
+            mux_state = 2;
         } else {
             give_char(client, got_char);
         }
@@ -214,7 +216,7 @@ void init (void) {
     // We initialise the current client to 1
     client = 1;
     // Set the current escape character to 0, we can't have recieved an escape character yet
-    escape_character = 0;
+    mux_state = 0;
     // Disable simultaneous multi client input
     multi_client = 0;
     // No chars have been requested yet
