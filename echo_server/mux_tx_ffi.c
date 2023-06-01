@@ -18,7 +18,7 @@
 
 #define NUM_CLIENTS 2
 
-static char cml_memory[2048*1024*2];
+static char cml_memory[1024*1024*2];
 
 // /* exported in cake.S */
 extern void cml_main(void);
@@ -276,7 +276,7 @@ void cml_clear() {
 }
 
 void init_pancake_mem() {
-    unsigned long sz = 2048*1024; // 1 MB unit\n",
+    unsigned long sz = 1024*1024; // 1 MB unit\n",
     unsigned long cml_heap_sz = sz;    // Default: 1 MB heap\n", (* TODO: parameterise *)
     unsigned long cml_stack_sz = sz;   // Default: 1 MB stack\n", (* TODO: parameterise *)
     cml_heap = &cml_memory[0];

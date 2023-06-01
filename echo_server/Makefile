@@ -53,13 +53,19 @@ SERIAL_OBJS := serial.o libsharedringbuffer/shared_ringbuffer.o
 SERIAL_SERVER_OBJS := serial_server.o libsharedringbuffer/shared_ringbuffer.o
 SERIAL_SERVER_OBJS2 := serial_server_2.o libsharedringbuffer/shared_ringbuffer.o
 MUX_TX_OBJS := mux_tx.o mux_tx_ffi.o libsharedringbuffer/shared_ringbuffer.o
-MUX_RX_OBJS := mux_rx.o libsharedringbuffer/shared_ringbuffer.o
+MUX_RX_OBJS := mux_rx.o mux_rx_ffi.o libsharedringbuffer/shared_ringbuffer.o
 all: directories $(IMAGE_FILE)
 
 $(BUILD_DIR)/mux_tx.o: $(BUILD_DIR)/mux_tx.S Makefile
 	$(CC) -c $(CFLAGS) -mcpu=$(CPU) $< -o $@
 
 $(BUILD_DIR)/mux_tx.S: mux_tx.pk Makefile
+	$(CAKE_COMPILER) --target=arm8 --pancake < $< > $@
+
+$(BUILD_DIR)/mux_rx.o: $(BUILD_DIR)/mux_rx.S Makefile
+	$(CC) -c $(CFLAGS) -mcpu=$(CPU) $< -o $@
+
+$(BUILD_DIR)/mux_rx.S: mux_rx.pk Makefile
 	$(CAKE_COMPILER) --target=arm8 --pancake < $< > $@
 
 $(BUILD_DIR)/%.o: %.c Makefile
