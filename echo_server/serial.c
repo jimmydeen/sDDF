@@ -8,6 +8,8 @@
 #include <sel4/sel4.h>
 #include "serial.h"
 #include "shared_ringbuffer.h"
+#include "imx_dma.h"
+#include "sdma.h"
 
 #define BIT(nr) (1UL << (nr))
 
@@ -17,6 +19,18 @@
 #define RX_CH  10
 #define INIT   4
 
+/* DMA Variables */
+/* Array to map SDMA instance number to base pointer. */
+static uintptr_t *const s_sdmaBases[] = SDMAARM_BASE_PTRS;
+
+/*! @brief channel 0 Channel control blcok */
+AT_NONCACHEABLE_SECTION_ALIGN(
+    static sdma_channel_control_t s_SDMACCB[FSL_FEATURE_SOC_SDMA_COUNT][FSL_FEATURE_SDMA_MODULE_CHANNEL], 4);
+
+/*! @brief channel 0 buffer descriptor */
+AT_NONCACHEABLE_SECTION_ALIGN(
+    static sdma_buffer_descriptor_t s_SDMABD[FSL_FEATURE_SOC_SDMA_COUNT][FSL_FEATURE_SDMA_MODULE_CHANNEL], 4);
+
 /* Memory regions. These all have to be here to keep compiler happy */
 // Ring handle components
 uintptr_t rx_avail;
@@ -25,9 +39,9 @@ uintptr_t tx_avail;
 uintptr_t tx_used;
 uintptr_t shared_dma_vaddr;
 uintptr_t shared_dma_paddr;
-// Base of the uart registers
+// Base of the uart and dma controller registers 
 uintptr_t uart_base;
-
+uintptr_t dma_controller;
 /* Pointers to shared_ringbuffers */
 ring_handle_t rx_ring;
 ring_handle_t tx_ring;
@@ -35,6 +49,27 @@ ring_handle_t tx_ring;
 // Global serial_driver variable
 
 struct serial_driver global_serial_driver = {0};
+
+/* Functions to enable and disable DMA */
+void serial_enable_dma() {
+    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
+
+    // regs->cr1 |= UCR1_RXDMAEN | UCR1_TXDMAEN | UCR1_ATDMAEN;
+    // Only enabling dma for tx for now
+    regs->cr1 |= UCR1_TXDMAEN;
+
+    return;
+}
+
+void serial_disable_dma() {
+    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
+
+    // regs->cr1 &= ~(UCR1_RXDMAEN | UCR1_TXDMAEN | UCR1_ATDMAEN);
+    // Only enabling dma for tx for now
+    regs->cr1 &= ~(UCR1_TXDMAEN);
+
+    return;
+}
 
 /*
  * BaudRate = RefFreq / (16 * (BMR + 1)/(BIR + 1) )
@@ -280,6 +315,110 @@ void init_post() {
     
     // Redundant right now, as a channel has not been set up for init calls
     // sel4cp_notify(INIT);
+}
+
+static uint32_t SDMA_GetInstance(SDMAARM_Type *base)
+{
+    uint32_t instance;
+
+    /* Find the instance index from base address mappings. */
+    for (instance = 0; instance < ARRAY_SIZE(s_sdmaBases); instance++)
+    {
+        if (s_sdmaBases[instance] == base)
+        {
+            break;
+        }
+    }
+
+    if (instance < ARRAY_SIZE(s_sdmaBases)) {
+        sel4cp_dbg_puts("Instance is less than array size\n");
+    }
+
+    return instance;
+}
+
+void SDMA_ResetModule(SDMAARM_Type *base)
+{
+    uint32_t i = 0, status;
+
+    base->MC0PTR = 0;
+    status       = base->INTR;
+    SDMA_ClearChannelInterruptStatus(base, status);
+    status = base->STOP_STAT;
+    SDMA_ClearChannelStopStatus(base, status);
+    base->EVTOVR  = 0;
+    base->DSPOVR  = 0xFFFFFFFFU;
+    base->HOSTOVR = 0;
+    status        = base->EVTPEND;
+    SDMA_ClearChannelPendStatus(base, status);
+    base->INTRMASK = 0;
+
+    /* Disable all events */
+    for (i = 0; i < (uint32_t)FSL_FEATURE_SDMA_EVENT_NUM; i++)
+    {
+        SDMA_SetSourceChannel(base, i, 0);
+    }
+
+    /* Clear all channel priority */
+    for (i = 0; i < (uint32_t)FSL_FEATURE_SDMA_MODULE_CHANNEL; i++)
+    {
+        SDMA_SetChannelPriority(base, i, 0);
+    }
+}
+
+
+void init_dma(SDMAARM_Type *base, sdma_config_t *config) {
+    // SDMA_init from imx8mm sdk
+
+    uint32_t tmpreg;
+    // See comment in SDMA_GetInstance Function. NEED TO UNDERSTAND WHAT THE INSTANCE INDEX IS
+
+    /* This is an instance within a Channel Control Block. */
+    uint32_t instance = SDMA_GetInstance(dma_controller);
+
+    // Clear the channel Channel Control Block (CCB) for channel 0
+    (void)memset(&s_SDMACCB[instance][0], 0,
+                sizeof(sdma_channel_control_t) * (uint32_t)FSL_FEATURE_SDMA_MODULE_CHANNEL);
+
+    // Reset all sDMA registers
+    SDMA_ResetModule(dma_controller);
+
+    // Init the CCB for channel 0
+
+    /* Channel 0 is the boot channel. It holds a pointer to the array of buffer descriptors*/
+
+    (void)memset(&s_SDMACCB[instance][0], 0,
+                sizeof(sdma_channel_control_t));
+
+    // Setting channel 0's CCB to have a pointer to the array of buffer descriptors (BD)
+    s_SDMACCB[instance][0].currentBDAddr = (uint32_t)(&s_SDMABD[instance][0]);
+    s_SDMACCB[instance][0].baseBDAddr    = (uint32_t)(&s_SDMABD[instance][0]);
+
+    // Set the priority of channel 0
+    SDMA_SetChannelPriority(dma_controller, 0, 7U);
+
+    /* Set channel 0 ownership */
+    base->HOSTOVR = 0U;
+    base->EVTOVR  = 1U;
+
+    /* Configure SDMA peripheral according to the configuration structure. */
+    tmpreg = base->CONFIG;
+    tmpreg &= ~(SDMAARM_CONFIG_ACR_MASK | SDMAARM_CONFIG_RTDOBS_MASK | SDMAARM_CONFIG_CSM_MASK);
+    /* Channel 0 shall use static context switch method */
+    tmpreg |= (SDMAARM_CONFIG_ACR(config->ratio) | SDMAARM_CONFIG_RTDOBS(config->enableRealTimeDebugPin) |
+               SDMAARM_CONFIG_CSM(0U));
+    base->CONFIG = tmpreg;
+
+    tmpreg = base->SDMA_LOCK;
+    tmpreg &= ~SDMAARM_SDMA_LOCK_SRESET_LOCK_CLR_MASK;
+    tmpreg |= SDMAARM_SDMA_LOCK_SRESET_LOCK_CLR(config->isSoftwareResetClearLock);
+    base->SDMA_LOCK = tmpreg;
+
+    /* Set the context size to 32 bytes */
+    base->CHN0ADDR = 0x4050U;
+
+    base->MC0PTR                         = (uint32_t)(&s_SDMACCB[instance][0]);
+
 }
 
 // Init function required by CP for every PD
