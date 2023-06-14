@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <system>
     <memory_region name="uart" size="0x10_000" phys_addr="0x30890000" />
-
+    <memory_region name="dma_controller" size="0x10_000" phys_addr="0x30bd0000" />
+    <memory_region name="core_controller" size="0x100_000" phys_addr="0xe000e000" />
     <memory_region name="shared_dma" size="0x200_000" page_size="0x200_000" />
-
     <!-- shared memory for ring buffer mechanism : serial -->
     <memory_region name="rx_avail_serial" size="0x200_000" page_size="0x200_000"/>
     <memory_region name="rx_used_serial" size="0x200_000" page_size="0x200_000"/>
@@ -14,7 +14,9 @@
         <program_image path="serial.elf" />
 
         <map mr="uart" vaddr="0x5_000_000" perms="rw" cached="false" setvar_vaddr="uart_base" />
-        
+        <map mr="dma_controller" vaddr="0x5_100_000" perms="rw" cached="false" setvar_vaddr="dma_controller" />
+        <map mr="core_controller" vaddr="0x5_200_000" perms="rw" cached="false" setvar_vaddr="core_controller" />
+
         <!-- shared memory for ring buffer mechanism -->
         <map mr="rx_avail_serial" vaddr="0x4_000_000" perms="rw" cached="true" setvar_vaddr="rx_avail" />
         <map mr="rx_used_serial" vaddr="0x4_200_000" perms="rw" cached="true" setvar_vaddr="rx_used" />

@@ -30,6 +30,7 @@ AS := $(TOOLCHAIN)-as
 SEL4CP_TOOL ?= $(SEL4CP_SDK)/bin/sel4cp
 
 RINGBUFFERDIR=libsharedringbuffer
+SDMAAPIDIR=sDMA_api
 
 BOARD_DIR := $(SEL4CP_SDK)/board/$(SEL4CP_BOARD)/$(SEL4CP_CONFIG)
 
@@ -44,8 +45,9 @@ REPORT_FILE = $(BUILD_DIR)/report.txt
 CFLAGS += -I$(BOARD_DIR)/include \
 	-Iinclude	\
 	-I$(RINGBUFFERDIR)/include \
+	-I$(SDMAAPIDIR)/include \
 
-SERIAL_OBJS := serial.o libsharedringbuffer/shared_ringbuffer.o
+SERIAL_OBJS := serial.o libsharedringbuffer/shared_ringbuffer.o sDMA_api/sdma.o
 SERIAL_SERVER_OBJS := serial_server.o libsharedringbuffer/shared_ringbuffer.o
 all: directories $(IMAGE_FILE)
 
@@ -72,6 +74,7 @@ $(IMAGE_FILE) $(REPORT_FILE): $(addprefix $(BUILD_DIR)/, $(IMAGES)) serial.syste
 #Make the Directories
 directories:
 	$(info $(shell mkdir -p $(BUILD_DIR)/libsharedringbuffer))	\
+	$(info $(shell mkdir -p $(BUILD_DIR)/sDMA_api))	\
 
 clean:
 	rm -f *.o *.elf .depend*

@@ -6,8 +6,12 @@
 #include <stdint.h>
 #include <sel4cp.h>
 #include <sel4/sel4.h>
+#include "string.h"
 #include "serial.h"
 #include "shared_ringbuffer.h"
+#include "sDMA_api/include/sdma.h"
+#include "nvic.h"
+#include "uart_reg_masks.h"
 
 #define BIT(nr) (1UL << (nr))
 
@@ -16,6 +20,14 @@
 #define TX_CH  8
 #define RX_CH  10
 #define INIT   4
+
+AT_NONCACHEABLE_SECTION_ALIGN(sdma_context_data_t context_Tx, 4);
+AT_NONCACHEABLE_SECTION_ALIGN(sdma_context_data_t context_Rx, 4);
+
+AT_NONCACHEABLE_SECTION_ALIGN(uart_sdma_handle_t g_uartSdmaHandle, 4);
+AT_NONCACHEABLE_SECTION_ALIGN(sdma_handle_t g_uartTxSdmaHandle, 4);
+AT_NONCACHEABLE_SECTION_ALIGN(sdma_handle_t g_uartRxSdmaHandle, 4);
+
 
 /* Memory regions. These all have to be here to keep compiler happy */
 // Ring handle components
@@ -27,6 +39,7 @@ uintptr_t shared_dma_vaddr;
 uintptr_t shared_dma_paddr;
 // Base of the uart registers
 uintptr_t uart_base;
+uintptr_t dma_controller;
 
 /* Pointers to shared_ringbuffers */
 ring_handle_t rx_ring;
@@ -35,6 +48,519 @@ ring_handle_t tx_ring;
 // Global serial_driver variable
 
 struct serial_driver global_serial_driver = {0};
+
+/* fsl_uart_sdma.c from imx8mm sdk*/
+
+/*!
+ * brief Enables UART interrupts according to the provided mask.
+ *
+ * This function enables the UART interrupts according to the provided mask. The mask
+ * is a logical OR of enumeration members. See ref _uart_interrupt_enable.
+ * For example, to enable TX empty interrupt and RX data ready interrupt, do the following.
+ * code
+ *     UART_EnableInterrupts(UART1,kUART_TxEmptyEnable | kUART_RxDataReadyEnable);
+ * endcode
+ *
+ * param base UART peripheral base address.
+ * param mask The interrupts to enable. Logical OR of ref _uart_interrupt_enable.
+ */
+void UART_EnableInterrupts(imx_uart_regs_t *base, uint32_t mask)
+{
+
+    if ((0X3FU & mask) != 0U)
+    {
+        base->cr1 |= ((mask << UART_UCR1_ADEN_SHIFT) & UART_UCR1_ADEN_MASK) |
+                      (((mask >> 1) << UART_UCR1_TRDYEN_SHIFT) & UART_UCR1_TRDYEN_MASK) |
+                      (((mask >> 2) << UART_UCR1_IDEN_SHIFT) & UART_UCR1_IDEN_MASK) |
+                      (((mask >> 3) << UART_UCR1_RRDYEN_SHIFT) & UART_UCR1_RRDYEN_MASK) |
+                      (((mask >> 4) << UART_UCR1_TXMPTYEN_SHIFT) & UART_UCR1_TXMPTYEN_MASK) |
+                      (((mask >> 5) << UART_UCR1_RTSDEN_SHIFT) & UART_UCR1_RTSDEN_MASK);
+    }
+    if ((0X700U & mask) != 0U)
+    {
+        base->cr1 |= (((mask >> 8) << UART_UCR2_ESCI_SHIFT) & UART_UCR2_ESCI_MASK) |
+                      (((mask >> 9) << UART_UCR2_RTSEN_SHIFT) & UART_UCR2_RTSEN_MASK) |
+                      (((mask >> 10) << UART_UCR2_ATEN_SHIFT) & UART_UCR2_ATEN_MASK);
+    }
+    if ((0x3FF000U & mask) != 0U)
+    {
+        base->cr1 |= (((mask >> 12) << UART_UCR3_DTREN_SHIFT) & UART_UCR3_DTREN_MASK) |
+                      (((mask >> 13) << UART_UCR3_PARERREN_SHIFT) & UART_UCR3_PARERREN_MASK) |
+                      (((mask >> 14) << UART_UCR3_FRAERREN_SHIFT) & UART_UCR3_FRAERREN_MASK) |
+                      (((mask >> 15) << UART_UCR3_DCD_SHIFT) & UART_UCR3_DCD_MASK) |
+                      (((mask >> 16) << UART_UCR3_RI_SHIFT) & UART_UCR3_RI_MASK) |
+                      (((mask >> 17) << UART_UCR3_RXDSEN_SHIFT) & UART_UCR3_RXDSEN_MASK) |
+                      (((mask >> 18) << UART_UCR3_AIRINTEN_SHIFT) & UART_UCR3_AIRINTEN_MASK) |
+                      (((mask >> 19) << UART_UCR3_AWAKEN_SHIFT) & UART_UCR3_AWAKEN_MASK) |
+                      (((mask >> 20) << UART_UCR3_DTRDEN_SHIFT) & UART_UCR3_DTRDEN_MASK) |
+                      (((mask >> 21) << UART_UCR3_ACIEN_SHIFT) & UART_UCR3_ACIEN_MASK);
+    }
+    if ((0x7F000000U & mask) != 0U)
+    {
+        base->cr4 |= (((mask >> 24) << UART_UCR4_ENIRI_SHIFT) & UART_UCR4_ENIRI_MASK) |
+                      (((mask >> 25) << UART_UCR4_WKEN_SHIFT) & UART_UCR4_WKEN_MASK) |
+                      (((mask >> 26) << UART_UCR4_TCEN_SHIFT) & UART_UCR4_TCEN_MASK) |
+                      (((mask >> 27) << UART_UCR4_BKEN_SHIFT) & UART_UCR4_BKEN_MASK) |
+                      (((mask >> 28) << UART_UCR4_OREN_SHIFT) & UART_UCR4_OREN_MASK) |
+                      (((mask >> 29) << UART_UCR4_DREN_SHIFT) & UART_UCR4_DREN_MASK) |
+                      (((mask >> 30) << UART_UCR4_IDDMAEN_SHIFT) & UART_UCR4_IDDMAEN_MASK);
+    }
+}
+
+/*!
+ * brief Disables the UART interrupts according to the provided mask.
+ *
+ * This function disables the UART interrupts according to the provided mask. The mask
+ * is a logical OR of enumeration members. See ref _uart_interrupt_enable.
+ * For example, to disable TX empty interrupt and RX data ready interrupt do the following.
+ * code
+ *     UART_EnableInterrupts(UART1,kUART_TxEmptyEnable | kUART_RxDataReadyEnable);
+ * endcode
+ *
+ * param base UART peripheral base address.
+ * param mask The interrupts to disable. Logical OR of ref _uart_interrupt_enable.
+ */
+void UART_DisableInterrupts(imx_uart_regs_t *base, uint32_t mask)
+{
+
+    if ((0X3FU & mask) != 0U)
+    {
+        base->cr1 &= ~(((mask << UART_UCR1_ADEN_SHIFT) & UART_UCR1_ADEN_MASK) |
+                        (((mask >> 1) << UART_UCR1_TRDYEN_SHIFT) & UART_UCR1_TRDYEN_MASK) |
+                        (((mask >> 2) << UART_UCR1_IDEN_SHIFT) & UART_UCR1_IDEN_MASK) |
+                        (((mask >> 3) << UART_UCR1_RRDYEN_SHIFT) & UART_UCR1_RRDYEN_MASK) |
+                        (((mask >> 4) << UART_UCR1_TXMPTYEN_SHIFT) & UART_UCR1_TXMPTYEN_MASK) |
+                        (((mask >> 5) << UART_UCR1_RTSDEN_SHIFT) & UART_UCR1_RTSDEN_MASK));
+    }
+    if ((0X700U & mask) != 0U)
+    {
+        base->cr2 &= ~((((mask >> 8) << UART_UCR2_ESCI_SHIFT) & UART_UCR2_ESCI_MASK) |
+                        (((mask >> 9) << UART_UCR2_RTSEN_SHIFT) & UART_UCR2_RTSEN_MASK) |
+                        (((mask >> 10) << UART_UCR2_ATEN_SHIFT) & UART_UCR2_ATEN_MASK));
+    }
+    if ((0x3FF000U & mask) != 0U)
+    {
+        base->cr3 &= ~((((mask >> 12) << UART_UCR3_DTREN_SHIFT) & UART_UCR3_DTREN_MASK) |
+                        (((mask >> 13) << UART_UCR3_PARERREN_SHIFT) & UART_UCR3_PARERREN_MASK) |
+                        (((mask >> 14) << UART_UCR3_FRAERREN_SHIFT) & UART_UCR3_FRAERREN_MASK) |
+                        (((mask >> 15) << UART_UCR3_DCD_SHIFT) & UART_UCR3_DCD_MASK) |
+                        (((mask >> 16) << UART_UCR3_RI_SHIFT) & UART_UCR3_RI_MASK) |
+                        (((mask >> 17) << UART_UCR3_RXDSEN_SHIFT) & UART_UCR3_RXDSEN_MASK) |
+                        (((mask >> 18) << UART_UCR3_AIRINTEN_SHIFT) & UART_UCR3_AIRINTEN_MASK) |
+                        (((mask >> 19) << UART_UCR3_AWAKEN_SHIFT) & UART_UCR3_AWAKEN_MASK) |
+                        (((mask >> 20) << UART_UCR3_DTRDEN_SHIFT) & UART_UCR3_DTRDEN_MASK) |
+                        (((mask >> 21) << UART_UCR3_ACIEN_SHIFT) & UART_UCR3_ACIEN_MASK));
+    }
+    if ((0x7F000000U & mask) != 0U)
+    {
+        base->cr4 &= ~((((mask >> 24) << UART_UCR4_ENIRI_SHIFT) & UART_UCR4_ENIRI_MASK) |
+                        (((mask >> 25) << UART_UCR4_WKEN_SHIFT) & UART_UCR4_WKEN_MASK) |
+                        (((mask >> 26) << UART_UCR4_TCEN_SHIFT) & UART_UCR4_TCEN_MASK) |
+                        (((mask >> 27) << UART_UCR4_BKEN_SHIFT) & UART_UCR4_BKEN_MASK) |
+                        (((mask >> 28) << UART_UCR4_OREN_SHIFT) & UART_UCR4_OREN_MASK) |
+                        (((mask >> 29) << UART_UCR4_DREN_SHIFT) & UART_UCR4_DREN_MASK) |
+                        (((mask >> 30) << UART_UCR4_IDDMAEN_SHIFT) & UART_UCR4_IDDMAEN_MASK));
+    }
+}
+
+/*!
+ * @brief Enables or disables the UART transmitter DMA request.
+ *
+ * This function enables or disables the transmit request when the transmitter
+ * has one or more slots available in the TxFIFO. The fill level in the TxFIFO
+ * that generates the DMA request is controlled by the TXTL bits.
+ *
+ * @param base UART peripheral base address.
+ * @param enable True to enable, false to disable.
+ */
+void UART_EnableTxDMA(imx_uart_regs_t *base, bool enable)
+{
+    if (enable)
+    {
+        base->cr1 |= UCR1_TXDMAEN;
+    }
+    else
+    {
+        base->cr1 &= ~UCR1_TXDMAEN;
+    }
+}
+
+/*!
+ * @brief Enables or disables the UART receiver DMA request.
+ *
+ * This function enables or disables the receive request when the receiver
+ * has data in the RxFIFO. The fill level in the RxFIFO at which a DMA request
+ * is generated is controlled by the RXTL bits .
+ *
+ * @param base UART peripheral base address.
+ * @param enable True to enable, false to disable.
+ */
+void UART_EnableRxDMA(imx_uart_regs_t *base, bool enable)
+{
+    if (enable)
+    {
+        base->cr1 |= UCR1_RXDMAEN;
+    }
+    else
+    {
+        base->cr1 &= ~UCR1_RXDMAEN;
+    }
+}
+
+/* UART user callback */
+void UART_UserCallback(imx_uart_regs_t *base, uart_sdma_handle_t *handle, int32_t status, void *userData)
+{
+    // userData = userData;
+
+    // if (kStatus_UART_TxIdle == status)
+    // {
+    //     txBufferFull = false;
+    //     txOnGoing    = false;
+    // }
+
+    // if (kStatus_UART_RxIdle == status)
+    // {
+    //     rxBufferEmpty = false;
+    //     rxOnGoing     = false;
+    // }
+    sel4cp_dbg_puts("We are in the uart user callback\n");
+}
+
+
+/*<! Structure definition for uart_sdma_private_handle_t. The structure is private. */
+typedef struct _uart_sdma_private_handle
+{
+    imx_uart_regs_t *base;
+    uart_sdma_handle_t *handle;
+} uart_sdma_private_handle_t;
+
+/* UART SDMA transfer handle. */
+enum _uart_sdma_tansfer_states
+{
+    kUART_TxIdle, /* TX idle. */
+    kUART_TxBusy, /* TX busy. */
+    kUART_RxIdle, /* RX idle. */
+    kUART_RxBusy  /* RX busy. */
+};
+
+/*******************************************************************************
+ * Variables
+ ******************************************************************************/
+
+/*<! Private handle only used for internally. */
+static uart_sdma_private_handle_t s_sdmaPrivateHandle[1];
+
+/*******************************************************************************
+ * Prototypes
+ ******************************************************************************/
+
+/*!
+ * @brief UART SDMA send finished callback function.
+ *
+ * This function is called when UART SDMA send finished. It disables the UART
+ * TX SDMA request and sends @ref kStatus_UART_TxIdle to UART callback.
+ *
+ * @param handle The SDMA handle.
+ * @param param Callback function parameter.
+ */
+static void UART_SendSDMACallback(sdma_handle_t *handle, void *param, bool transferDone, uint32_t tcds);
+
+/*!
+ * @brief UART SDMA receive finished callback function.
+ *
+ * This function is called when UART SDMA receive finished. It disables the UART
+ * RX SDMA request and sends @ref kStatus_UART_RxIdle to UART callback.
+ *
+ * @param handle The SDMA handle.
+ * @param param Callback function parameter.
+ */
+static void UART_ReceiveSDMACallback(sdma_handle_t *handle, void *param, bool transferDone, uint32_t tcds);
+
+/*******************************************************************************
+ * Code
+ ******************************************************************************/
+
+static void UART_SendSDMACallback(sdma_handle_t *handle, void *param, bool transferDone, uint32_t tcds)
+{
+    // assert(param != NULL);
+
+    uart_sdma_private_handle_t *uartPrivateHandle = (uart_sdma_private_handle_t *)param;
+
+    if (transferDone)
+    {
+        /* Disable UART TX SDMA. */
+        UART_EnableTxDMA(uartPrivateHandle->base, false);
+
+        /* Stop transfer. */
+        SDMA_AbortTransfer(handle);
+
+        /* Enable tx empty interrupt */
+        UART_EnableInterrupts(uartPrivateHandle->base, (uint32_t)kUART_TxEmptyEnable);
+    }
+}
+
+static void UART_ReceiveSDMACallback(sdma_handle_t *handle, void *param, bool transferDone, uint32_t tcds)
+{
+    // assert(param != NULL);
+
+    uart_sdma_private_handle_t *uartPrivateHandle = (uart_sdma_private_handle_t *)param;
+
+    if (transferDone)
+    {
+        /* Disable transfer. */
+        UART_TransferAbortReceiveSDMA(uartPrivateHandle->base, uartPrivateHandle->handle);
+
+        if (uartPrivateHandle->handle->callback != NULL)
+        {
+            uartPrivateHandle->handle->callback(uartPrivateHandle->base, uartPrivateHandle->handle, kStatus_UART_RxIdle,
+                                                uartPrivateHandle->handle->userData);
+        }
+    }
+}
+
+/*!
+ * brief Initializes the UART handle which is used in transactional functions.
+ * param base UART peripheral base address.
+ * param handle Pointer to the uart_sdma_handle_t structure.
+ * param callback UART callback, NULL means no callback.
+ * param userData User callback function data.
+ * param rxSdmaHandle User-requested DMA handle for RX DMA transfer.
+ * param txSdmaHandle User-requested DMA handle for TX DMA transfer.
+ * param eventSourceTx Eventsource for TX DMA transfer.
+ * param eventSourceRx Eventsource for RX DMA transfer.
+ */
+void UART_TransferCreateHandleSDMA(imx_uart_regs_t *base,
+                                   uart_sdma_handle_t *handle,
+                                   uart_sdma_transfer_callback_t callback,
+                                   void *userData,
+                                   sdma_handle_t *txSdmaHandle,
+                                   sdma_handle_t *rxSdmaHandle,
+                                   uint32_t eventSourceTx,
+                                   uint32_t eventSourceRx)
+{
+    // assert(handle != NULL);
+
+    // We are currently only using UART1. No other UART instances will be running
+    uint32_t instance = 1;
+
+    (void)memset(handle, 0, sizeof(*handle));
+
+    handle->rxState = (uint8_t)kUART_RxIdle;
+    handle->txState = (uint8_t)kUART_TxIdle;
+
+    if (rxSdmaHandle != NULL)
+    {
+        rxSdmaHandle->eventSource = eventSourceRx;
+    }
+
+    if (txSdmaHandle != NULL)
+    {
+        txSdmaHandle->eventSource = eventSourceTx;
+    }
+
+    handle->rxSdmaHandle = rxSdmaHandle;
+    handle->txSdmaHandle = txSdmaHandle;
+
+    handle->callback = callback;
+    handle->userData = userData;
+
+    s_sdmaPrivateHandle[instance].base = base;
+    s_sdmaPrivateHandle[instance].handle = handle;
+
+    /* Enable interrupt in NVIC. */
+    (void)EnableIRQ(UART1_IRQn);
+
+    /* Configure TX. */
+    if (txSdmaHandle != NULL)
+    {
+        SDMA_SetCallback(handle->txSdmaHandle, UART_SendSDMACallback, &s_sdmaPrivateHandle[instance]);
+    }
+
+    /* Configure RX. */
+    if (rxSdmaHandle != NULL)
+    {
+        SDMA_SetCallback(handle->rxSdmaHandle, UART_ReceiveSDMACallback, &s_sdmaPrivateHandle[instance]);
+    }
+}
+
+/*!
+ * brief Sends data using sDMA.
+ *
+ * This function sends data using sDMA. This is a non-blocking function, which returns
+ * right away. When all data is sent, the send callback function is called.
+ *
+ * param base UART peripheral base address.
+ * param handle UART handle pointer.
+ * param xfer UART sDMA transfer structure. See #uart_transfer_t.
+ * retval kStatus_Success if succeeded; otherwise failed.
+ * retval kStatus_UART_TxBusy Previous transfer ongoing.
+ * retval kStatus_InvalidArgument Invalid argument.
+ */
+int32_t UART_SendSDMA(imx_uart_regs_t *base, uart_sdma_handle_t *handle, uart_transfer_t *xfer)
+{
+    // assert(handle != NULL);
+    // assert(handle->txSdmaHandle != NULL);
+    // assert(xfer != NULL);
+    // assert(xfer->data != NULL);
+    // assert(xfer->dataSize != 0U);
+
+    sdma_transfer_config_t xferConfig = {0U};
+    int32_t status;
+    sdma_peripheral_t perType = kSDMA_PeripheralTypeUART;
+
+    /* If previous TX not finished. */
+    if ((uint8_t)kUART_TxBusy == handle->txState)
+    {
+        status = kStatus_UART_TxBusy;
+    }
+    else
+    {
+        handle->txState = (uint8_t)kUART_TxBusy;
+        handle->txDataSizeAll = xfer->dataSize;
+
+        sdma_handle_t *txSdmaHandle = handle->txSdmaHandle;
+
+        /* Prepare transfer. */
+        SDMA_PrepareTransfer(&xferConfig, (uint32_t)xfer->data, (uint32_t) & (base->txd), sizeof(uint8_t),
+                             sizeof(uint8_t), sizeof(uint8_t), (uint32_t)xfer->dataSize,
+                             txSdmaHandle->eventSource, perType, kSDMA_MemoryToPeripheral);
+
+        /* Submit transfer. */
+        SDMA_SubmitTransfer(handle->txSdmaHandle, &xferConfig);
+
+        SDMA_StartTransfer(handle->txSdmaHandle);
+
+        /* Enable UART TX SDMA. */
+        UART_EnableTxDMA(base, true);
+        status = kStatus_Success;
+    }
+
+    return status;
+}
+
+/*!
+ * brief Receives data using sDMA.
+ *
+ * This function receives data using sDMA. This is a non-blocking function, which returns
+ * right away. When all data is received, the receive callback function is called.
+ *
+ * param base UART peripheral base address.
+ * param handle Pointer to the uart_sdma_handle_t structure.
+ * param xfer UART sDMA transfer structure. See #uart_transfer_t.
+ * retval kStatus_Success if succeeded; otherwise failed.
+ * retval kStatus_UART_RxBusy Previous transfer ongoing.
+ * retval kStatus_InvalidArgument Invalid argument.
+ */
+int32_t UART_ReceiveSDMA(imx_uart_regs_t *base, uart_sdma_handle_t *handle, uart_transfer_t *xfer)
+{
+    // assert(handle != NULL);
+    // assert(handle->rxSdmaHandle != NULL);
+    // assert(xfer != NULL);
+    // assert(xfer->data != NULL);
+    // assert(xfer->dataSize != 0U);
+
+    sdma_transfer_config_t xferConfig = {0U};
+    int32_t status;
+    sdma_peripheral_t perType = kSDMA_PeripheralTypeUART;
+
+    /* If previous RX not finished. */
+    if ((uint8_t)kUART_RxBusy == handle->rxState)
+    {
+        status = kStatus_UART_RxBusy;
+    }
+    else
+    {
+        handle->rxState = (uint8_t)kUART_RxBusy;
+        handle->rxDataSizeAll = xfer->dataSize;
+
+        sdma_handle_t *rxSdmaHandle = handle->rxSdmaHandle;
+
+        /* Prepare transfer. */
+        SDMA_PrepareTransfer(&xferConfig, (uint32_t) & (base->rxd), (uint32_t)xfer->data, sizeof(uint8_t),
+                             sizeof(uint8_t), sizeof(uint8_t), (uint32_t)xfer->dataSize,
+                             rxSdmaHandle->eventSource, perType, kSDMA_PeripheralToMemory);
+
+        /* Submit transfer. */
+        SDMA_SubmitTransfer(handle->rxSdmaHandle, &xferConfig);
+
+        SDMA_StartTransfer(handle->rxSdmaHandle);
+
+        /* Enable UART RX SDMA. */
+        UART_EnableRxDMA(base, true);
+
+        status = kStatus_Success;
+    }
+
+    return status;
+}
+
+/*!
+ * brief Aborts the sent data using sDMA.
+ *
+ * This function aborts sent data using sDMA.
+ *
+ * param base UART peripheral base address.
+ * param handle Pointer to the uart_sdma_handle_t structure.
+ */
+void UART_TransferAbortSendSDMA(imx_uart_regs_t *base, uart_sdma_handle_t *handle)
+{
+    // assert(handle != NULL);
+    // assert(handle->txSdmaHandle != NULL);
+
+    /* Disable UART TX SDMA. */
+    UART_EnableTxDMA(base, false);
+
+    /* Stop transfer. */
+    SDMA_AbortTransfer(handle->txSdmaHandle);
+
+    handle->txState = (uint8_t)kUART_TxIdle;
+}
+
+/*!
+ * brief Aborts the receive data using sDMA.
+ *
+ * This function aborts receive data using sDMA.
+ *
+ * param base UART peripheral base address.
+ * param handle Pointer to the uart_sdma_handle_t structure.
+ */
+void UART_TransferAbortReceiveSDMA(imx_uart_regs_t *base, uart_sdma_handle_t *handle)
+{
+    // assert(handle != NULL);
+    // assert(handle->rxSdmaHandle != NULL);
+
+    /* Disable UART RX SDMA. */
+    UART_EnableRxDMA(base, false);
+
+    /* Stop transfer. */
+    SDMA_AbortTransfer(handle->rxSdmaHandle);
+
+    handle->rxState = (uint8_t)kUART_RxIdle;
+}
+
+/*!
+ * brief UART IRQ handle function.
+ *
+ * This function handles the UART transmit complete IRQ request and invoke user callback.
+ *
+ * param base UART peripheral base address.
+ * param uartSdmaHandle UART handle pointer.
+ */
+void UART_TransferSdmaHandleIRQ(imx_uart_regs_t *base, void *uartSdmaHandle)
+{
+    // assert(uartSdmaHandle != NULL);
+
+    uart_sdma_handle_t *handle = (uart_sdma_handle_t *)uartSdmaHandle;
+    handle->txState = (uint8_t)kUART_TxIdle;
+
+    /* Disable tx empty interrupt */
+    UART_DisableInterrupts(base, (uint32_t)kUART_TxEmptyEnable);
+
+    if (handle->callback != NULL)
+    {
+        handle->callback(base, handle, kStatus_UART_TxIdle, handle->userData);
+    }
+}
 
 /*
  * BaudRate = RefFreq / (16 * (BMR + 1)/(BIR + 1) )
@@ -293,6 +819,7 @@ void init(void) {
     init_post();
 
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
+    SDMAARM_Type *base = (SDMAARM_Type *) dma_controller;
 
     // Software reset results in failed uart init, not too sure why
     /* Software reset */
@@ -327,6 +854,26 @@ void init(void) {
     regs->cr1 |= UART_CR1_RRDYEN;                /* Enable recv interrupt.            */
 
     sel4cp_dbg_puts("Enabled the uart, init the ring buffers\n");
+
+    sel4cp_dbg_puts("Attempting to init the sdma controller\n");
+
+    sdma_config_t sdmaConfig;
+    sdma_handle_t xfer;
+
+    /* Init the SDMA module */
+    SDMA_GetDefaultConfig(&sdmaConfig);
+    SDMA_Init(base, &sdmaConfig);
+    SDMA_CreateHandle(&g_uartTxSdmaHandle, base, UART_TX_DMA_CHANNEL, &context_Tx);
+    SDMA_CreateHandle(&g_uartRxSdmaHandle, base, UART_RX_DMA_CHANNEL, &context_Rx);
+    SDMA_SetChannelPriority(base, UART_TX_DMA_CHANNEL, 3U);
+    SDMA_SetChannelPriority(base, UART_RX_DMA_CHANNEL, 4U);
+    
+/* Create UART DMA handle. */
+    UART_TransferCreateHandleSDMA(regs, &g_uartSdmaHandle, UART_UserCallback, NULL, &g_uartTxSdmaHandle,
+                                  &g_uartRxSdmaHandle, UART_TX_DMA_REQUEST, UART_RX_DMA_REQUEST);
+
+    sel4cp_dbg_puts("Finished initing the sdma controller\n");
+
 
 }
 
