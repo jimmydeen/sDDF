@@ -49,6 +49,22 @@ ring_handle_t tx_ring;
 
 struct serial_driver global_serial_driver = {0};
 
+static uintptr_t 
+getPhysAddr(uintptr_t virtual)
+{
+    uint64_t offset = virtual - shared_dma_vaddr;
+    uintptr_t phys;
+
+    if (offset < 0) {
+        print("getPhysAddr: offset < 0");
+        return 0;
+    }
+
+    phys = shared_dma_paddr + offset;
+    return phys;
+}
+
+
 /* fsl_uart_sdma.c from imx8mm sdk*/
 
 /*!
@@ -341,7 +357,7 @@ void UART_TransferCreateHandleSDMA(imx_uart_regs_t *base,
     // assert(handle != NULL);
 
     // We are currently only using UART1. No other UART instances will be running
-    uint32_t instance = 1;
+    uint32_t instance = 0;
 
     (void)memset(handle, 0, sizeof(*handle));
 
@@ -706,6 +722,15 @@ raw_tx(char *phys, unsigned int len, void *cookie)
     }
 }
 
+static void raw_tx_dma(char *phys, unsigned int len, void *cookie) {
+    uart_transfer_t xfer;
+
+    // Might need to change this to a physical address
+    xfer.data     =  getPhysAddr(phys);
+    xfer.dataSize = len;
+    UART_SendSDMA((imx_uart_regs_t *) uart_base, &g_uartSdmaHandle, &xfer);
+}
+
 void handle_tx() {
     sel4cp_dbg_puts("In the handle tx func\n");
     uintptr_t buffer = 0;
@@ -718,7 +743,7 @@ void handle_tx() {
         // Buffer cointaining the bytes to write to serial
         char *phys = (char * )buffer;
         // Handle the tx
-        raw_tx(phys, len, cookie);
+        raw_tx_dma(phys, len, cookie);
         // Then enqueue this buffer back into the available queue, so that it can be collected and reused by the server
         enqueue_avail(&tx_ring, buffer, len, &cookie);
     }
@@ -858,7 +883,6 @@ void init(void) {
     sel4cp_dbg_puts("Attempting to init the sdma controller\n");
 
     sdma_config_t sdmaConfig;
-    sdma_handle_t xfer;
 
     /* Init the SDMA module */
     SDMA_GetDefaultConfig(&sdmaConfig);
