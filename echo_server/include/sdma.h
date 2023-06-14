@@ -9,10 +9,6 @@
 #define AT_NONCACHEABLE_SECTION_INIT(var)                   var
 #define AT_NONCACHEABLE_SECTION_ALIGN_INIT(var, alignbytes) SDK_ALIGN(var, alignbytes)
 
-
-#define FSL_FEATURE_SOC_SDMA_COUNT (3)
-
-
 /* ----------------------------------------------------------------------------
    -- SDMAARM Register Masks
    ---------------------------------------------------------------------------- */
@@ -677,4 +673,4 @@
 /** Array initializer of SDMAARM peripheral base pointers */
 #define SDMAARM_BASE_PTRS                        { SDMAARM1, SDMAARM2, SDMAARM3 }
 /** Interrupt vectors for the SDMAARM peripheral type */
-#define SDMAARM_IRQS      
+#define SDMAARM_IRQS      { SDMA1_IRQn, SDMA2_IRQn, SDMA3_IRQn }

@@ -10,6 +10,7 @@
 #include "shared_ringbuffer.h"
 #include "imx_dma.h"
 #include "sdma.h"
+#include <string.h>
 
 #define BIT(nr) (1UL << (nr))
 
@@ -31,7 +32,20 @@ AT_NONCACHEABLE_SECTION_ALIGN(
 AT_NONCACHEABLE_SECTION_ALIGN(
     static sdma_buffer_descriptor_t s_SDMABD[FSL_FEATURE_SOC_SDMA_COUNT][FSL_FEATURE_SDMA_MODULE_CHANNEL], 4);
 
+/*! @brief Array to map SDMA instance number to IRQ number. */
+static const IRQn_Type s_sdmaIRQNumber[FSL_FEATURE_SOC_SDMA_COUNT] = SDMAARM_IRQS;
+
+AT_NONCACHEABLE_SECTION_ALIGN(sdma_context_data_t context_Tx, 4);
+AT_NONCACHEABLE_SECTION_ALIGN(sdma_context_data_t context_Rx, 4);
+
+AT_NONCACHEABLE_SECTION_ALIGN(sdma_handle_t g_uartTxSdmaHandle, 4);
+AT_NONCACHEABLE_SECTION_ALIGN(sdma_handle_t g_uartRxSdmaHandle, 4);
+
+/*! @brief Pointers to transfer handle for each SDMA channel. */
+static sdma_handle_t *s_SDMAHandle[FSL_FEATURE_SOC_SDMA_COUNT][FSL_FEATURE_SDMA_MODULE_CHANNEL];
+
 /* Memory regions. These all have to be here to keep compiler happy */
+
 // Ring handle components
 uintptr_t rx_avail;
 uintptr_t rx_used;
@@ -39,9 +53,12 @@ uintptr_t tx_avail;
 uintptr_t tx_used;
 uintptr_t shared_dma_vaddr;
 uintptr_t shared_dma_paddr;
+
 // Base of the uart and dma controller registers 
 uintptr_t uart_base;
 uintptr_t dma_controller;
+uintptr_t core_controller;
+
 /* Pointers to shared_ringbuffers */
 ring_handle_t rx_ring;
 ring_handle_t tx_ring;
@@ -69,6 +86,18 @@ void serial_disable_dma() {
     regs->cr1 &= ~(UCR1_TXDMAEN);
 
     return;
+}
+
+void enableIRQ(IRQn_Type IRQn)
+{
+    NVIC_Type *NVIC = (NVIC_Type *) core_controller + NVIC_OFFSET;
+
+  if ((int32_t)(IRQn) >= 0)
+  {
+    __COMPILER_BARRIER();
+    NVIC->ISER[(((uint32_t)IRQn) >> 5UL)] = (uint32_t)(1UL << (((uint32_t)IRQn) & 0x1FUL));
+    __COMPILER_BARRIER();
+  }
 }
 
 /*
@@ -317,6 +346,15 @@ void init_post() {
     // sel4cp_notify(INIT);
 }
 
+void SDMA_GetDefaultConfig(sdma_config_t *config)
+{
+    // assert(config != NULL);
+
+    config->enableRealTimeDebugPin   = false;
+    config->isSoftwareResetClearLock = true;
+    config->ratio                    = kSDMA_HalfARMClockFreq;
+}
+
 static uint32_t SDMA_GetInstance(SDMAARM_Type *base)
 {
     uint32_t instance;
@@ -339,6 +377,11 @@ static uint32_t SDMA_GetInstance(SDMAARM_Type *base)
 
 void SDMA_ResetModule(SDMAARM_Type *base)
 {
+    if (base == NULL) {
+        sel4cp_dbg_puts("We have recieved a null base address for the sdma controller\n");
+        return;
+    }
+
     uint32_t i = 0, status;
 
     base->MC0PTR = 0;
@@ -374,14 +417,14 @@ void init_dma(SDMAARM_Type *base, sdma_config_t *config) {
     // See comment in SDMA_GetInstance Function. NEED TO UNDERSTAND WHAT THE INSTANCE INDEX IS
 
     /* This is an instance within a Channel Control Block. */
-    uint32_t instance = SDMA_GetInstance(dma_controller);
+    uint32_t instance = SDMA_GetInstance(base);
 
     // Clear the channel Channel Control Block (CCB) for channel 0
     (void)memset(&s_SDMACCB[instance][0], 0,
                 sizeof(sdma_channel_control_t) * (uint32_t)FSL_FEATURE_SDMA_MODULE_CHANNEL);
 
     // Reset all sDMA registers
-    SDMA_ResetModule(dma_controller);
+    SDMA_ResetModule(base);
 
     // Init the CCB for channel 0
 
@@ -395,7 +438,7 @@ void init_dma(SDMAARM_Type *base, sdma_config_t *config) {
     s_SDMACCB[instance][0].baseBDAddr    = (uint32_t)(&s_SDMABD[instance][0]);
 
     // Set the priority of channel 0
-    SDMA_SetChannelPriority(dma_controller, 0, 7U);
+    SDMA_SetChannelPriority(base, 0, 7U);
 
     /* Set channel 0 ownership */
     base->HOSTOVR = 0U;
@@ -421,6 +464,30 @@ void init_dma(SDMAARM_Type *base, sdma_config_t *config) {
 
 }
 
+void SDMA_CreateHandle(sdma_handle_t *handle, SDMAARM_Type *base, uint32_t channel, sdma_context_data_t *context) {
+    uint32_t sdmaInstance;
+
+    /* Zero the handle */
+    (void)memset(handle, 0, sizeof(*handle));
+
+    // Create the handle with the supplied arguments
+    handle->base    = base;
+    handle->channel = (uint8_t)channel;
+    handle->bdCount = 1U;
+    handle->context = context;
+
+    /* Get the DMA instance number */
+    sdmaInstance                        = SDMA_GetInstance(base);
+    s_SDMAHandle[sdmaInstance][channel] = handle;
+
+    // Set the CCB 
+    s_SDMACCB[sdmaInstance][channel].baseBDAddr            = (uint32_t)(&s_SDMABD[sdmaInstance][channel]);
+    s_SDMACCB[sdmaInstance][channel].currentBDAddr         = (uint32_t)(&s_SDMABD[sdmaInstance][channel]);
+    /* Enable interrupt */
+    (void)enableIRQ(s_sdmaIRQNumber[sdmaInstance]);
+}
+
+
 // Init function required by CP for every PD
 void init(void) {
     sel4cp_dbg_puts(sel4cp_name);
@@ -432,7 +499,7 @@ void init(void) {
     init_post();
 
     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
-
+    SDMAARM_Type *base = (SDMAARM_Type *) dma_controller;
     // Software reset results in failed uart init, not too sure why
     /* Software reset */
     // regs->cr2 &= ~UART_CR2_SRST;
@@ -466,6 +533,20 @@ void init(void) {
     regs->cr1 |= UART_CR1_RRDYEN;                /* Enable recv interrupt.            */
 
     sel4cp_dbg_puts("Enabled the uart, init the ring buffers\n");
+
+    sel4cp_dbg_puts("Attempting to init dma controller\n");
+
+    sdma_config_t sdmaConfig;
+
+    /* Init the SDMA module */
+    SDMA_GetDefaultConfig(&sdmaConfig);
+    init_dma(base, &sdmaConfig);
+    SDMA_CreateHandle(&g_uartTxSdmaHandle, base, UART_TX_DMA_CHANNEL, &context_Tx);
+    SDMA_CreateHandle(&g_uartRxSdmaHandle, base, UART_RX_DMA_CHANNEL, &context_Rx);
+    SDMA_SetChannelPriority(base, UART_TX_DMA_CHANNEL, 3U);
+    SDMA_SetChannelPriority(base, UART_RX_DMA_CHANNEL, 4U);
+
+    sel4cp_dbg_puts("Init'd the dma controller\n");
 
 }
 
