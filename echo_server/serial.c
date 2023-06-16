@@ -118,17 +118,10 @@ int serial_configure(
 
 int getchar()
 {
-    // meson_uart_regs_t *regs = (meson_uart_regs_t *) uart_base;
-    // uint32_t reg = 0;
-    // int c = -1;
+    meson_uart_regs_t *regs = (meson_uart_regs_t *) uart_base;
 
-    // if (regs->sr2 & UART_SR2_RXFIFO_RDR) {
-    //     reg = regs->rxd;
-    //     if (reg & UART_URXD_READY_MASK) {
-    //         c = reg & UART_BYTE_MASK;
-    //     }
-    // }
-    return 'a';
+    while (regs->sr & AML_UART_RX_EMPTY);
+    return regs->rfifo;
 }
 
 // Putchar that is using the hardware FIFO buffers --> Switch to DMA later 
@@ -136,35 +129,13 @@ int putchar(int c) {
 
     meson_uart_regs_t *regs = (meson_uart_regs_t *) uart_base;
 
-    if (internal_is_tx_fifo_busy(regs)) {
-        // A transmit is probably in progress, we will have to wait
-        return -1;
-    }
+    while (regs->sr & AML_UART_TX_FULL);
 
+    /* Add character to the buffer. */
+    regs->wfifo = c & 0x7f;
     if (c == '\n') {
-        // For now, by default we will have Auto-send CR(Carriage Return) enabled
-        /* write CR first */
-        regs->wfifo = '\r' & 0x7f;
-        /* if we transform a '\n' (LF) into '\r\n' (CR+LF) this shall become an
-         * atom, ie we don't want CR to be sent and then fail at sending LF
-         * because the TX FIFO is full. Basically there are two options:
-         *   - check if the FIFO can hold CR+LF and either send both or none
-         *   - send CR, then block until the FIFO has space and send LF.
-         * Assuming that if SERIAL_AUTO_CR is set, it's likely this is a serial
-         * console for logging, so blocking seems acceptable in this special
-         * case. The IMX6's TX FIFO size is 32 byte and TXFIFO_EMPTY is cleared
-         * automatically as soon as data is written from regs->txd into the
-         * FIFO. Thus the worst case blocking is roughly the time it takes to
-         * send 1 byte to have room in the FIFO again. At 115200 baud with 8N1
-         * this takes 10 bit-times, which is 10/115200 = 86,8 usec.
-         */
-        while (internal_is_tx_fifo_busy(regs)) {
-            /* busy loop */
-        }
-    
+        putchar('\r');
     }
-
-    regs->wfifo = c + 0x7f;
 
     return 0;
 }
@@ -316,13 +287,20 @@ void init(void) {
 
     sel4cp_dbg_puts("Configured serial, enabling uart\n");
 
-    /* Enable the UART */
-    regs->cr |= AML_UART_TX_EN;                     /* Transmit Enable */
-    regs->cr |= AML_UART_RX_EN;                     /* Receive Enable */
-    // /* Initialise the receiver interrupt.                                             */
-    regs->cr &= ~AML_UART_RX_INT_EN;                /* Disable recv interrupt. */
-    regs->irqc |= AML_UART_RECV_IRQ(1);             /* Set the trigger level to 1 */
-    regs->cr |= AML_UART_RX_INT_EN;                 /* Re-enable the recv interrupt */
+    // /* Enable the UART */
+    uint32_t val;
+    val = regs->cr;
+    val |= AML_UART_CLEAR_ERR;
+    regs->cr = val;
+    val &= ~AML_UART_CLEAR_ERR;
+    regs->cr = val;
+    val |= (AML_UART_RX_EN | AML_UART_TX_EN);
+    regs->cr = val;
+    val |= (AML_UART_RX_INT_EN);
+    regs->cr = val;
+    val = (AML_UART_RECV_IRQ(1));
+    regs->irqc = val;
+
 
     sel4cp_dbg_puts("Enabled the uart, init the ring buffers\n");
 

@@ -64,7 +64,7 @@ typedef volatile struct meson_uart_regs meson_uart_regs_t;
 /*
 serial driver struct akin to patrick's implementation*/
 struct serial_driver {
-    imx_uart_regs_t *regs;
+    meson_uart_regs_t *regs;
 
     ring_handle_t rx_ring;
     ring_handle_t tx_ring;
