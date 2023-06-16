@@ -1,5 +1,5 @@
 /*
-* Sample serial driver for imx8mm based on the sDDF
+* Sample serial driver for odroid c4 (amlogic meson gx uart) based on the sDDF
 */
 
 #include <stdbool.h>
@@ -41,30 +41,30 @@ struct serial_driver global_serial_driver = {0};
  * BMR and BIR are 16 bit
  * Function taken from seL4 util_libs serial.c implementation for imx8mm
  */
-static void imx_uart_set_baud(long bps)
-{
-    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
+// static void imx_uart_set_baud(long bps)
+// {
+//     imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
 
-    uint32_t bmr, bir, fcr;
-    fcr = regs->fcr;
-    fcr &= ~UART_FCR_RFDIV_MASK;
-    fcr |= UART_FCR_RFDIV(4);
-    bir = 0xf;
-    bmr = UART_REF_CLK / bps - 1;
-    regs->bir = bir;
-    regs->bmr = bmr;
-    regs->fcr = fcr;
-}
+//     uint32_t bmr, bir, fcr;
+//     fcr = regs->fcr;
+//     fcr &= ~UART_FCR_RFDIV_MASK;
+//     fcr |= UART_FCR_RFDIV(4);
+//     bir = 0xf;
+//     bmr = UART_REF_CLK / bps - 1;
+//     regs->bir = bir;
+//     regs->bmr = bmr;
+//     regs->fcr = fcr;
+// }
 
 static int internal_is_tx_fifo_busy(
-    imx_uart_regs_t *regs)
+    meson_uart_regs_t *regs)
 {
     /* check the TXFE (transmit buffer FIFO empty) flag, which is cleared
      * automatically when data is written to the TxFIFO. Even though the flag
      * is set, the actual data transmission via the UART's 32 byte FIFO buffer
      * might still be in progress.
      */
-    return (0 == (regs->sr2 & UART_SR2_TXFIFO_EMPTY));
+    return (0 == (regs->sr & AML_UART_TX_EMPTY));
 }
 
 int serial_configure(
@@ -73,67 +73,68 @@ int serial_configure(
     enum serial_parity parity,
     int stop_bits)
 {
-    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
+    meson_uart_regs_t *regs = (meson_uart_regs_t *) uart_base;
     
-    uint32_t cr2;
+    uint32_t cr;
     /* Character size */
-    cr2 = regs->cr2;
+    cr = regs->cr;
     if (char_size == 8) {
-        cr2 |= UART_CR2_WS;
+        cr |= AML_UART_DATA_LEN_8BIT;
     } else if (char_size == 7) {
-        cr2 &= ~UART_CR2_WS;
+        cr |= AML_UART_DATA_LEN_7BIT;
     } else {
         return -1;
     }
     /* Stop bits */
     if (stop_bits == 2) {
-        cr2 |= UART_CR2_STPB;
+        cr |= AML_UART_STOP_BIT_2SB;
     } else if (stop_bits == 1) {
-        cr2 &= ~UART_CR2_STPB;
+        cr |= AML_UART_STOP_BIT_1SB;
     } else {
         return -1;
     }
+
     /* Parity */
     if (parity == PARITY_NONE) {
-        cr2 &= ~UART_CR2_PREN;
+        cr &= ~AML_UART_PARITY_EN;
     } else if (parity == PARITY_ODD) {
         /* ODD */
-        cr2 |= UART_CR2_PREN;
-        cr2 |= UART_CR2_PROE;
+        cr |= AML_UART_PARITY_EN;
+        cr |= AML_UART_PARITY_TYPE;
     } else if (parity == PARITY_EVEN) {
         /* Even */
-        cr2 |= UART_CR2_PREN;
-        cr2 &= ~UART_CR2_PROE;
+        cr |= AML_UART_PARITY_EN;
+        cr &= ~AML_UART_PARITY_TYPE;
     } else {
         return -1;
     }
     /* Apply the changes */
-    regs->cr2 = cr2;
+    regs->cr = cr;
     sel4cp_dbg_puts("finished configuring the line, setting the baud rate\n");
-    /* Now set the board rate */
-    imx_uart_set_baud(bps);
+    /* Now set the baud rate */
+    // imx_uart_set_baud(bps);
     return 0;
 }
 
 int getchar()
 {
-    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
-    uint32_t reg = 0;
-    int c = -1;
+    // meson_uart_regs_t *regs = (meson_uart_regs_t *) uart_base;
+    // uint32_t reg = 0;
+    // int c = -1;
 
-    if (regs->sr2 & UART_SR2_RXFIFO_RDR) {
-        reg = regs->rxd;
-        if (reg & UART_URXD_READY_MASK) {
-            c = reg & UART_BYTE_MASK;
-        }
-    }
-    return c;
+    // if (regs->sr2 & UART_SR2_RXFIFO_RDR) {
+    //     reg = regs->rxd;
+    //     if (reg & UART_URXD_READY_MASK) {
+    //         c = reg & UART_BYTE_MASK;
+    //     }
+    // }
+    return 'a';
 }
 
 // Putchar that is using the hardware FIFO buffers --> Switch to DMA later 
 int putchar(int c) {
 
-    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
+    meson_uart_regs_t *regs = (meson_uart_regs_t *) uart_base;
 
     if (internal_is_tx_fifo_busy(regs)) {
         // A transmit is probably in progress, we will have to wait
@@ -143,7 +144,7 @@ int putchar(int c) {
     if (c == '\n') {
         // For now, by default we will have Auto-send CR(Carriage Return) enabled
         /* write CR first */
-        regs->txd = '\r';
+        regs->wfifo = '\r' & 0x7f;
         /* if we transform a '\n' (LF) into '\r\n' (CR+LF) this shall become an
          * atom, ie we don't want CR to be sent and then fail at sending LF
          * because the TX FIFO is full. Basically there are two options:
@@ -163,7 +164,7 @@ int putchar(int c) {
     
     }
 
-    regs->txd = c;
+    regs->wfifo = c + 0x7f;
 
     return 0;
 }
@@ -292,7 +293,7 @@ void init(void) {
     // switch statement may be redundant.
     init_post();
 
-    imx_uart_regs_t *regs = (imx_uart_regs_t *) uart_base;
+    meson_uart_regs_t *regs = (meson_uart_regs_t *) uart_base;
 
     // Software reset results in failed uart init, not too sure why
     /* Software reset */
@@ -316,15 +317,12 @@ void init(void) {
     sel4cp_dbg_puts("Configured serial, enabling uart\n");
 
     /* Enable the UART */
-    regs->cr1 |= UART_CR1_UARTEN;                /* Enable The uart.                  */
-    regs->cr2 |= UART_CR2_RXEN | UART_CR2_TXEN;  /* RX/TX enable                      */
-    regs->cr2 |= UART_CR2_IRTS;                  /* Ignore RTS                        */
-    regs->cr3 |= UART_CR3_RXDMUXDEL;             /* Configure the RX MUX              */
-    /* Initialise the receiver interrupt.                                             */
-    regs->cr1 &= ~UART_CR1_RRDYEN;               /* Disable recv interrupt.           */
-    regs->fcr &= ~UART_FCR_RXTL_MASK;            /* Clear the rx trigger level value. */
-    regs->fcr |= UART_FCR_RXTL(1);               /* Set the rx tigger level to 1.     */
-    regs->cr1 |= UART_CR1_RRDYEN;                /* Enable recv interrupt.            */
+    regs->cr |= AML_UART_TX_EN;                     /* Transmit Enable */
+    regs->cr |= AML_UART_RX_EN;                     /* Receive Enable */
+    // /* Initialise the receiver interrupt.                                             */
+    regs->cr &= ~AML_UART_RX_INT_EN;                /* Disable recv interrupt. */
+    regs->irqc |= AML_UART_RECV_IRQ(1);             /* Set the trigger level to 1 */
+    regs->cr |= AML_UART_RX_INT_EN;                 /* Re-enable the recv interrupt */
 
     sel4cp_dbg_puts("Enabled the uart, init the ring buffers\n");
 

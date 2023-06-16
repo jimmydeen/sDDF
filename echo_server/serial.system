@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <system>
-    <memory_region name="uart" size="0x10_000" phys_addr="0x30890000" />
+    <memory_region name="uart" size="0x18" phys_addr="0x3000" />
 
     <memory_region name="shared_dma" size="0x200_000" page_size="0x200_000" />
 
@@ -27,7 +27,7 @@
         <setvar symbol="shared_dma_paddr" region_paddr="shared_dma" />
         
 
-        <irq irq="59" id="1" /> <!-- Serial Interrupt (I think - serial@30890000)-->
+        <irq irq="54" id="1" /> <!-- Serial Interrupt (I think - serial@30890000)-->
     </protection_domain>
 
     <protection_domain name="serial_server" priority="101" pp="true">
