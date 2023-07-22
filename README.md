@@ -11,11 +11,7 @@ It has been built on top of [seL4 Core Platform](https://github.com/BreakawayCon
 
     $ cd echo_server
     $ make BUILD_DIR=<path/to/build> SEL4CP_SDK=<path/to/core/platform/sdk> CAKE_COMPILER=<path/to/cake/compiler/binary> SEL4CP_BOARD=imx8mm SEL4CP_CONFIG=(release/debug)
-    
-## Benchmarking
 
-In order to run the benchmarks, set `SEL4CP_CONFIG=benchmark`. The system has been designed to interact with [ipbench](https://sourceforge.net/projects/ipbench/) to take measurements. 
-    
 ## Supported Boards
 
 ### iMX8MM-EVK
