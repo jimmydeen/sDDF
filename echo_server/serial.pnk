@@ -10,20 +10,20 @@ fun main() {
   if argc == 8 {
     // Transmit Channel
     !handle_tx();
+    return 0;
   }
 
   if argc == 1 {
     // IRQ channel
     !handle_irq();
+    return 0;
   }
 
   if argc == 10 {
     // Receive channel
     !handle_tx();
+    return 0;
   }
-        
-      
-
 
   return 0;
 }
@@ -121,12 +121,8 @@ fun handle_rx() {
 
 fun handle_irq() {
   var got_char = 0;
-  var getchar_c = @base;
-  var getchar_clen = 1;
-  var getchar_a = @base + 1;
-  var getchar_alen = 0;
-  #getchar(getchar_c, getchar_clen, getchar_a, getchar_alen);
-  got_char = ldb getchar_a;
+
+  got_char = !getchar();
   if got_char == -1 {
     return -1;
   } else {
@@ -162,3 +158,17 @@ fun handle_irq() {
     }
   }
 }
+
+fun getchar() {
+  var got_char = 0;
+  var getchar_c = @base;
+  var getchar_clen = 1;
+  var getchar_a = @base + 1;
+  var getchar_alen = 0;
+  #getchar(getchar_c, getchar_clen, getchar_a, getchar_alen);
+
+  got_char = ldb getchar_a;
+
+  return got_char;
+}
+
