@@ -175,11 +175,6 @@ int getchars(char * cli_buffer) {
     memcpy(cli_buffer, buffer, buffer_len);
     /* Now that we are finished with the used buffer, we can add it back to the available ring*/
 
-    sel4cp_dbg_puthex64(buffer_len);
-
-    sel4cp_dbg_puts("This is the cli buffer: ");
-    sel4cp_dbg_puts(cli_buffer);
-    sel4cp_dbg_puts("\n");
     int ret = enqueue_avail(&local_server->rx_ring, buffer, buffer_len, NULL);
 
     if (ret != 0) {
@@ -266,21 +261,21 @@ void init(void) {
 
     /* Some basic tests for the serial driver */
 
-    serial_server_printf("Attempting to use the server printf! -- FROM SERVER 1\n");
+    serial_server_printf("Attempting to use the server printf! -- FROM SERVER 2\n");
     // serial_server_printf("HELLO THERE THIS IS SERVER PRINTF\n");
-    serial_server_printf("Enter char to test getchar FOR SERIAL 1\n");
+    serial_server_printf("Enter char to test getchar FOR SERIAL 2\n");
     char test = getchar();
-    serial_server_printf("We got the following char in SERIAL 1: ");
+    serial_server_printf("We got the following char in SERIAL 2: ");
     serial_server_printf(&test);
     serial_server_printf("\n");
-    serial_server_printf("Enter char to test getchar -- SERIAL 1\n");
+    serial_server_printf("Enter char to test getchar -- SERIAL 2\n");
     test = getchar();
-    serial_server_printf("We got the following char in SERIAL 1: ");
+    serial_server_printf("We got the following char in SERIAL 2: ");
     serial_server_printf(&test);
 
-    serial_server_printf("\nEnter char to test scanf IN SERIAL 1\n");
+    serial_server_printf("\nEnter char to test scanf IN SERIAL 2\n");
 
-    char *temp_buffer = 0;
+    char temp_buffer = 0;
 
     int scanf_ret = serial_server_scanf(&temp_buffer);
 
@@ -290,7 +285,7 @@ void init(void) {
         serial_server_printf(&temp_buffer);
     }
 
-    serial_server_printf("\n---END OF SERIAL 1 TEST---\n");
+    serial_server_printf("\n---END OF SERIAL 2 TEST---\n");
     
 }
 
