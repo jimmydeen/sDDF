@@ -198,7 +198,7 @@ void ffidrv_dequeue_used(unsigned char *c, long clen, unsigned char *a, long ale
         return;
     }
 
-    uintptr_t buffer;
+    uintptr_t buffer = 0;
     unsigned int buffer_len = 0;
     void *cookie = 0;
 
@@ -265,7 +265,7 @@ void ffibatch_cli_dequeue_enqueue(unsigned char *c, long clen, unsigned char *a,
     if (ret != 0) {
         // sel4cp_dbg_puts(sel4cp_name);
         sel4cp_dbg_puts(": unable to enqueue to the tx available ring\n");
-        return 1;
+        return;
     }
 
     num_to_get_chars[curr_client - 1] -= 1;

@@ -191,7 +191,7 @@ void ffidequeue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
     // c[0] = ret;
     uintptr_to_byte8(buffer, a);
     uintptr_to_byte8(len, &a[8]);
-    uintptr_to_byte8(cookie, &a[16]);
+    uintptr_to_byte8((uintptr_t) cookie, &a[16]);
 
     return;
 }
@@ -205,7 +205,7 @@ void ffibatch_driver_dequeue_enqueue(unsigned char *c, long clen, unsigned char 
 
     uintptr_t buffer = byte8_to_uintptr(c);
     unsigned int len = byte8_to_uintptr(&c[8]);
-    void *cookie = byte8_to_uintptr(&c[16]);
+    void *cookie = (void *) byte8_to_uintptr(&c[16]);
 
     uintptr_t drv_buffer = 0;
     unsigned int drv_len = 0;
@@ -254,7 +254,7 @@ void fficli_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long al
 
     uintptr_t buffer = byte8_to_uintptr(c);
     unsigned int len = byte8_to_uintptr(&c[8]);
-    void *cookie = byte8_to_uintptr(&c[16]);
+    void *cookie = (void *) byte8_to_uintptr(&c[16]);
 
     enqueue_avail(&tx_ring[client], buffer, len, cookie);
 
