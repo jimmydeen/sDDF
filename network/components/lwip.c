@@ -17,8 +17,8 @@
 #include "lwip/dhcp.h"
 
 #include <sddf/network/shared_ringbuffer.h>
+#include <sddf/network/socket.h>
 #include "sel4bench.h"
-#include "echo.h"
 #include "timer.h"
 #include "cache.h"
 
@@ -34,7 +34,7 @@ uintptr_t tx_free;
 uintptr_t tx_used;
 uintptr_t shared_dma_vaddr_rx;
 uintptr_t shared_dma_vaddr_tx;
-uintptr_t uart_base;
+// uintptr_t uart_base;
 
 static bool notify_tx = false;
 static bool notify_rx = false;
@@ -395,6 +395,7 @@ static err_t ethernet_init(struct netif *netif)
 
 static void netif_status_callback(struct netif *netif)
 {
+    microkit_dbg_puts("IN NETIF STATUS CALLBACK\n");
     if (dhcp_supplied_address(netif)) {
         /* Tell the ARP component so we it can respond to ARP requests. */
         microkit_mr_set(0, ip4_addr_get_u32(netif_ip4_addr(netif)));
@@ -407,7 +408,7 @@ static void netif_status_callback(struct netif *netif)
         print(" is: ");
         print(ip4addr_ntoa(netif_ip4_addr(netif)));
         print("\n");
-    }
+    } 
 }
 
 static void get_mac(void)
@@ -418,8 +419,8 @@ static void get_mac(void)
     state.mac[2] = 0x1;
     state.mac[3] = 0;
     state.mac[4] = 0;
-    if (!strcmp(microkit_name, "client0")) {
-        state.mac[5] = 0;
+    if (!strcmp(microkit_name, "client")) {
+        state.mac[5] = 10;
     } else {
         state.mac[5] = 0x1;
     }
@@ -446,7 +447,7 @@ void dump_log(void)
     }
 }
 
-void init(void)
+void init_lwip(void)
 {
     /* Set up shared memory regions */
     ring_init(&state.rx_ring, (ring_buffer_t *)rx_free, (ring_buffer_t *)rx_used, 1, NUM_BUFFERS, NUM_BUFFERS);
@@ -493,7 +494,9 @@ void init(void)
         print("failed to start DHCP negotiation\n");
     }
 
+#ifdef LWIP_SETUP_UDP_SOCKET
     setup_udp_socket();
+#endif
     setup_utilization_socket();
 
     request_used_ntfn(&state.rx_ring);
@@ -514,10 +517,10 @@ void init(void)
     }
 
     print(microkit_name);
-    print(": elf PD init complete\n");
+    print(": lwip elf PD init complete\n");
 }
 
-void notified(microkit_channel ch)
+void notified_lwip(microkit_channel ch)
 {
     switch(ch) {
         case RX_CH:

@@ -456,7 +456,7 @@ notified(microkit_channel ch)
             handle_eth(eth);
             /*
              * Delay calling into the kernel to ack the IRQ until the next loop
-             * in the Microkit event handler loop.
+             * in the seL4CP event handler loop.
              */
             microkit_irq_ack_delayed(ch);
             break;

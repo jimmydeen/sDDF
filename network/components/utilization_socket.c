@@ -16,58 +16,46 @@
 #include "lwip/ip.h"
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
-
-#include "echo.h"
-#include "bench.h"
+#include "lwip/udp.h"
+#include <sddf/network/socket.h>
 #include "util.h"
-
-#define START_PMU 4
-#define STOP_PMU 5
-
-/* This file implements a TCP based utilization measurment process that starts
- * and stops utilization measurements based on a client's requests.
+#include "client.h"
+/* This file implements a TCP based profiler measurment process that starts
+ * and stops profiler measurements based on a client's requests.
  * The protocol used to communicate is as follows:
  * - Client connects
- * - Server sends: 100 IPBENCH V1.0\n
+ * - Server sends: 100 SEL4 PROFILING CLIENT\n
  * - Client sends: HELLO\n
  * - Server sends: 200 OK (Ready to go)\n
- * - Client sends: LOAD cpu_target_lukem\n
- * - Server sends: 200 OK\n
- * - Client sends: SETUP args::""\n
- * - Server sends: 200 OK\n
  * - Client sends: START\n
  * - Client sends: STOP\n
- * - Server sends: 220 VALID DATA (Data to follow)\n
- *                                Content-length: %d\n
- *                                ${content}\n
+ * - Client sends: START\n
+ * - Client sends: EXIT\n
  * - Server closes socket.
  *
- * It is also possible for client to send QUIT\n during operation.
  *
- * The server starts recording utilization stats when it receives START and
- * finishes recording when it receives STOP.
+ * The server starts recording profiler stats when it receives START and
+ * finishes recording when it receives STOP or EXIT.
  *
  * Only one client can be connected.
  */
 
 static struct tcp_pcb *utiliz_socket;
 uintptr_t data_packet;
-uintptr_t cyclecounters_vaddr;
 
-#define WHOAMI "100 IPBENCH V1.0\n"
+#define WHOAMI "100 SEL4 PROFILING CLIENT\n"
 #define HELLO "HELLO\n"
 #define OK_READY "200 OK (Ready to go)\n"
-#define LOAD "LOAD cpu_target_lukem\n"
 #define OK "200 OK\n"
-#define SETUP "SETUP args::\"\"\n"
 #define START "START\n"
 #define STOP "STOP\n"
 #define QUIT "QUIT\n"
-#define RESPONSE "220 VALID DATA (Data to follow)\n"    \
-    "Content-length: %d\n"                              \
-    "%s\n"
-#define IDLE_FORMAT ",%ld,%ld"
 #define ERROR "400 ERROR\n"
+#define MAPPINGS "MAPPINGS\n"
+#define REFRESH "REFRESH\n"
+
+// TODO: NEED TO HAVE A BETTER WAY OF INJECTING THE MAPPINGS FROM THE SYSTEM DESCRIPTION
+#define MAPPINGS_STR "dummy_prog: 0\ndummy_prog2: 14"
 
 #define msg_match(msg, match) (strncmp(msg, match, strlen(match))==0)
 
@@ -85,41 +73,13 @@ uint64_t idle_ccount_start;
 uint64_t idle_overflow_start;
 
 
-static inline void my_reverse(char s[])
+static err_t profiler_sent_callback(void *arg, struct tcp_pcb *pcb, u16_t len)
 {
-    unsigned int i, j;
-    char c;
-
-    for (i = 0, j = strlen(s)-1; i<j; i++, j--) {
-        c = s[i];
-        s[i] = s[j];
-        s[j] = c;
-    }
-}
-
-static inline void my_itoa(uint64_t n, char s[])
-{
-    unsigned int i;
-    uint64_t sign;
-
-    if ((sign = n) < 0)  /* record sign */
-        n = -n;          /* make n positive */
-    i = 0;
-    do {       /* generate digits in reverse order */
-        s[i++] = n % 10 + '0';   /* get next digit */
-    } while ((n /= 10) > 0);     /* delete it */
-    if (sign < 0)
-        s[i++] = '-';
-    s[i] = '\0';
-    my_reverse(s);
-}
-
-static err_t utilization_sent_callback(void *arg, struct tcp_pcb *pcb, u16_t len)
-{
+    microkit_dbg_puts("sent callback\n");
     return ERR_OK;
 }
 
-static err_t utilization_recv_callback(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
+static err_t profiler_recv_callback(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
 {
     if (p == NULL) {
         tcp_close(pcb);
@@ -134,92 +94,80 @@ static err_t utilization_recv_callback(void *arg, struct tcp_pcb *pcb, struct pb
     if (msg_match(data_packet_str, HELLO)) {
         error = tcp_write(pcb, OK_READY, strlen(OK_READY), TCP_WRITE_FLAG_COPY);
         if (error) {
-            microkit_dbg_puts("Failed to send OK_READY message through utilization peer");
-        }
-    } else if (msg_match(data_packet_str, LOAD)) {
-        error = tcp_write(pcb, OK, strlen(OK), TCP_WRITE_FLAG_COPY);
-        if (error) {
-            microkit_dbg_puts("Failed to send OK message through utilization peer");
-        }
-    } else if (msg_match(data_packet_str, SETUP)) {
-        error = tcp_write(pcb, OK, strlen(OK), TCP_WRITE_FLAG_COPY);
-        if (error) {
-            microkit_dbg_puts("Failed to send OK message through utilization peer");
+            microkit_dbg_puts("Failed to send OK_READY message through profiler peer");
         }
     } else if (msg_match(data_packet_str, START)) {
         print(microkit_name);
         print(" measurement starting... \n");
-        if (!strcmp(microkit_name, "client0")) {
-            start = bench->ts;
-            idle_ccount_start = bench->ccount;
-            idle_overflow_start = bench->overflows;
-            // microkit_notify(START_PMU);
-        }
+        microkit_notify(START_PMU);
     } else if (msg_match(data_packet_str, STOP)) {
         print(microkit_name);
         print(" measurement finished \n");;
-
-        uint64_t total = 0, idle = 0;
-
-        if (!strcmp(microkit_name, "client0")) {
-            total = bench->ts - start;
-            total += ULONG_MAX * (bench->overflows - idle_overflow_start);
-            idle = bench->ccount - idle_ccount_start;
+        microkit_notify(STOP_PMU);
+    } else if (msg_match(data_packet_str, MAPPINGS)) {
+        error = tcp_write(pcb, MAPPINGS_STR, strlen(MAPPINGS_STR), TCP_WRITE_FLAG_COPY);
+        if (error) {
+            microkit_dbg_puts("Failed to send OK message through profiler peer");
         }
-
-        char tbuf[16];
-        my_itoa(total, tbuf);
-
-        char ibuf[16];
-        my_itoa(idle, ibuf);
-
-        char buffer[100];
-
-        int len = strlen(tbuf) + strlen(ibuf) + 2;
-        char lbuf[16];
-        my_itoa(len, lbuf);
-
-        strcat(strcpy(buffer, "220 VALID DATA (Data to follow)\nContent-length: "), lbuf);
-        strcat(buffer, "\n,");
-        strcat(buffer, ibuf);
-        strcat(buffer, ",");
-        strcat(buffer, tbuf);
-
-        // microkit_dbg_puts(buffer);
-        error = tcp_write(pcb, buffer, strlen(buffer), TCP_WRITE_FLAG_COPY);
-
-        tcp_shutdown(pcb, 0, 1);
-
-        if (!strcmp(microkit_name, "client0")) { 
-            //microkit_notify(STOP_PMU);
-        }
-    } else if (msg_match(data_packet_str, QUIT)) {
-        /* Do nothing for now */
+    } else if (msg_match(data_packet_str, REFRESH)) {
+        // This is just to refresh the socket from the linux client side
+        return ERR_OK;
     } else {
         microkit_dbg_puts("Received a message that we can't handle ");
         microkit_dbg_puts(data_packet_str);
         microkit_dbg_puts("\n");
         error = tcp_write(pcb, ERROR, strlen(ERROR), TCP_WRITE_FLAG_COPY);
         if (error) {
-            microkit_dbg_puts("Failed to send OK message through utilization peer");
+            microkit_dbg_puts("Failed to send OK message through profiler peer");
         }
     }
 
     return ERR_OK;
 }
 
-static err_t utilization_accept_callback(void *arg, struct tcp_pcb *newpcb, err_t err)
+static err_t profiler_accept_callback(void *arg, struct tcp_pcb *newpcb, err_t err)
 {
-    print("Utilization connection established!\n");
+    print("profiler connection established!\n");
     err_t error = tcp_write(newpcb, WHOAMI, strlen(WHOAMI), TCP_WRITE_FLAG_COPY);
     if (error) {
-        print("Failed to send WHOAMI message through utilization peer\n");
+        print("Failed to send WHOAMI message through profiler peer\n");
     }
-    tcp_sent(newpcb, utilization_sent_callback);
-    tcp_recv(newpcb, utilization_recv_callback);
-
+    tcp_sent(newpcb, profiler_sent_callback);
+    tcp_recv(newpcb, profiler_recv_callback);
+    utiliz_socket = newpcb;
     return ERR_OK;
 }
+
+int send_tcp(void *buff) {
+
+    err_t error = tcp_write(utiliz_socket, buff, strlen(buff), TCP_WRITE_FLAG_COPY);
+    if (error) {
+        print("Failed to send message through profiler peer: ");
+        put8(error);
+        print("\n");
+        if (error == -1) {
+            print("MEM ERROR\n");
+        }
+        return 1;
+    }
+
+    error = tcp_output(utiliz_socket);
+    if (error) {
+        print("Failed to output via tcp through profiler peer: ");
+        put8(error);
+        print("\n");
+    }
+
+    return 0;
+}
+
+void tcp_sent_callback(tcp_sent_fn callback) {
+    tcp_sent(utiliz_socket, callback);
+}  
+
+void tcp_reset_callback() {
+    tcp_sent(utiliz_socket, profiler_sent_callback);
+}  
 
 int setup_utilization_socket(void)
 {
@@ -239,10 +187,10 @@ int setup_utilization_socket(void)
 
     utiliz_socket = tcp_listen_with_backlog_and_err(utiliz_socket, 1, &error);
     if (error != ERR_OK) {
-        print("Failed to listen on the utilization socket");
+        print("Failed to listen on the profiler socket");
         return -1;
     }
-    tcp_accept(utiliz_socket, utilization_accept_callback);
+    tcp_accept(utiliz_socket, profiler_accept_callback);
 
     return 0;
 }

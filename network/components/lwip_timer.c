@@ -16,7 +16,7 @@ set_timeout(void)
     microkit_ppcall(TIMER_CH, microkit_msginfo_new(SET_TIMEOUT, 1));
 }
 
-u32_t 
+uint32_t
 sys_now(void)
 {
     microkit_ppcall(TIMER_CH, microkit_msginfo_new(GET_TIME, 0));
