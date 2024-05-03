@@ -1,5 +1,5 @@
 fun main() {
-  // Getting the channel that we were notified on. 
+  // Getting the channel that we were notified on.
   var argc_arr = @base;
   var argc_len = 0;
   var arga_arr = @base + 1;
@@ -83,7 +83,7 @@ fun handle_tx() {
                       putchar_break = 1;
                   }
                 }
-                  
+
                 rawtx_ret = 0;
             }
           }
@@ -94,9 +94,9 @@ fun handle_tx() {
 
         strb c_arr, 1;
         c_len = 1;
-        
+
         #serial_enqueue_avail(c_arr, c_len, a_arr, a_len);
-        
+
         var ret2 = 0;
           ret2 = ldb a_arr;
           if ret2 <> 0 {
@@ -116,7 +116,7 @@ fun handle_rx() {
   increment_ret = ldb a_arr;
   if increment_ret <> 0 {
     return -1;
-  } 
+  }
 }
 
 fun handle_irq() {
@@ -154,7 +154,7 @@ fun handle_irq() {
       if enqueue_ret <> 0 {
         return -1;
       }
-      
+
     }
   }
 }
