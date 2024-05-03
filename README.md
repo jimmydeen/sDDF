@@ -4,7 +4,7 @@ This is a learning exercise to get acquainted with the sDDF. A basic serial driv
 ## Building the sDDF
 
     $ cd echo_server
-    $ make BUILD_DIR=<path/to/build> SEL4CP_SDK=<path/to/core/platform/sdk> CAKE_COMPILER=<path/to/cake/compiler/binary> SEL4CP_BOARD=imx8mm SEL4CP_CONFIG=(release/debug)
+    $ make BUILD_DIR=<path/to/build> microkit_SDK=<path/to/core/platform/sdk> CAKE_COMPILER=<path/to/cake/compiler/binary> microkit_BOARD=imx8mm microkit_CONFIG=(release/debug)
 
 ## Notes on building Pancake
 We will need to modify an output file, and recompile. This is because of the auto-genrated assembly code outputted by the cake compiler wishing to call

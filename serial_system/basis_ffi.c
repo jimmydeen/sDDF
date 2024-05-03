@@ -9,7 +9,7 @@
 #include <fcntl.h>
 #include <assert.h>
 #include <stdint.h>
-#include <sel4cp.h>
+#include <microkit.h>
 #include <string.h>
 #include <sel4/sel4.h>
 #include "serial.h"
@@ -155,12 +155,12 @@ int byte8_to_int(unsigned char *b){
 }
 
 void cml_exit(int arg) {
-    sel4cp_dbg_puts("ERROR! We should not be getting here\n");
+    microkit_dbg_puts("ERROR! We should not be getting here\n");
 }
 
 /* Need to come up with a replacement for this clear cache function. Might be worth testing just flushing the entire l1 cache, but might cause issues with returning to this file*/
 void cml_clear() {
-    sel4cp_dbg_puts("Trying to clear cache\n");
+    microkit_dbg_puts("Trying to clear cache\n");
 }
 
 /*
@@ -196,15 +196,15 @@ void ffiget_channel(unsigned char *c, long clen, unsigned char *a, long alen) {
 /* Debug functions */
 void ffiprint_int(unsigned char *c, long clen, unsigned char *a, long alen) {
 
-    sel4cp_dbg_puts("The address of c is -- (");
-    sel4cp_dbg_puts(c);
-    sel4cp_dbg_puts("\n");
+    microkit_dbg_puts("The address of c is -- (");
+    microkit_dbg_puts(c);
+    microkit_dbg_puts("\n");
 
     char arg = c[0];
 
-    sel4cp_dbg_puts("We received the following int --- (");
-    sel4cp_dbg_puts(arg);
-    sel4cp_dbg_puts(")\n");
+    microkit_dbg_puts("We received the following int --- (");
+    microkit_dbg_puts(arg);
+    microkit_dbg_puts(")\n");
 }
 
 void ffiinternal_is_tx_fifo_busy(unsigned char *c, long clen, unsigned char *a, long alen)
@@ -270,7 +270,7 @@ int serial_configure(
     /* Now set the board rate */
     imx_uart_set_baud(bps);
 
-    sel4cp_dbg_puts("Configured serial, enabling uart\n");
+    microkit_dbg_puts("Configured serial, enabling uart\n");
 
     return 0;
 }
@@ -324,7 +324,7 @@ void init_post(unsigned char *c, long clen, unsigned char *a, long alen) {
     int ret = serial_configure(115200, 8, PARITY_NONE, 1);
 
     if (ret != 0) {
-        sel4cp_dbg_puts("Error occured during line configuration\n");
+        microkit_dbg_puts("Error occured during line configuration\n");
     }
 
         /* Enable the UART */
@@ -342,7 +342,7 @@ void init_post(unsigned char *c, long clen, unsigned char *a, long alen) {
 void ffiserial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
     // Dequeue from shared mem avail avail buffer
     if (clen != 1) {
-        sel4cp_dbg_puts("There are no arguments supplied when args are expected");
+        microkit_dbg_puts("There are no arguments supplied when args are expected");
         a[0] = 1;
         return;
     }
@@ -383,7 +383,7 @@ void ffiserial_dequeue_avail(unsigned char *c, long clen, unsigned char *a, long
 
 void ffiserial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (clen <= 0) {
-        sel4cp_dbg_puts("There are no arguments supplied when args are expected");
+        microkit_dbg_puts("There are no arguments supplied when args are expected");
         return;
     }
 
@@ -408,14 +408,14 @@ void ffiserial_enqueue_used(unsigned char *c, long clen, unsigned char *a, long 
 
 void ffiserial_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (clen != 1) {
-        sel4cp_dbg_puts("There are no arguments supplied when args are expected\n");
+        microkit_dbg_puts("There are no arguments supplied when args are expected\n");
         return;
     }
 
     if (alen != BUFFER_SIZE) {
         // We always need the a array to be 1024 bytes long, the same length as the buffers
         // in the ring buffers.
-        sel4cp_dbg_puts("Argument alen not of correct size\n");
+        microkit_dbg_puts("Argument alen not of correct size\n");
         return;
     }
     bool rx_tx = c[0];
@@ -437,7 +437,7 @@ void ffiserial_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a
         return;
     } else {
         if (buffer_len >= BUFFER_SIZE) {
-            sel4cp_dbg_puts("Buffer len too large\n");
+            microkit_dbg_puts("Buffer len too large\n");
             return;
         }
         int mem_ret = memcpy(a, (char *) buffer, buffer_len);
@@ -451,7 +451,7 @@ void ffiserial_driver_dequeue_used(unsigned char *c, long clen, unsigned char *a
 
 void ffiserial_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
     if (clen != 1) {
-        sel4cp_dbg_puts("There are no arguments supplied when args are expected");
+        microkit_dbg_puts("There are no arguments supplied when args are expected");
         return;
     }
 
@@ -468,14 +468,14 @@ void ffiserial_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long
     }
 
     if (a[0] != 0) {
-        sel4cp_dbg_puts("Error in serial enqueue used\n");
+        microkit_dbg_puts("Error in serial enqueue used\n");
     }
 }
 
 void ffidequeue_enqueue_avail(unsigned char *c, long clen, unsigned char *a, long alen) {
     // Dequeue from shared mem avail avail buffer
     if (clen != 1) {
-        sel4cp_dbg_puts("There are no arguments supplied when args are expected");
+        microkit_dbg_puts("There are no arguments supplied when args are expected");
         a[0] = 1;
         return;
     }
@@ -487,7 +487,7 @@ void ffidequeue_enqueue_avail(unsigned char *c, long clen, unsigned char *a, lon
 
     if (global_serial_driver_data.num_to_get_chars <= 0) {
         // We have no more get char requests to service.
-        sel4cp_dbg_puts("No requests for get char outstanding\n");
+        microkit_dbg_puts("No requests for get char outstanding\n");
         a[0] = -1;
         return;
     }
@@ -533,8 +533,8 @@ we can only have 1 entry point in our pancake program. So we will have to have t
 
 // Init function required by CP for every PD
 void init(void) {
-    sel4cp_dbg_puts(sel4cp_name);
-    sel4cp_dbg_puts(": elf PD init function running\n");
+    microkit_dbg_puts(microkit_name);
+    microkit_dbg_puts(": elf PD init function running\n");
 
     unsigned char c[1];
     long clen = 1;
@@ -549,7 +549,7 @@ void init(void) {
 }
 
 // Entry point that is invoked on a serial interrupt, or notifications from the server using the TX and RX channels
-void notified(sel4cp_channel ch) {
+void notified(microkit_channel ch) {
 
     // Here, we want to call to cakeml main - this will be our entry point into the pancake program.
     if (ch == 8 || ch == IRQ_CH || ch == 10) {
@@ -558,6 +558,6 @@ void notified(sel4cp_channel ch) {
     }
 
     if (ch == IRQ_CH) {
-        sel4cp_irq_ack(IRQ_CH);
+        microkit_irq_ack(IRQ_CH);
     }
 }
