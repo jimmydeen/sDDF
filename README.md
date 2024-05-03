@@ -1,10 +1,18 @@
 # Brief Intro
 This is a learning exercise to get acquainted with the sDDF. A basic serial driver has been implemented in pancake, with printf, getchar and scanf.
 
+## Building the cake compiler
+Included in this repo is a tar for the cake compiler. Extract this file and run the
+following commands:
+```
+cd cake-x64-64/
+make cake
+```
+
 ## Building the sDDF
 
     $ cd echo_server
-    $ make BUILD_DIR=<path/to/build> microkit_SDK=<path/to/core/platform/sdk> CAKE_COMPILER=<path/to/cake/compiler/binary> microkit_BOARD=imx8mm microkit_CONFIG=(release/debug)
+    $ make BUILD_DIR=<path/to/build> MICROKIT_SDK=<path/to/core/platform/sdk> CAKE_COMPILER=<path/to/cake/compiler/binary> MICROKIT_BOARD=imx8mm MICROKIT_CONFIG=(release/debug)
 
 ## Notes on building Pancake
 We will need to modify an output file, and recompile. This is because of the auto-genrated assembly code outputted by the cake compiler wishing to call
