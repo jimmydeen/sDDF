@@ -1,4 +1,4 @@
-// RUN PREPROCESSOR FIRST BEFORE COMPILING ! (cpp <filename>)
+// RUN PREPROCESSOR FIRST BEFORE COMPILING ! (cpp -P <filename>)
 
 // General macros
 #define BBYTES64 8
@@ -108,8 +108,10 @@ fun ring_size(1 ring_buf) {
 }
 
 fun notify(1 ring_handle) {
-
-   return ring_handle; 
+    
+    var notify = (ldw ring_handle + NOTIFY_OFF);
+    @fun_call(notify, 1, 0, 0);
+    return 0;
 
 }
 
@@ -142,17 +144,15 @@ fun enqueue(1 ring_buf, 1 buffer, 1 len, 1 cookie_ptr) {
     !stw len , ring_buffers + idx_mod_size + LEN;
     !stw cookie_ptr , ring_buffers + idx_mod_size + COOKIE;
 
-    // Thread memory release
+    // Thread memory release (dummy args needed for FFI)
 
-    
-
+    @THREAD_MEMORY_RELEASE(1, 2, 3, 4); 
     
     // Increment write idx
 
     inc_idx(ring_buf, 1);
     
     return 0;
-
 
 }
 
@@ -205,8 +205,9 @@ fun dequeue(1 ring_buf, 1 addr_ptr, 1 len_ptr, 1 cookie_ptr) {
     !stw len, len_ptr;
     !stw cookie, cookie_ptr;
 
-    //Thread Memory Release
+    //Thread Memory Release (dummy args needed for ffi)
 
+    @THREAD_MEMORY_RELEASE(1, 2, 3, 4); 
 
     // read_idx ++ 
     inc_idx(ring_buf, 0);
