@@ -1,0 +1,3 @@
+[submodule "libsharedringbuffer"]
+	path = libsharedringbuffer
+	url = git@github.com:JunmingZhao42/libsharedringbuffer.git

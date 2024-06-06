@@ -446,6 +446,16 @@ void init_pancake_mem() {
     cml_stackend = cml_stack + cml_stack_sz;
 }
 
+void init_pancake_data() {
+    uintptr_t *heap = (uintptr_t *) cml_heap;
+    heap[0] = uart_base;
+    heap[1] = rx_avail_drv;
+    heap[2] = rx_used_drv;
+    heap[3] = rx_avail_cli;
+    heap[4] = rx_used_cli;
+    heap[5] = shared_dma_vaddr;
+}
+
 /*---------- sel4cp Entry Points ----------*/
 
 seL4_MessageInfo_t

@@ -14,9 +14,14 @@ if (cml_arg == 1) {
     var drv_avail_size_c = @base + 45;
     var drv_avail_size_a = @base + 46;
 
+    // Get avail ring size
+    ring_size()
+
+    /*
     strb drv_avail_size_c, 1;
 
     #drv_ring_size(drv_avail_size_c, 1, drv_avail_size_a, 8);
+    */
 
     var enqueued = 0;
 
